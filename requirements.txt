@@ -1,0 +1,10 @@
+anthropic
+pyautogui
+mss
+pillow
+pyperclip
+pygame
+python-dotenv
+numpy
+pyobjc
+pyautogui
