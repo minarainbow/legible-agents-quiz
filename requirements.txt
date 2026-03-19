@@ -1,10 +1,7 @@
 anthropic
 pyautogui
+pyobjc
 mss
 pillow
 pyperclip
-pygame
 python-dotenv
-numpy
-pyobjc
-pyautogui
