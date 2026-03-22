@@ -137,6 +137,8 @@ state = {
     "scroll_count":       0,         # consecutive scrolls (for tempo acceleration)
     "reading_done":       False,      # flips True when DOM reading finishes
     "cursor_state":       "default",  # "default" | "reading" | "thinking" | "clicking"
+    "uncertain":          False,       # True when Claude expresses uncertainty
+    "last_thought":       "",          # Claude's raw text (for high-stakes fallback)
 }
 
 state_lock   = threading.Lock()
@@ -578,6 +580,29 @@ def dom_mark_copied():
     _chrome_js(js)
 
 
+# ── Stakes detection ───────────────────────────────────────────
+
+_HIGH_STAKES_KEYWORDS = {
+    "buy", "add to cart", "checkout", "order now", "purchase",
+    "place order", "submit", "send", "confirm", "delete", "remove",
+    "pay", "proceed", "complete purchase", "sign up", "subscribe",
+}
+
+def _is_high_stakes(label: str) -> bool:
+    low = label.lower()
+    return any(kw in low for kw in _HIGH_STAKES_KEYWORDS)
+
+_UNCERTAINTY_MARKERS = (
+    "i think", "i'm not sure", "not sure", "it looks like",
+    "i believe", "might be", "seems to", "i'll try", "unclear",
+    "possibly", "probably", "it seems",
+)
+
+def _is_uncertain(text: str) -> bool:
+    low = text.lower()
+    return any(m in low for m in _UNCERTAINTY_MARKERS)
+
+
 # ── DOM legibility: click target preview ───────────────────────
 
 def _get_element_label(sx: int, sy: int) -> str:
@@ -588,10 +613,13 @@ def _get_element_label(sx: int, sy: int) -> str:
         f"ey={sy}-window.screenY-(window.outerHeight-window.innerHeight);"
         "var el=document.elementFromPoint(ex,ey);"
         "if(!el)return '';"
-        "var t=(el.textContent||'').trim();"
-        "if(!t)t=el.getAttribute('aria-label')||el.getAttribute('title')||el.getAttribute('alt')||'';"
-        "if(!t&&el.parentElement)t=(el.parentElement.textContent||'').trim();"
-        "return t.replace(/\\s+/g,' ').slice(0,40);"
+        "var tag=el.tagName;"
+        "if(tag==='STYLE'||tag==='SCRIPT'||tag==='HTML'||tag==='BODY')return '';"
+        "var t=(el.getAttribute('aria-label')||el.getAttribute('value')||el.getAttribute('title')||el.getAttribute('alt')||'').trim();"
+        "if(!t)t=(el.innerText||el.textContent||'').trim();"
+        "if(!t&&el.parentElement){var p=el.parentElement;"
+        "t=(p.getAttribute('aria-label')||p.innerText||p.textContent||'').trim();}"
+        "return t.replace(/\\s+/g,' ').slice(0,50);"
         "})()"
     )
     try:
@@ -620,50 +648,81 @@ def orbit_mouse(cx: int, cy: int, stop_event: threading.Event, radius: int = 55)
     human_move_to(cx, cy, speed_factor=3.0)
 
 
-def dom_click_preview(sx: int, sy: int, ms=1200):
-    """Before clicking: dramatic grow + warm glow + expanding radar ring."""
+def dom_click_preview(sx: int, sy: int, ms=1200, high_stakes=False):
+    """Before clicking: dramatic grow + warm glow + expanding radar ring.
+    high_stakes=True uses red/orange warning colors + double ring."""
+    if high_stakes:
+        el_color  = "rgba(255,70,50"    # red-orange for warning
+        ring_color = "rgba(255,70,50"
+        scale_peak = "1.35"
+        ring_border = "4px"
+        el_anim_dur = "1.4s"
+        ms = max(ms, 2500)
+    else:
+        el_color  = "rgba(255,195,60"   # amber for normal
+        ring_color = "rgba(255,195,60"
+        scale_peak = "1.25"
+        ring_border = "3px"
+        el_anim_dur = "1.1s"
+
     js = (
         "(function(){"
         f"var ex={sx}-window.screenX,"
         f"ey={sy}-window.screenY-(window.outerHeight-window.innerHeight);"
         "var el=document.elementFromPoint(ex,ey);"
         "if(!el||el.tagName==='HTML'||el.tagName==='BODY')return;"
-        # Inject shared keyframes (element glow + ring expand)
-        "if(!document.getElementById('_cr_attn_style')){"
-        "  var s=document.createElement('style');"
-        "  s.id='_cr_attn_style';"
-        "  s.textContent='"
+        # Inject / update keyframes
+        "var s=document.getElementById('_cr_attn_style');"
+        "if(!s){s=document.createElement('style');s.id='_cr_attn_style';document.head.appendChild(s);}"
+        f"s.textContent='"
         "@keyframes _cr_attn{"
-        "0%  {transform:scale(1);    filter:brightness(1)   drop-shadow(0 0 0px  rgba(255,195,60,0));}"
-        "15% {transform:scale(1.25); filter:brightness(1.7) drop-shadow(0 0 20px rgba(255,195,60,1.0));}"
-        "40% {transform:scale(1.18); filter:brightness(1.5) drop-shadow(0 0 14px rgba(255,195,60,0.8));}"
-        "65% {transform:scale(1.22); filter:brightness(1.6) drop-shadow(0 0 18px rgba(255,195,60,0.9));}"
-        "100%{transform:scale(1);    filter:brightness(1)   drop-shadow(0 0 0px  rgba(255,195,60,0));}"
+        f"0%  {{transform:scale(1);    filter:brightness(1)   drop-shadow(0 0 0px  {el_color},0));}}"
+        f"15% {{transform:scale({scale_peak}); filter:brightness(1.8) drop-shadow(0 0 24px {el_color},1.0));}}"
+        f"40% {{transform:scale(1.18); filter:brightness(1.5) drop-shadow(0 0 16px {el_color},0.8));}}"
+        f"65% {{transform:scale(1.22); filter:brightness(1.7) drop-shadow(0 0 20px {el_color},0.9));}}"
+        f"100%{{transform:scale(1);    filter:brightness(1)   drop-shadow(0 0 0px  {el_color},0));}}"
         "}"
         "@keyframes _cr_ring{"
         "0%  {opacity:1.0;transform:scale(1.0);}"
         "100%{opacity:0.0;transform:scale(1.7);}"
         "}"
-        "';"
-        "  document.head.appendChild(s);"
+        "@keyframes _cr_ring2{"
+        "0%  {opacity:0.8;transform:scale(1.0);}"
+        "100%{opacity:0.0;transform:scale(2.1);}"
         "}"
-        # Element glow animation
+        "';"
+        # Element glow
         "el.style.transformOrigin='center';"
-        "el.style.animation='_cr_attn 1.1s ease-in-out';"
-        "setTimeout(function(){el.style.animation='';}" f",{ms});"
-        # Radar ring overlay
+        f"el.style.animation='_cr_attn {el_anim_dur} ease-in-out';"
+        f"setTimeout(function(){{el.style.animation='';}},{ms});"
+        # Ring 1
         "var rect=el.getBoundingClientRect();"
         "var ring=document.createElement('div');"
         "ring.style.cssText='position:fixed;"
         "left:'+(rect.left-12)+'px;top:'+(rect.top-12)+'px;"
         "width:'+(rect.width+24)+'px;height:'+(rect.height+24)+'px;"
-        "border:3px solid rgba(255,195,60,0.95);"
+        f"border:{ring_border} solid {ring_color},0.95);"
         "border-radius:10px;pointer-events:none;z-index:2147483647;"
         "animation:_cr_ring 1.0s ease-out forwards;';"
         "document.body.appendChild(ring);"
         f"setTimeout(function(){{if(ring.parentNode)ring.parentNode.removeChild(ring);}},{ms});"
-        "})()"
     )
+
+    if high_stakes:
+        # Second ring with delay — double ping for warning
+        js += (
+            "var ring2=document.createElement('div');"
+            "ring2.style.cssText='position:fixed;"
+            "left:'+(rect.left-16)+'px;top:'+(rect.top-16)+'px;"
+            "width:'+(rect.width+32)+'px;height:'+(rect.height+32)+'px;"
+            f"border:3px solid {ring_color},0.7);"
+            "border-radius:12px;pointer-events:none;z-index:2147483646;"
+            "animation:_cr_ring2 1.2s 0.5s ease-out forwards;opacity:0;';"
+            "document.body.appendChild(ring2);"
+            f"setTimeout(function(){{if(ring2.parentNode)ring2.parentNode.removeChild(ring2);}},{ms});"
+        )
+
+    js += "})()"
     _chrome_js(js)
 
 
@@ -826,8 +885,24 @@ def _execute_action_inner(action, params):
         x, y = sc(params["coordinate"])
         activate_chrome()
         label = _get_element_label(x, y)
-        dom_click_preview(x, y)  # fire preview immediately — element glows while TTS plays
-        if label:
+        high_stakes = _is_high_stakes(label)
+        # Fallback: check if Claude's narration explicitly says "click [high-stakes-word]"
+        if not high_stakes:
+            with state_lock:
+                last_thought = state.get("last_thought", "").lower()
+            for kw in _HIGH_STAKES_KEYWORDS:
+                idx = last_thought.find(kw)
+                if idx >= 0 and "click" in last_thought[max(0, idx - 40):idx]:
+                    high_stakes = True
+                    if not label:
+                        label = kw  # use keyword as display label
+                    break
+        print(f"[CLICK] label={label!r} high_stakes={high_stakes}", file=sys.stderr)
+        dom_click_preview(x, y, high_stakes=high_stakes)
+        if high_stakes:
+            speak(f"I'm about to click '{label}'. This may be hard to undo.")
+            time.sleep(3.0)  # grace period — user can intervene
+        elif label:
             stop_ev = threading.Event()
             orbit_t = threading.Thread(target=orbit_mouse, args=(x, y, stop_ev), daemon=True)
             orbit_t.start()
@@ -835,7 +910,7 @@ def _execute_action_inner(action, params):
             stop_ev.set()
             orbit_t.join(timeout=1.5)
         else:
-            time.sleep(1.0)  # let animation breathe before click
+            time.sleep(1.0)
         click_with_preview(x, y, speed_factor=base_speed)
         dom_click_ripple(x, y)
 
@@ -843,8 +918,12 @@ def _execute_action_inner(action, params):
         x, y = sc(params["coordinate"])
         activate_chrome()
         label = _get_element_label(x, y)
-        dom_click_preview(x, y)  # fire preview immediately
-        if label:
+        high_stakes = _is_high_stakes(label) if label else False
+        dom_click_preview(x, y, high_stakes=high_stakes)
+        if high_stakes:
+            speak(f"I'm about to double-click '{label}'. This may be hard to undo.")
+            time.sleep(3.0)
+        elif label:
             stop_ev = threading.Event()
             orbit_t = threading.Thread(target=orbit_mouse, args=(x, y, stop_ev), daemon=True)
             orbit_t.start()
@@ -944,10 +1023,68 @@ def task_loop():
 
     client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
 
+    # ── Task selection ────────────────────────────────────────
+    TASKS = {
+        "1": {
+            "name": "UIST 2026 — Formatting Guidelines",
+            "url":  "uist.acm.org/2026",
+            "site": "the UIST 2026 website",
+            "goal": (
+                "Chrome is showing the UIST 2026 website.\n"
+                "Your task: find and read the submission formatting guidelines, "
+                "then write a concise summary.\n\n"
+                "Steps:\n"
+                "1. Look for a link to 'Call for Papers', 'Author Guide', 'Submissions', "
+                "or 'Formatting Guidelines'. Click it.\n"
+                "2. Scroll down and read the formatting requirements "
+                "(page limits, column format, template, anonymization, etc).\n"
+                "3. Write a concise summary (3-5 bullet points). "
+                "Do NOT use any tools in your final response."
+            ),
+        },
+        "2": {
+            "name": "ACM DL — Agent Legibility Papers",
+            "url":  "dl.acm.org",
+            "site": "the ACM Digital Library",
+            "goal": (
+                "Go to ACM Digital Library (dl.acm.org) and find 3 papers about agent legibility.\n\n"
+                "Steps:\n"
+                "1. Search for 'agent legibility' in the ACM DL search bar.\n"
+                "2. Browse results, click into promising papers, read their abstracts.\n"
+                "3. Write a summary: title, authors, one sentence per paper. "
+                "Do NOT use any tools in your final response."
+            ),
+        },
+        "3": {
+            "name": "Amazon — Tennis Racket for Kids (Overall Pick)",
+            "url":  "amazon.com",
+            "site": "Amazon",
+            "goal": (
+                "Go to Amazon (amazon.com) and search for 'tennis racket for kids'. "
+                "Find the item with the 'Overall Pick' badge and add it to the cart.\n\n"
+                "Steps:\n"
+                "1. Search for 'tennis racket for kids'.\n"
+                "2. Look for the item labeled 'Overall Pick' in the search results.\n"
+                "3. Click on that item to open its product page.\n"
+                "4. Click 'Add to Cart'.\n"
+                "Do NOT proceed to checkout."
+            ),
+        },
+    }
+
+    print("\n─────────────────────────────────", file=sys.stderr)
+    print("  Select a task:", file=sys.stderr)
+    for k, t in TASKS.items():
+        print(f"  {k}. {t['name']}", file=sys.stderr)
+    print("─────────────────────────────────", file=sys.stderr)
+    choice = input("  Enter 1 / 2 / 3: ").strip()
+    task = TASKS.get(choice, TASKS["1"])
+    print(f"\n  ▶ Running: {task['name']}\n", file=sys.stderr)
+
     SYSTEM_PROMPT = (
         f"You are a macOS computer-use agent. "
         f"Display: {DISPLAY_W}×{DISPLAY_H}. Origin top-left. "
-        f"Chrome is showing the UIST 2026 website.\n"
+        f"Chrome is showing {task['site']}.\n"
         "Rules:\n"
         "- ALWAYS write a short narration sentence (max 12 words) before any tool call. "
         "Name the exact UI element: "
@@ -959,23 +1096,10 @@ def task_loop():
         "- When scrolling, use delta_y of 5–8."
     )
 
-    goal = (
-        "Chrome is showing the UIST 2026 website.\n"
-        "Your task: find and read the submission formatting guidelines, "
-        "then write a concise summary.\n\n"
-        "Steps:\n"
-        "1. Look for a link to 'Call for Papers', 'Author Guide', 'Submissions', "
-        "or 'Formatting Guidelines'. Click it.\n"
-        "2. On that page, scroll down and READ the content carefully. "
-        "Look for formatting requirements "
-        "(page limits, column format, template, anonymization, etc).\n"
-        "3. When you have read enough, stop using tools and write a concise "
-        "summary (3-5 bullet points) of the key formatting requirements. "
-        "Do NOT use any tools in your final response — just write the summary text."
-    )
+    goal = task["goal"]
 
-    # ── Phase 1: Pre-navigation (pyautogui, fast + visible) ──
-    print("[CU] Phase 1: Navigating to UIST 2026…", file=sys.stderr)
+    # ── Phase 1: Pre-navigation ───────────────────────────────
+    print(f"[CU] Phase 1: Navigating to {task['url']}…", file=sys.stderr)
     activate_chrome()
     time.sleep(0.3)
 
@@ -985,12 +1109,12 @@ def task_loop():
     time.sleep(0.05)
     pyautogui.keyUp("command")
     time.sleep(0.4)
-    human_type_visible("uist.acm.org/2026")
+    human_type_visible(task["url"])
     time.sleep(0.1)
     pyautogui.press("return")
     time.sleep(3.5)
 
-    set_progress(1, 4, "Navigate to site")
+    set_progress(1, 4, f"Navigate to {task['url']}")
 
     # ── Phase 2: Agent reads page + generates summary ──
     print("[CU] Phase 2: Agent reading guidelines…", file=sys.stderr)
@@ -1053,9 +1177,14 @@ def task_loop():
         )
         thought = meaningful_thought(raw)
 
+        # Uncertainty signaling — amber bubble when Claude hedges
+        with state_lock:
+            state["uncertain"] = _is_uncertain(raw) if raw else False
+
         if raw:
             print(f"\n[CLAUDE raw] {raw}", file=sys.stderr)
             print(f"[CLAUDE thought] {thought!r}", file=sys.stderr)
+            print(f"[CLAUDE uncertain] {state['uncertain']}", file=sys.stderr)
 
         # Speak Claude's own reasoning aloud before acting.
         # If Claude didn't write a narration, build one from the first action.
@@ -1093,6 +1222,7 @@ def task_loop():
             state["reasoning"]        = False
             state["reasoning_end_ts"] = now()
             state["reasoning_text"]   = thought
+            state["last_thought"]     = raw  # full raw text for high-stakes fallback
 
         messages.append({"role": "assistant", "content": response.content})
 
@@ -1549,6 +1679,7 @@ class OverlayView(NSView):
             start_ts     = state.get("reasoning_start_ts")
             end_ts       = state.get("reasoning_end_ts")
             reading_done = state.get("reading_done", False)
+            uncertain    = state.get("uncertain", False)
             cx, cy       = state["cursor_pos"]
 
         t = now()
@@ -1562,10 +1693,8 @@ class OverlayView(NSView):
             with state_lock:
                 speech_done_ts = state.get("speech_done_ts")
             if speech_done_ts is None:
-                # Still speaking — hold bubble at full alpha
                 alpha = 0.85
             else:
-                # Speech finished — linger 3s then fade
                 age = t - speech_done_ts
                 if age > 3.0 + BUBBLE_FADE_OUT:
                     with state_lock:
@@ -1578,7 +1707,9 @@ class OverlayView(NSView):
             return
         if not display:
             return
-        self.draw_speech_bubble(cx, cy, display, self.soft_blue, alpha,
+        # Amber bubble when uncertain, soft_blue when confident
+        color_fn = self.amber if uncertain else self.soft_blue
+        self.draw_speech_bubble(cx, cy, display, color_fn, alpha,
                                 max_chars=56, above=True, slide=slide)
 
 # ─────────────────────────────────────────────────────────────
