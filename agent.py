@@ -156,79 +156,35 @@ def clear_preview():
 # ─────────────────────────────────────────────────────────────
 
 def human_move_to(x, y, speed_factor=1.0):
-    """Move mouse with organic bezier path. speed_factor < 1 = slower, > 1 = faster."""
-    sx, sy = mouse_pos()
-    dist = math.hypot(x - sx, y - sy)
-    if dist < 2:
-        return
-
-    steps = max(14, int(dist / 10))
-    base_time = (0.020 + (dist / 3200) ** 0.6) * random.uniform(0.85, 1.15)
-    total_time = base_time / max(speed_factor, 0.2)
-
-    overshoot = random.uniform(0.0, 0.06) if dist > 60 else 0.0
-    ox = x + (x - sx) * overshoot
-    oy = y + (y - sy) * overshoot
-    path = bezier_path(sx, sy, ox, oy, n=steps)
-
-    for i, (px, py) in enumerate(path):
-        t = i / max(steps, 1)
-        # Slow start → gradually faster (ease-in: cubic ramp)
-        speed_mult = 0.15 + 1.6 * (t ** 1.8)
-        step_dt = (total_time / steps) / max(speed_mult, 0.12) * random.uniform(0.88, 1.12)
-        pyautogui.moveTo(int(px), int(py), duration=0)
-        time.sleep(max(0.001, step_dt))
-
-    if overshoot > 0:
-        cx, cy = mouse_pos()
-        for i in range(1, 5):
-            t = i / 4
-            nx = lerp(cx, x, ease_out_cubic(t))
-            ny = lerp(cy, y, ease_out_cubic(t))
-            pyautogui.moveTo(int(nx), int(ny), duration=0)
-            time.sleep(0.008)
+    """Abrupt direct move — no bezier, no easing."""
     pyautogui.moveTo(x, y, duration=0)
 
 
 def human_type_visible(text, target_pos=None):
-    """Type char-by-char: starts slow, gradually speeds up."""
-    for i, char in enumerate(text):
-        pyautogui.press(char) if len(char) == 1 and char.isprintable() else pyautogui.write(char)
-        progress = i / max(len(text) - 1, 1)
-        # Slow start → faster: delay shrinks as progress increases
-        speed_mult = 0.4 + 1.4 * (progress ** 1.5)
-        delay = TYPE_CHAR_INTERVAL / max(speed_mult, 0.2) * random.uniform(0.8, 1.2)
-        time.sleep(max(0.015, delay))
-    time.sleep(0.15)
+    """Type text directly at full speed."""
+    pyautogui.write(text, interval=0.02)
+    time.sleep(0.05)
 
 # ─────────────────────────────────────────────────────────────
 # Action helpers
 # ─────────────────────────────────────────────────────────────
 
 def click_with_preview(x, y, label=None, double=False, speed_factor=1.0):
-    set_preview(x, y, label)
-    time.sleep(PREVIEW_SEC * random.uniform(0.8, 1.2))
-    human_move_to(x, y, speed_factor=speed_factor)
-    # Dwell at target — "I'm about to click here"
-    time.sleep(random.uniform(0.15, 0.25))
+    pyautogui.moveTo(x, y, duration=0)
     if double:
         pyautogui.doubleClick()
     else:
         pyautogui.click()
-    clear_preview()
-    # Record in session trail
     with state_lock:
         state["session_clicks"].append((x, y, now()))
 
 def scroll_action(x, y, dy, speed_factor=1.0):
-    """Scroll with tempo: repeated scrolls get faster."""
-    human_move_to(x, y, speed_factor=speed_factor)
-    time.sleep(random.uniform(0.04, 0.10) / max(speed_factor, 0.3))
-
+    """Scroll abruptly."""
+    pyautogui.moveTo(x, y, duration=0)
     direction = -1 if dy > 0 else 1
-    total_clicks = max(8, min(abs(dy) * 3, 35))
-    bursts = random.randint(3, 6)
-    clicks_per_burst = max(1, total_clicks // bursts)
+    total_clicks = max(5, min(abs(dy) * 3, 30))
+    bursts = 1
+    clicks_per_burst = total_clicks
 
     for b in range(bursts):
         for _ in range(clicks_per_burst):
@@ -539,15 +495,8 @@ def task_loop():
             "url":  "amazon.com",
             "site": "Amazon",
             "goal": (
-                "Go to Amazon (amazon.com) and search for 'tennis racket for kids'. "
-                "Find the item with the 'Overall Pick' badge and add it to the cart.\n\n"
-                "Steps:\n"
-                "1. Search for 'tennis racket for kids'.\n"
-                "2. Look for the item labeled 'Overall Pick' in the search results.\n"
-                "3. Click on that item to open its product page.\n"
-                "4. Click 'Add to Cart'.\n"
-                "IMPORTANT: Ignore sign-in prompts, popups, and unrelated banners — dismiss or skip them. "
-                "Do not click Amazon Basics or sponsored items unless they have the Overall Pick badge."
+                "On Amazon, search for 'tennis racket for toddler', find an item with an 'Overall Pick' badge or a sale/discount (e.g. 'Save 10%'), and add it to the cart. "
+                "Ignore sign-in prompts and popups."
             ),
         },
     }

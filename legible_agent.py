@@ -1061,15 +1061,8 @@ def task_loop():
             "url":  "amazon.com",
             "site": "Amazon",
             "goal": (
-                "Go to Amazon (amazon.com) and search for 'tennis racket for kids'. "
-                "Find the item with the 'Overall Pick' badge and add it to the cart.\n\n"
-                "Steps:\n"
-                "1. Search for 'tennis racket for kids'.\n"
-                "2. Look for the item labeled 'Overall Pick' in the search results.\n"
-                "3. Click on that item to open its product page.\n"
-                "4. Click 'Add to Cart'.\n"
-                "IMPORTANT: Ignore sign-in prompts, popups, and unrelated banners — dismiss or skip them. "
-                "Do not click Amazon Basics or sponsored items unless they have the Overall Pick badge."
+                "On Amazon, search for 'tennis racket for toddler', find an item with an 'Overall Pick' badge or a sale/discount (e.g. 'Save 10%'), and add it to the cart. "
+                "Ignore sign-in prompts and popups."
             ),
         },
     }
@@ -1181,7 +1174,6 @@ def task_loop():
 
         if raw:
             print(f"\n[CLAUDE raw] {raw}", file=sys.stderr)
-            print(f"[CLAUDE thought] {thought!r}", file=sys.stderr)
 
         # Speak Claude's own reasoning aloud before acting.
         # If Claude didn't write a narration, build one from the first action.
