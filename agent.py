@@ -11,14 +11,12 @@ import re
 
 import mss
 import pyperclip
-import tempfile
 from PIL import Image
 
 import objc
 import pyautogui
 from dotenv import load_dotenv
 import anthropic
-from elevenlabs import ElevenLabs
 
 from AppKit import (
     NSApplication,
@@ -29,7 +27,6 @@ from AppKit import (
     NSBorderlessWindowMask,
     NSColor,
     NSEvent,
-    NSSound,
     NSFloatingWindowLevel,
     NSFont,
     NSFontAttributeName,
@@ -52,63 +49,9 @@ load_dotenv()
 TRAIL_FADE_SEC     = 2.5
 PREVIEW_SEC        = 0.20
 FPS                = 60
-BUBBLE_FADE_IN     = 0.25
-BUBBLE_FADE_OUT    = 0.60
-BUBBLE_SLIDE_PX    = 12
 TYPE_CHAR_INTERVAL = 0.055
 
 NSEventMaskKeyDown = 1024
-
-# ── Sound effects ─────────────────────────────────────────────
-_ns_sounds: dict = {}  # path -> NSSound, lazy-init after NSApp starts
-
-def _play(path: str, volume: float = 1.0):
-    """Play a system sound via NSSound (low latency, lazy-init)."""
-    if path not in _ns_sounds:
-        s = NSSound.alloc().initWithContentsOfFile_byReference_(path, True)
-        if s:
-            s.setVolume_(volume)
-        _ns_sounds[path] = s
-    s = _ns_sounds.get(path)
-    if s:
-        s.stop()
-        s.play()
-
-# ElevenLabs SFX: pre-generated mp3 paths (filled by _init_sfx in background)
-_sfx: dict = {}  # "typing" | "reading" -> tmp mp3 path
-
-def _init_sfx():
-    """Pre-generate ElevenLabs sound effects at startup (runs in background thread)."""
-    sounds = {
-        "typing":  "quick mechanical keyboard clicks, crisp and light",
-        "reading": "barely audible soft ambient tick, like a distant clock, very subtle and calm",
-    }
-    for key, prompt in sounds.items():
-        try:
-            audio = _eleven.text_to_sound_effects.convert(
-                text=prompt, duration_seconds=0.5, prompt_influence=0.2
-            )
-            with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
-                for chunk in audio:
-                    f.write(chunk)
-                _sfx[key] = f.name
-            print(f"[SFX] generated: {key}", file=sys.stderr)
-        except Exception as e:
-            print(f"[SFX] {key} failed: {e}", file=sys.stderr)
-
-_sfx_afplay: dict = {}  # key -> current Popen, for stopping overlaps
-
-def _play_sfx_or_system(key: str, fallback_path: str, volume: float = 1.0):
-    """Play ElevenLabs SFX if ready, else fall back to system sound."""
-    if key in _sfx:
-        # kill previous instance of same sfx so they don't stack
-        prev = _sfx_afplay.get(key)
-        if prev and prev.poll() is None:
-            prev.terminate()
-        vol = "0.15" if key == "reading" else "0.4"
-        _sfx_afplay[key] = subprocess.Popen(["afplay", "-v", vol, _sfx[key]])
-    else:
-        _play(fallback_path, volume)
 
 state = {
     "trail":              [],
@@ -119,25 +62,11 @@ state = {
     "cursor_pos":         (0, 0),
     "running_demo":       True,
     "screenshot_action":  False,
-    "reasoning":          False,
-    "reasoning_text":     "",
-    "reasoning_start_ts": None,
-    "reasoning_end_ts":   None,
-    "speech_done_ts":     None,   # set by TTS thread when audio finishes
-    "goal_ts":            None,
-    "goal_text":          "",
     "vignette_alpha":     0.0,
     "vignette_target":    0.0,
-    # ── Legibility ──
-    "progress_step":      0,
-    "progress_total":     0,
-    "progress_label":     "",
     "session_clicks":     [],        # accumulated (x, y, ts) for all clicks in session
     "action_count":       0,         # total actions taken (for tempo acceleration)
     "scroll_count":       0,         # consecutive scrolls (for tempo acceleration)
-    "reading_done":       False,      # flips True when DOM reading finishes
-    "cursor_state":       "default",  # "default" | "reading" | "thinking" | "clicking"
-    "last_thought":       "",          # Claude's raw text (for high-stakes fallback)
 }
 
 state_lock   = threading.Lock()
@@ -202,33 +131,6 @@ def bezier_path(x0, y0, x1, y1, n=80):
         pts.append((x, y))
     return pts
 
-_FILLER_PREFIXES = (
-    "excellent", "great", "sure", "of course", "certainly", "perfect",
-    "okay", "ok", "absolutely", "good", "wonderful", "alright", "got it",
-    "understood", "noted", "i see", "i understand",
-)
-
-def meaningful_thought(text, max_chars=80):
-    """Return one concise, meaningful sentence from Claude's response."""
-    if not text:
-        return ""
-    sentences = re.split(r'(?<=[.!?])\s+', text.strip())
-    for s in sentences:
-        low = s.strip().lower()
-        is_filler = any(low.startswith(f) for f in _FILLER_PREFIXES) and len(s) < 60
-        if not is_filler:
-            s = s.strip()
-            if len(s) > max_chars:
-                cut = s[:max_chars].rfind(' ')
-                s = s[:cut] + "…" if cut > 10 else s[:max_chars] + "…"
-            return s
-    # fallback: last sentence, truncated
-    s = sentences[-1].strip()
-    if len(s) > max_chars:
-        cut = s[:max_chars].rfind(' ')
-        s = s[:cut] + "…" if cut > 10 else s[:max_chars] + "…"
-    return s
-
 # ─────────────────────────────────────────────────────────────
 # State helpers
 # ─────────────────────────────────────────────────────────────
@@ -248,18 +150,6 @@ def clear_preview():
         state["preview_target"]   = None
         state["preview_label"]    = None
         state["preview_start_ts"] = None
-
-def set_system_cursor(cursor_state: str):
-    """Request a system cursor change. Applied on the main thread via state dict."""
-    with state_lock:
-        state["cursor_state"] = cursor_state
-
-def set_progress(step, total, label=""):
-    play_sound("Tink.aiff")
-    with state_lock:
-        state["progress_step"]  = step
-        state["progress_total"] = total
-        state["progress_label"] = label
 
 # ─────────────────────────────────────────────────────────────
 # Human-like movement (organic, with overshoot + ease)
@@ -301,10 +191,9 @@ def human_move_to(x, y, speed_factor=1.0):
 
 
 def human_type_visible(text, target_pos=None):
-    """Type char-by-char: starts slow, gradually speeds up, with keyboard click sounds."""
+    """Type char-by-char: starts slow, gradually speeds up."""
     for i, char in enumerate(text):
         pyautogui.press(char) if len(char) == 1 and char.isprintable() else pyautogui.write(char)
-        _play_sfx_or_system("typing", "/System/Library/Sounds/Tock.aiff", 0.25)
         progress = i / max(len(text) - 1, 1)
         # Slow start → faster: delay shrinks as progress increases
         speed_mult = 0.4 + 1.4 * (progress ** 1.5)
@@ -392,162 +281,8 @@ def screenshot_base64():
             state["vignette_target"]   = 0.0
 
 # ─────────────────────────────────────────────────────────────
-# DOM injection — VERIFIED WORKING syntax
+# DOM helpers (non-legibility)
 # ─────────────────────────────────────────────────────────────
-
-def _chrome_js(js: str):
-    """Fire-and-forget JS execution in Chrome (async)."""
-    safe = js.replace('\\', '\\\\').replace('"', '\\"')
-    apple = (
-        'tell application "Google Chrome"\n'
-        '    tell active tab of front window\n'
-        f'        execute javascript "{safe}"\n'
-        '    end tell\n'
-        'end tell'
-    )
-    try:
-        subprocess.Popen(
-            ["osascript", "-e", apple],
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-        )
-    except Exception:
-        pass
-
-
-def _chrome_js_sync(js: str, timeout=1.5) -> str:
-    """Execute JS in Chrome and return result (sync)."""
-    safe = js.replace('\\', '\\\\').replace('"', '\\"')
-    apple = (
-        'tell application "Google Chrome"\n'
-        '    tell active tab of front window\n'
-        f'        execute javascript "{safe}"\n'
-        '    end tell\n'
-        'end tell'
-    )
-    try:
-        r = subprocess.run(
-            ["osascript", "-e", apple],
-            capture_output=True, text=True, timeout=timeout,
-        )
-        return r.stdout.strip()
-    except Exception:
-        return ""
-
-
-def _reading_sound_loop():
-    """Play a soft pop sound periodically while DOM reading animation is active."""
-    time.sleep(0.3)  # let reading start first
-    while True:
-        with state_lock:
-            done = state.get("reading_done", False)
-            reasoning = state.get("reasoning", False)
-        if done or not reasoning:
-            break
-        _play_sfx_or_system("reading", "/System/Library/Sounds/Tock.aiff", 0.06)
-        time.sleep(1.1)  # subtle background rhythm, not distracting
-
-
-def _poll_reading_done():
-    """Background thread: poll DOM reading state and flip to 'thinking' when done.
-    Initial 1s delay to let reading animation start before polling."""
-    time.sleep(1.0)
-    for _ in range(60):   # poll for up to 30 seconds
-        with state_lock:
-            if not state.get("reasoning", False):
-                return
-        try:
-            result = _chrome_js_sync("window._crTimer===null?'done':'reading'", timeout=1.0)
-            if result == "done":
-                with state_lock:
-                    state["reading_done"] = True
-                play_sound("Pop.aiff")
-                return
-        except Exception:
-            pass
-        time.sleep(0.5)
-    # Timed out — just mark as done
-    with state_lock:
-        state["reading_done"] = True
-
-
-# ── DOM legibility: continuous reading animation ───────────────
-
-def dom_start_reading():
-    """Start reading animation. Skips elements already read (marked with data-cr-read).
-    Tracks read state via data attribute so re-screenshots only highlight new content."""
-    js = (
-        "(function(){"
-        "if(window._crTimer)clearTimeout(window._crTimer);"
-        "if(window._crEls)window._crEls.forEach(function(el){"
-        "el.style.backgroundColor='';el.style.boxShadow='';el.style.borderLeft='';el.style.transition='';"
-        "});"
-        "var els=document.querySelectorAll('p,li,h1,h2,h3,h4,td,th,figcaption,blockquote,dt,dd,pre');"
-        "var vh=window.innerHeight;"
-        "var visible=[];"
-        "els.forEach(function(el){"
-        "var r=el.getBoundingClientRect();"
-        "if(r.top>-10&&r.top<vh&&r.height>8&&r.height<500"
-        "&&!el.getAttribute('data-cr-read'))visible.push(el);"
-        "});"
-        "window._crEls=visible;"
-        "window._crIdx=0;"
-        "window._crStopped=false;"
-        "function step(){"
-        "if(window._crStopped)return;"
-        "var els=window._crEls;"
-        "var idx=window._crIdx;"
-        "if(!els||idx>=els.length){"
-        "els.forEach(function(e){"
-        "e.style.transition='background-color 0.6s ease,box-shadow 0.4s ease,border-left 0.4s ease';"
-        "e.style.backgroundColor='';e.style.boxShadow='';e.style.borderLeft='';"
-        "e.setAttribute('data-cr-read','1');"
-        "});"
-        "window._crTimer=null;"
-        "return;"
-        "}"
-        "if(idx>0){"
-        "var prev=els[idx-1];"
-        "prev.style.transition='background-color 0.5s ease,box-shadow 0.4s ease,border-left 0.3s ease';"
-        "prev.style.backgroundColor='rgba(255,195,60,0.05)';"
-        "prev.style.boxShadow='none';"
-        "prev.style.borderLeft='3px solid rgba(255,170,30,0.12)';"
-        "prev.setAttribute('data-cr-read','1');"
-        "}"
-        "var cur=els[idx];"
-        "cur.style.transition='background-color 0.25s ease,box-shadow 0.25s ease,border-left 0.15s ease';"
-        "cur.style.backgroundColor='rgba(255,195,60,0.22)';"
-        "cur.style.boxShadow='inset 0 -2px 0 rgba(255,170,30,0.5)';"
-        "cur.style.borderLeft='3px solid rgba(255,170,30,0.65)';"
-        "cur.scrollIntoView({behavior:'smooth',block:'nearest'});"
-        "var len=(cur.textContent||'').length;"
-        "var dwell=Math.min(Math.max(300,len*4),1400);"
-        "window._crIdx=idx+1;"
-        "window._crTimer=setTimeout(step,dwell);"
-        "}"
-        "step();"
-        "return visible.length;"
-        "})()"
-    )
-    _chrome_js(js)
-
-
-def dom_stop_reading():
-    """Stop reading animation and fade out highlights. Already-read markers persist."""
-    js = (
-        "(function(){"
-        "window._crStopped=true;"
-        "if(window._crTimer){clearTimeout(window._crTimer);window._crTimer=null;}"
-        "if(window._crEls){"
-        "window._crEls.forEach(function(el){"
-        "el.style.transition='background-color 0.6s ease,box-shadow 0.4s ease,border-left 0.4s ease';"
-        "el.style.backgroundColor='';el.style.boxShadow='';el.style.borderLeft='';"
-        "el.setAttribute('data-cr-read','1');"
-        "});"
-        "}"
-        "})()"
-    )
-    _chrome_js(js)
-
 
 def dom_mark_copied():
     """Style the currently selected/copied text to show 'agent kept this'.
@@ -576,180 +311,21 @@ def dom_mark_copied():
         "return 'marked';"
         "})()"
     )
-    _chrome_js(js)
-
-
-# ── Stakes detection ───────────────────────────────────────────
-
-_HIGH_STAKES_KEYWORDS = {
-    "buy", "add to cart", "checkout", "order now", "purchase",
-    "place order", "submit", "send", "confirm", "delete", "remove",
-    "pay", "proceed", "complete purchase", "sign up", "subscribe",
-}
-
-def _is_high_stakes(label: str) -> bool:
-    low = label.lower()
-    return any(kw in low for kw in _HIGH_STAKES_KEYWORDS)
-
-
-
-# ── DOM legibility: click target preview ───────────────────────
-
-def _get_element_label(sx: int, sy: int) -> str:
-    """Get readable label of DOM element at screen position for narration."""
-    js = (
-        "(function(){"
-        f"var ex={sx}-window.screenX,"
-        f"ey={sy}-window.screenY-(window.outerHeight-window.innerHeight);"
-        "var el=document.elementFromPoint(ex,ey);"
-        "if(!el)return '';"
-        "var tag=el.tagName;"
-        "if(tag==='STYLE'||tag==='SCRIPT'||tag==='HTML'||tag==='BODY')return '';"
-        "var t=(el.getAttribute('aria-label')||el.getAttribute('value')||el.getAttribute('title')||el.getAttribute('alt')||'').trim();"
-        "if(!t)t=(el.innerText||el.textContent||'').trim();"
-        "if(!t&&el.parentElement){var p=el.parentElement;"
-        "t=(p.getAttribute('aria-label')||p.innerText||p.textContent||'').trim();}"
-        "return t.replace(/\\s+/g,' ').slice(0,50);"
-        "})()"
+    safe = js.replace('\\', '\\\\').replace('"', '\\"')
+    apple = (
+        'tell application "Google Chrome"\n'
+        '    tell active tab of front window\n'
+        f'        execute javascript "{safe}"\n'
+        '    end tell\n'
+        'end tell'
     )
     try:
-        return _chrome_js_sync(js, timeout=1.0)
-    except Exception:
-        return ""
-
-
-def orbit_mouse(cx: int, cy: int, stop_event: threading.Event, radius: int = 55, min_revolutions: float = 0.25):
-    """Orbit mouse around (cx, cy) while TTS plays, then return smoothly.
-    min_revolutions: minimum full circles to complete before stopping (e.g. 1.0 = full circle)."""
-    sx, sy = mouse_pos()
-    angle = math.atan2(sy - cy, sx - cx)
-    entry_x = cx + int(radius * math.cos(angle))
-    entry_y = cy + int(radius * math.sin(angle))
-    human_move_to(entry_x, entry_y, speed_factor=2.0)
-
-    traversed = 0.0
-    min_angle = min_revolutions * 2 * math.pi
-    step = 0.07
-    while not stop_event.is_set() or traversed < min_angle:
-        px = cx + int(radius * math.cos(angle))
-        py = cy + int(radius * math.sin(angle))
-        pyautogui.moveTo(px, py, duration=0)
-        angle += step
-        traversed += step
-        time.sleep(0.06)
-    human_move_to(cx, cy, speed_factor=3.0)
-
-
-def dom_click_preview(sx: int, sy: int, ms=1200, high_stakes=False):
-    """Before clicking: dramatic grow + warm glow + expanding radar ring.
-    high_stakes=True uses red/orange warning colors + double ring."""
-    if high_stakes:
-        el_color  = "rgba(255,70,50"    # red-orange for warning
-        ring_color = "rgba(255,70,50"
-        scale_peak = "1.35"
-        ring_border = "4px"
-        el_anim_dur = "1.4s"
-        ms = max(ms, 2500)
-    else:
-        el_color  = "rgba(255,195,60"   # amber for normal
-        ring_color = "rgba(255,195,60"
-        scale_peak = "1.25"
-        ring_border = "3px"
-        el_anim_dur = "1.1s"
-
-    js = (
-        "(function(){"
-        f"var ex={sx}-window.screenX,"
-        f"ey={sy}-window.screenY-(window.outerHeight-window.innerHeight);"
-        "var el=document.elementFromPoint(ex,ey);"
-        "if(!el||el.tagName==='HTML'||el.tagName==='BODY')return;"
-        # Inject / update keyframes
-        "var s=document.getElementById('_cr_attn_style');"
-        "if(!s){s=document.createElement('style');s.id='_cr_attn_style';document.head.appendChild(s);}"
-        f"s.textContent='"
-        "@keyframes _cr_attn{"
-        f"0%  {{transform:scale(1);    filter:brightness(1)   drop-shadow(0 0 0px  {el_color},0));}}"
-        f"15% {{transform:scale({scale_peak}); filter:brightness(1.8) drop-shadow(0 0 24px {el_color},1.0));}}"
-        f"40% {{transform:scale(1.18); filter:brightness(1.5) drop-shadow(0 0 16px {el_color},0.8));}}"
-        f"65% {{transform:scale(1.22); filter:brightness(1.7) drop-shadow(0 0 20px {el_color},0.9));}}"
-        f"100%{{transform:scale(1);    filter:brightness(1)   drop-shadow(0 0 0px  {el_color},0));}}"
-        "}"
-        "@keyframes _cr_ring{"
-        "0%  {opacity:1.0;transform:scale(1.0);}"
-        "100%{opacity:0.0;transform:scale(1.7);}"
-        "}"
-        "@keyframes _cr_ring2{"
-        "0%  {opacity:0.8;transform:scale(1.0);}"
-        "100%{opacity:0.0;transform:scale(2.1);}"
-        "}"
-        "';"
-        # Element glow
-        "el.style.transformOrigin='center';"
-        f"el.style.animation='_cr_attn {el_anim_dur} ease-in-out';"
-        f"setTimeout(function(){{el.style.animation='';}},{ms});"
-        # Ring 1
-        "var rect=el.getBoundingClientRect();"
-        "var ring=document.createElement('div');"
-        "ring.style.cssText='position:fixed;"
-        "left:'+(rect.left-12)+'px;top:'+(rect.top-12)+'px;"
-        "width:'+(rect.width+24)+'px;height:'+(rect.height+24)+'px;"
-        f"border:{ring_border} solid {ring_color},0.95);"
-        "border-radius:10px;pointer-events:none;z-index:2147483647;"
-        "animation:_cr_ring 1.0s ease-out forwards;';"
-        "document.body.appendChild(ring);"
-        f"setTimeout(function(){{if(ring.parentNode)ring.parentNode.removeChild(ring);}},{ms});"
-    )
-
-    if high_stakes:
-        # Second ring with delay — double ping for warning
-        js += (
-            "var ring2=document.createElement('div');"
-            "ring2.style.cssText='position:fixed;"
-            "left:'+(rect.left-16)+'px;top:'+(rect.top-16)+'px;"
-            "width:'+(rect.width+32)+'px;height:'+(rect.height+32)+'px;"
-            f"border:3px solid {ring_color},0.7);"
-            "border-radius:12px;pointer-events:none;z-index:2147483646;"
-            "animation:_cr_ring2 1.2s 0.5s ease-out forwards;opacity:0;';"
-            "document.body.appendChild(ring2);"
-            f"setTimeout(function(){{if(ring2.parentNode)ring2.parentNode.removeChild(ring2);}},{ms});"
-            # Red text + underline on the element itself
-            "var _origColor=el.style.color,_origDeco=el.style.textDecoration,_origWeight=el.style.fontWeight;"
-            "el.style.color='#e8002d';el.style.textDecoration='underline';el.style.fontWeight='bold';"
-            f"setTimeout(function(){{el.style.color=_origColor;el.style.textDecoration=_origDeco;el.style.fontWeight=_origWeight;}},{ms});"
+        subprocess.Popen(
+            ["osascript", "-e", apple],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
         )
-
-    js += "})()"
-    _chrome_js(js)
-
-
-# ── DOM legibility: click ripple ───────────────────────────────
-
-def dom_click_ripple(sx: int, sy: int, ms=500):
-    """After clicking: expanding ring from click point in the DOM."""
-    js = (
-        "(function(){"
-        f"var ex={sx}-window.screenX,"
-        f"ey={sy}-window.screenY-(window.outerHeight-window.innerHeight);"
-        "if(!document.getElementById('_cr_style')){"
-        "  var s=document.createElement('style');"
-        "  s.id='_cr_style';"
-        "  s.textContent='@keyframes _cr{0%{transform:scale(0.2);opacity:0.8}100%{transform:scale(2.5);opacity:0}}';"
-        "  document.head.appendChild(s);"
-        "}"
-        "var d=document.createElement('div');"
-        "d.style.cssText='position:fixed;left:'+(ex-25)+'px;top:'+(ey-25)+'px;"
-        "width:50px;height:50px;border-radius:50%;"
-        "border:2px solid rgba(60,200,255,0.7);"
-        "pointer-events:none;z-index:999999;"
-        "animation:_cr 0.5s ease-out forwards;';"
-        "document.body.appendChild(d);"
-        f"setTimeout(function(){{if(d.parentNode)d.parentNode.removeChild(d);}},{ms});"
-        "})()"
-    )
-    _chrome_js(js)
-
-
-# ── DOM legibility: scroll scanning (highlight headings/links) ─
+    except Exception:
+        pass
 
 def dom_scroll_scan(ms=1000):
     """During scroll: briefly highlight headings/links in viewport
@@ -773,66 +349,25 @@ def dom_scroll_scan(ms=1000):
         "return vis.length;"
         "})()"
     )
-    _chrome_js(js)
-
-
-# ── DOM legibility: focus ring for screenshot ──────────────────
-
-def dom_focus_ring(sx: int, sy: int, ms=1200):
-    """Dashed outline on element under cursor during screenshot analysis."""
-    js = (
-        "(function(){"
-        f"var ex={sx}-window.screenX,"
-        f"ey={sy}-window.screenY-(window.outerHeight-window.innerHeight);"
-        "var el=document.elementFromPoint(ex,ey);"
-        "if(!el||el.tagName==='HTML'||el.tagName==='BODY')return;"
-        "el.style.transition='outline 0.2s ease';"
-        "el.style.outline='1.5px dashed rgba(255,200,60,0.55)';"
-        "el.style.outlineOffset='3px';"
-        "setTimeout(function(){"
-        "  el.style.outline='';"
-        "  el.style.outlineOffset='';"
-        f"}},{ms});"
-        "})()"
+    safe = js.replace('\\', '\\\\').replace('"', '\\"')
+    apple = (
+        'tell application "Google Chrome"\n'
+        '    tell active tab of front window\n'
+        f'        execute javascript "{safe}"\n'
+        '    end tell\n'
+        'end tell'
     )
-    _chrome_js(js)
-
-# ─────────────────────────────────────────────────────────────
-# Execute agent action + DOM legibility
-# ─────────────────────────────────────────────────────────────
-
-
-_eleven = ElevenLabs(api_key=os.environ.get("ELEVENLABS_API_KEY", ""))
-
-def speak(text: str):
-    """Blocking TTS — shows bubble, waits for audio to finish, then continues."""
-    with state_lock:
-        state["reasoning_text"] = text
-        state["reasoning_end_ts"] = now()
-        state["speech_done_ts"] = None   # bubble stays visible while None
-        state["reasoning"] = False
-    tmp = None
     try:
-        audio = _eleven.text_to_speech.convert(
-            text=text,
-            voice_id="XrExE9yKIg1WjnnlVkGX",  # Matilda
-            model_id="eleven_turbo_v2_5",
-            output_format="mp3_44100_128",
+        subprocess.Popen(
+            ["osascript", "-e", apple],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
         )
-        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
-            for chunk in audio:
-                f.write(chunk)
-            tmp = f.name
-        subprocess.run(["afplay", tmp])
-    except Exception as e:
-        print(f"[TTS] error: {e}, falling back to say", file=sys.stderr)
-        subprocess.run(["say", "-v", "Samantha", "-r", "210", text])
-    finally:
-        if tmp:
-            try: os.unlink(tmp)
-            except: pass
-        with state_lock:
-            state["speech_done_ts"] = now()  # bubble starts fade timer
+    except Exception:
+        pass
+
+# ─────────────────────────────────────────────────────────────
+# Execute agent action
+# ─────────────────────────────────────────────────────────────
 
 def play_sound(name: str):
     """Non-blocking audio notification using a system sound."""
@@ -871,7 +406,7 @@ def _execute_action_inner(action, params):
     scroll_speed = min(0.9 + scroll_n * 0.15, 1.6) if scroll_n > 0 else base_speed
 
     if action == "screenshot":
-        pass  # DOM reading handled by task_loop
+        pass  # handled by task_loop
 
     elif action == "mouse_move":
         x, y = sc(params["coordinate"])
@@ -880,77 +415,21 @@ def _execute_action_inner(action, params):
     elif action == "left_click":
         x, y = sc(params["coordinate"])
         activate_chrome()
-        label = _get_element_label(x, y)
-        high_stakes = _is_high_stakes(label)
-        # Fallback: check if Claude's narration explicitly says "click [high-stakes-word]"
-        if not high_stakes:
-            with state_lock:
-                last_thought = state.get("last_thought", "").lower()
-            for kw in _HIGH_STAKES_KEYWORDS:
-                idx = last_thought.find(kw)
-                if idx >= 0 and "click" in last_thought[max(0, idx - 40):idx]:
-                    high_stakes = True
-                    if not label:
-                        label = kw  # use keyword as display label
-                    break
-        print(f"[CLICK] label={label!r} high_stakes={high_stakes}", file=sys.stderr)
-        dom_click_preview(x, y, high_stakes=high_stakes)
-        if high_stakes:
-            stop_ev = threading.Event()
-            orbit_t = threading.Thread(target=orbit_mouse, args=(x, y, stop_ev), kwargs={"min_revolutions": 1.0}, daemon=True)
-            orbit_t.start()
-            speak(f"Heads up — I'm about to click '{label}'. This may be hard to undo!")
-            stop_ev.set()
-            orbit_t.join(timeout=5.0)
-            time.sleep(1.5)  # grace period after orbit — user can intervene
-        elif label:
-            stop_ev = threading.Event()
-            orbit_t = threading.Thread(target=orbit_mouse, args=(x, y, stop_ev), daemon=True)
-            orbit_t.start()
-            speak(f"I'll click '{label}'.")
-            stop_ev.set()
-            orbit_t.join(timeout=1.5)
-        else:
-            time.sleep(1.0)
         click_with_preview(x, y, speed_factor=base_speed)
-        dom_click_ripple(x, y)
 
     elif action == "double_click":
         x, y = sc(params["coordinate"])
         activate_chrome()
-        label = _get_element_label(x, y)
-        high_stakes = _is_high_stakes(label) if label else False
-        dom_click_preview(x, y, high_stakes=high_stakes)
-        if high_stakes:
-            speak(f"I'm about to double-click '{label}'. This may be hard to undo.")
-            time.sleep(3.0)
-        elif label:
-            stop_ev = threading.Event()
-            orbit_t = threading.Thread(target=orbit_mouse, args=(x, y, stop_ev), daemon=True)
-            orbit_t.start()
-            speak(f"I'll double-click '{label}'.")
-            stop_ev.set()
-            orbit_t.join(timeout=1.5)
-        else:
-            time.sleep(1.0)
         click_with_preview(x, y, double=True, speed_factor=base_speed)
-        dom_click_ripple(x, y)
 
     elif action == "right_click":
         x, y = sc(params["coordinate"])
         activate_chrome()
-        label = _get_element_label(x, y)
-        if label:
-            speak(f"Right-clicking '{label}'.")
-        dom_click_preview(x, y)
-        time.sleep(0.55)
         human_move_to(x, y, speed_factor=base_speed)
         pyautogui.rightClick()
 
     elif action == "type":
         text = params["text"]
-        short = text[:40] + ("…" if len(text) > 40 else "")
-        speak(f"Typing: {short}")   # keep — shows what's being entered
         activate_chrome()
         tx, ty = mouse_pos()
         human_type_visible(text, target_pos=(tx, ty))
@@ -1020,7 +499,6 @@ def activate_chrome():
 def task_loop():
     time.sleep(1.5)
     play_sound("Funk.aiff")
-    threading.Thread(target=_init_sfx, daemon=True).start()
 
     client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
 
@@ -1116,11 +594,8 @@ def task_loop():
     pyautogui.press("return")
     time.sleep(3.5)
 
-    set_progress(1, 4, f"Navigate to {task['url']}")
-
     # ── Phase 2: Agent reads page + generates summary ──
     print("[CU] Phase 2: Agent reading guidelines…", file=sys.stderr)
-    set_progress(2, 4, "Read guidelines")
 
     messages = [{
         "role": "user",
@@ -1151,17 +626,6 @@ def task_loop():
 
         print(f"[CU] iter {iteration + 1}", file=sys.stderr)
 
-        with state_lock:
-            state["reasoning"]          = True
-            state["reasoning_start_ts"] = now()
-            state["reasoning_end_ts"]   = None
-            state["reasoning_text"]     = ""
-            state["reading_done"]       = False
-
-        dom_start_reading()
-        threading.Thread(target=_poll_reading_done, daemon=True).start()
-        threading.Thread(target=_reading_sound_loop, daemon=True).start()
-
         response = client.beta.messages.create(
             model="claude-sonnet-4-5-20250929",
             max_tokens=4096,
@@ -1171,55 +635,13 @@ def task_loop():
             betas=["computer-use-2025-01-24"],
         )
 
-        dom_stop_reading()
-
         raw = " ".join(
             b.text.strip() for b in response.content
             if getattr(b, "type", "") == "text" and b.text.strip()
         )
-        thought = meaningful_thought(raw)
 
         if raw:
             print(f"\n[CLAUDE raw] {raw}", file=sys.stderr)
-            print(f"[CLAUDE thought] {thought!r}", file=sys.stderr)
-
-        # Speak Claude's own reasoning aloud before acting.
-        # If Claude didn't write a narration, build one from the first action.
-        # Skip for click actions — _execute_action_inner will speak the specific element label.
-        _CLICK_ACTIONS = {"left_click", "double_click", "right_click"}
-        first_action = next(
-            (b for b in response.content if getattr(b, "type", "") == "tool_use"), None
-        )
-        first_action_type = first_action.input.get("action", "") if first_action else ""
-
-        if not thought and first_action_type not in _CLICK_ACTIONS:
-            if first_action:
-                a = first_action_type
-                thought = {
-                    "screenshot":     "Looking at the screen.",
-                    "scroll":         "Scrolling the page.",
-                    "type":           f"Typing: {first_action.input.get('text','')[:30]}",
-                    "key":            f"Pressing {first_action.input.get('text','')}.",
-                    "mouse_move":     "Moving the mouse.",
-                    "wait":           "Waiting.",
-                }.get(a, f"Performing {a}.")
-            print(f"[CLAUDE] fallback narration: {thought!r}", file=sys.stderr)
-
-        # For click actions, skip generic thought — per-action speak uses real element label
-        if thought and first_action_type not in _CLICK_ACTIONS:
-            speak(thought)
-        elif thought and first_action_type in _CLICK_ACTIONS:
-            # Still update the bubble text with Claude's thought (shown visually)
-            # but don't speak it — _execute_action_inner will speak the element label
-            with state_lock:
-                state["reasoning_text"] = thought
-                state["speech_done_ts"] = now()  # start fade timer immediately
-
-        with state_lock:
-            state["reasoning"]        = False
-            state["reasoning_end_ts"] = now()
-            state["reasoning_text"]   = thought
-            state["last_thought"]     = raw  # full raw text for high-stakes fallback
 
         messages.append({"role": "assistant", "content": response.content})
 
@@ -1227,7 +649,6 @@ def task_loop():
         if response.stop_reason == "end_turn":
             summary_text = raw
             print(f"\n[CLAUDE] === SUMMARY ===\n{summary_text}\n", file=sys.stderr)
-            set_progress(3, 4, "Summary ready")
             break
 
         tool_results = []
@@ -1271,7 +692,6 @@ def task_loop():
         summary_text = "UIST 2026 Formatting Guidelines\n(Agent could not retrieve summary)"
 
     print("[CU] Phase 3: Pasting summary to Google Doc…", file=sys.stderr)
-    set_progress(4, 4, "Paste to Doc")
 
     activate_chrome()
     time.sleep(0.2)
@@ -1296,11 +716,10 @@ def task_loop():
     time.sleep(1.0)
 
     print("[CU] Done!", file=sys.stderr)
-    dom_stop_reading()
     play_sound("Glass.aiff")
 
 # ─────────────────────────────────────────────────────────────
-# Overlay — stripped to legibility only
+# Overlay
 # ─────────────────────────────────────────────────────────────
 
 class OverlayView(NSView):
@@ -1311,9 +730,6 @@ class OverlayView(NSView):
         try:
             NSColor.clearColor().set()
             NSBezierPath.fillRect_(rect)
-            self.draw_progress_bar()
-            self.draw_goal_bubble()
-            self.draw_reasoning_bubble()
         except Exception as e:
             print(f"[draw error] {e}", file=sys.stderr)
 
@@ -1408,7 +824,7 @@ class OverlayView(NSView):
             aa = peak_alpha * ((i / steps) ** 2.2)
             self.draw_circle(x, y, rr, color_fn, aa)
 
-    # ── Vignette (soft "perceiving" effect) ────────────────────
+    # ── Vignette (soft "perceiving" effect) ───────────────────���
     @objc.python_method
     def draw_vignette(self):
         with state_lock:
@@ -1485,8 +901,6 @@ class OverlayView(NSView):
         with state_lock:
             x, y         = state["cursor_pos"]
             is_camera    = state.get("screenshot_action", False)
-            reasoning    = state.get("reasoning", False)
-            cursor_state = state.get("cursor_state", "default")
 
         t = now()
         if is_camera:
@@ -1496,24 +910,6 @@ class OverlayView(NSView):
             self.stroke_circle(x, y, 14, 1.2, self.cyan, 0.55 * pulse)
             self.draw_circle(x, y, 4, self.cyan, 0.85)
             self.draw_circle(x, y, 2, self.white, 0.9)
-        elif cursor_state == "clicking":
-            # Expanding ring — "about to click"
-            pulse = 0.5 + 0.5 * math.sin(t * 10)
-            self.glow(x, y, 22, self.cyan, 0.20 * pulse, steps=5)
-            self.stroke_circle(x, y, 16, 2.0, self.cyan, 0.70)
-            self.stroke_circle(x, y, 8, 1.5, self.cyan, 0.50 * pulse)
-            self.draw_circle(x, y, 3, self.cyan, 0.90)
-        elif cursor_state == "reading":
-            # Slow amber pulse — "reading"
-            pulse = 0.5 + 0.5 * math.sin(t * 2.5)
-            self.glow(x, y, 18, self.amber, 0.18 * pulse, steps=5)
-            self.stroke_circle(x, y, 10, 1.5, self.amber, 0.60)
-            self.draw_circle(x, y, 3, self.amber, 0.85)
-        elif reasoning:
-            # Breathing glow — "thinking"
-            pulse = 0.3 + 0.7 * math.sin(t * 3.5)
-            self.glow(x, y, 16, self.soft_blue, 0.15 * pulse, steps=4)
-            self.draw_circle(x, y, 3.5, self.soft_blue, 0.8)
         else:
             # Minimal presence
             self.glow(x, y, 8, self.white, 0.08, steps=3)
@@ -1560,153 +956,6 @@ class OverlayView(NSView):
         self.stroke_circle(tx, ty, 28, 2.0, self.cyan, target_a * 0.75 * breath)
         self.stroke_circle(tx, ty, 14, 1.5, self.cyan, target_a * 0.50)
 
-    # ── Progress bar ───────────────────────────────────────────
-    @objc.python_method
-    def draw_progress_bar(self):
-        with state_lock:
-            step  = state.get("progress_step", 0)
-            total = state.get("progress_total", 0)
-            label = state.get("progress_label", "")
-        if total <= 0 or step <= 0:
-            return
-
-        bar_h = 2.5
-        bar_y = 2
-        progress = min(step / total, 1.0)
-
-        self.draw_rounded_rect_fill(0, bar_y, SCREEN_W, bar_h, 1, self.white, 0.05)
-        fill_w = max(4, int(SCREEN_W * progress))
-        self.draw_rounded_rect_fill(0, bar_y, fill_w, bar_h, 1, self.cyan, 0.40)
-
-        step_text = f"{step}/{total}  {label}"
-        try:
-            cx, cy = to_cocoa(SCREEN_W - 185, 16)
-            attrs = NSMutableDictionary.dictionary()
-            attrs[NSFontAttributeName] = NSFont.monospacedSystemFontOfSize_weight_(9.5, 0.0)
-            attrs[NSForegroundColorAttributeName] = self.white(0.45)
-            astr = NSAttributedString.alloc().initWithString_attributes_(step_text, attrs)
-            astr.drawAtPoint_((cx, cy))
-        except Exception:
-            pass
-
-    # ── Glass bubble (for goal + reasoning) ────────────────────
-    @objc.python_method
-    def draw_speech_bubble(self, sx, sy, text, color_fn, alpha,
-                           max_chars=44, above=True, slide=1.0):
-        if not text or alpha < 0.02:
-            return
-        words = text.split()
-        lines, cur = [], ""
-        for w in words:
-            trial = (cur + " " + w).strip()
-            if len(trial) > max_chars and cur:
-                lines.append(cur); cur = w
-            else:
-                cur = trial
-        if cur:
-            lines.append(cur)
-        lines = lines[:5]
-
-        pad_x, pad_y, line_h, cw = 22, 16, 24, 10.0
-        box_w = min(max(len(l) for l in lines) * cw + pad_x * 2, 560)
-        box_h = len(lines) * line_h + pad_y * 2
-        tail_h = 10
-
-        tip_cx, tip_cy = to_cocoa(sx, sy)
-        offset = BUBBLE_SLIDE_PX * (1.0 - ease_out_cubic(slide))
-        bx = max(8, min(tip_cx - box_w / 2, SCREEN_W - box_w - 8))
-        by = (tip_cy + tail_h + offset) if above else (tip_cy - box_h - tail_h + offset)
-
-        # Background
-        rect = NSMakeRect(bx, by, box_w, box_h)
-        bg = NSBezierPath.bezierPathWithRoundedRect_xRadius_yRadius_(rect, 9, 9)
-        NSColor.colorWithCalibratedRed_green_blue_alpha_(0.10, 0.10, 0.14, alpha * 0.94).set()
-        bg.fill()
-        bg.setLineWidth_(0.8)
-        color_fn(alpha * 0.45).set()
-        bg.stroke()
-
-        # Tail
-        tail_tip = tip_cy - 2 if above else tip_cy + 2
-        tail_base = by if above else by + box_h
-        tail = NSBezierPath.bezierPath()
-        tail.moveToPoint_((tip_cx - 5, tail_base))
-        tail.lineToPoint_((tip_cx, tail_tip))
-        tail.lineToPoint_((tip_cx + 5, tail_base))
-        tail.closePath()
-        NSColor.colorWithCalibratedRed_green_blue_alpha_(0.10, 0.10, 0.14, alpha * 0.94).set()
-        tail.fill()
-
-        # Text
-        attrs = NSMutableDictionary.dictionary()
-        attrs[NSFontAttributeName] = NSFont.monospacedSystemFontOfSize_weight_(16.0, 0.0)
-        attrs[NSForegroundColorAttributeName] = NSColor.colorWithCalibratedWhite_alpha_(0.90, alpha)
-        for i, line in enumerate(lines):
-            ty = by + box_h - pad_y - (i + 1) * line_h + 3
-            astr = NSAttributedString.alloc().initWithString_attributes_(line, attrs)
-            astr.drawAtPoint_((bx + pad_x, ty))
-
-    # ── Goal bubble ────────────────────────────────────────────
-    @objc.python_method
-    def draw_goal_bubble(self):
-        with state_lock:
-            ts   = state.get("goal_ts")
-            text = state.get("goal_text", "")
-        if not ts or not text:
-            return
-        age = now() - ts
-        if age > 9.5:
-            with state_lock:
-                state["goal_ts"] = None
-            return
-        alpha = min(age / 0.3, 1.0)
-        slide = min(age / 0.3, 1.0)
-        if age > 8.0:
-            alpha *= 1.0 - (age - 8.0) / 1.5
-        self.draw_speech_bubble(SCREEN_W // 2, SCREEN_H - 60, text,
-                                self.cyan, alpha * 0.88, max_chars=48,
-                                above=True, slide=slide)
-
-    # ── Reasoning bubble ───────────────────────────────────────
-    @objc.python_method
-    def draw_reasoning_bubble(self):
-        with state_lock:
-            reasoning    = state.get("reasoning", False)
-            text         = state.get("reasoning_text", "")
-            start_ts     = state.get("reasoning_start_ts")
-            end_ts       = state.get("reasoning_end_ts")
-            reading_done = state.get("reading_done", False)
-            cx, cy       = state["cursor_pos"]
-
-        t = now()
-        if reasoning and start_ts:
-            age = t - start_ts
-            alpha = min(age / BUBBLE_FADE_IN, 1.0) * 0.85
-            slide = min(age / BUBBLE_FADE_IN, 1.0)
-            dots = "·" * (int(t * 3) % 4)
-            display = f"thinking{dots}" if reading_done else f"reading{dots}"
-        elif not reasoning and text and end_ts:
-            with state_lock:
-                speech_done_ts = state.get("speech_done_ts")
-            if speech_done_ts is None:
-                alpha = 0.85
-            else:
-                age = t - speech_done_ts
-                if age > 3.0 + BUBBLE_FADE_OUT:
-                    with state_lock:
-                        state["reasoning_text"] = ""
-                    return
-                alpha = 0.85 if age < 3.0 else 0.85 * (1.0 - (age - 3.0) / BUBBLE_FADE_OUT)
-            slide = 1.0
-            display = text
-        else:
-            return
-        if not display:
-            return
-        color_fn = self.soft_blue
-        self.draw_speech_bubble(cx, cy, display, color_fn, alpha,
-                                max_chars=56, above=True, slide=slide)
-
 # ─────────────────────────────────────────────────────────────
 # Timer / Window / ESC
 # ─────────────────────────────────────────────────────────────
@@ -1744,7 +993,6 @@ def setup_esc_listener():
         try:
             if event.keyCode() == 53:
                 print("[overlay] ESC – stopping.", file=sys.stderr)
-                dom_stop_reading()
                 with state_lock:
                     state["running_demo"] = False
                 NSApplication.sharedApplication().terminate_(None)
