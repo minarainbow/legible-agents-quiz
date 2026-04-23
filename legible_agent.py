@@ -1065,6 +1065,24 @@ def task_loop():
                 "Ignore sign-in prompts and popups."
             ),
         },
+        "4": {
+            "name": "Google Calendar — Send Invite",
+            "url":  "calendar.google.com",
+            "site": "Google Calendar",
+            "goal": (
+                "Your task: create a new Google Calendar event and invite a specific person.\n\n"
+                "Person to invite: sukmin.hci@gmail.com\n"
+                "Message to include in the description: 'Hey! Sending you a calendar invite — let me know if this time works for you.'\n\n"
+                "Steps:\n"
+                "1. Click the '+ Create' button (top-left) to open a new event form.\n"
+                "2. Enter a title such as 'Quick Sync'.\n"
+                "3. Click 'More options' to open the full event editor.\n"
+                "4. In the 'Add guests' field, type 'sukmin.hci@gmail.com' and press Enter to add them.\n"
+                "5. In the Description field, type the message above.\n"
+                "6. Click 'Save'. If a dialog asks whether to send invites, click 'Send'.\n"
+                "Do NOT use any tools in your final response."
+            ),
+        },
     }
 
     print("\n─────────────────────────────────", file=sys.stderr)
@@ -1072,7 +1090,7 @@ def task_loop():
     for k, t in TASKS.items():
         print(f"  {k}. {t['name']}", file=sys.stderr)
     print("─────────────────────────────────", file=sys.stderr)
-    choice = input("  Enter 1 / 2 / 3: ").strip()
+    choice = input("  Enter 1 / 2 / 3 / 4: ").strip()
     task = TASKS.get(choice, TASKS["1"])
     print(f"\n  ▶ Running: {task['name']}\n", file=sys.stderr)
 
