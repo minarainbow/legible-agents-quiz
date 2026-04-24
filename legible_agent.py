@@ -208,6 +208,42 @@ _FILLER_PREFIXES = (
     "understood", "noted", "i see", "i understand",
 )
 
+def strip_old_screenshots(messages: list, keep_recent: int = 3) -> list:
+    """Return a copy of messages keeping only the most recent `keep_recent`
+    tool_result screenshots; older ones are replaced with a text placeholder."""
+    tr_indices = [
+        i for i, m in enumerate(messages)
+        if m["role"] == "user" and isinstance(m.get("content"), list)
+        and any(isinstance(b, dict) and b.get("type") == "tool_result"
+                for b in m["content"])
+    ]
+    keep = set(tr_indices[-keep_recent:])
+
+    result = []
+    for i, m in enumerate(messages):
+        if m["role"] == "user" and isinstance(m.get("content"), list):
+            new_content = []
+            for b in m["content"]:
+                if isinstance(b, dict) and b.get("type") == "image":
+                    if i not in keep:
+                        continue  # strip initial screenshot from old turns
+                elif isinstance(b, dict) and b.get("type") == "tool_result":
+                    if i not in keep:
+                        new_content.append({
+                            "type": "tool_result",
+                            "tool_use_id": b["tool_use_id"],
+                            "content": "[screenshot omitted]",
+                        })
+                    else:
+                        new_content.append(b)
+                    continue
+                new_content.append(b)
+            result.append({**m, "content": new_content})
+        else:
+            result.append(m)
+    return result
+
+
 def meaningful_thought(text, max_chars=80):
     """Return one concise, meaningful sentence from Claude's response."""
     if not text:
@@ -1083,6 +1119,130 @@ def task_loop():
                 "Do NOT use any tools in your final response."
             ),
         },
+        # ── Transactional ──────────────────────────────────────
+        "5": {
+            "name": "T1 — Google Calendar: Multi-Person Meeting",
+            "url":  "calendar.google.com",
+            "site": "Google Calendar",
+            "goal": (
+                "Your task: schedule a 1-hour team meeting and invite two people.\n\n"
+                "Meeting details:\n"
+                "- Title: 'Research Planning Session'\n"
+                "- Date: this coming Friday at 2:00 PM\n"
+                "- Attendees: sukmin.hci@gmail.com and alice.researcher@gmail.com\n"
+                "- Description: 'Hi team! Scheduling our weekly research planning session. "
+                "Please come prepared with progress updates and blockers.'\n\n"
+                "Steps:\n"
+                "1. Click '+ Create', set the title, date (this Friday), 2:00–3:00 PM.\n"
+                "2. Click 'More options'.\n"
+                "3. Add both guests (press Enter after each email).\n"
+                "4. Add the description.\n"
+                "5. Click 'Save', then 'Send' to dispatch invitations.\n"
+                "Do NOT use any tools in your final response."
+            ),
+        },
+        "6": {
+            "name": "T2 — Instacart: Gluten-Free Grocery Order",
+            "url":  "instacart.com",
+            "site": "Instacart",
+            "goal": (
+                "Your task: add grocery items to an Instacart cart for a pasta dinner. "
+                "The shopper has a gluten allergy — ALL pasta must be labeled gluten-free.\n\n"
+                "Shopping list:\n"
+                "- Gluten-free spaghetti (1 lb)\n"
+                "- Organic diced tomatoes (2 cans, 14.5 oz each)\n"
+                "- Fresh basil (1 bunch)\n"
+                "- Parmesan cheese, shredded (6 oz)\n"
+                "- Extra-virgin olive oil (16 oz)\n"
+                "- Garlic (1 head)\n\n"
+                "Constraints:\n"
+                "- Pasta MUST be gluten-free — do not substitute a regular product.\n"
+                "- Prefer organic for tomatoes.\n"
+                "- Do not exceed 2 cans of tomatoes.\n\n"
+                "Search for each item, verify it meets the constraints, and add it to cart. "
+                "Do NOT use any tools in your final response — confirm what was added."
+            ),
+        },
+        "7": {
+            "name": "T3 — Zocdoc: Dermatology Appointment",
+            "url":  "zocdoc.com",
+            "site": "Zocdoc",
+            "goal": (
+                "Your task: find a dermatology appointment on Zocdoc under these constraints:\n\n"
+                "Requirements:\n"
+                "- Specialty: Dermatology\n"
+                "- Location: San Francisco, CA\n"
+                "- Insurance: Aetna\n"
+                "- Visit type: New patient\n"
+                "- Availability: within the next 2 weeks\n"
+                "- Note to provider: 'Concerned about a mole on my left arm that has changed color.'\n\n"
+                "Steps:\n"
+                "1. Search for dermatologists in San Francisco accepting Aetna.\n"
+                "2. Pick a provider with an available new-patient slot within 2 weeks.\n"
+                "3. Select that slot and fill in the note above.\n"
+                "4. Proceed as far as the booking flow allows without entering real personal info.\n"
+                "Do NOT use any tools in your final response — summarize what you found."
+            ),
+        },
+        # ── Information Synthesis ──────────────────────────────
+        "8": {
+            "name": "S1 — CHI 2025 vs 2026: Submission Requirement Comparison",
+            "url":  "chi2026.acm.org",
+            "site": "the CHI 2026 conference website",
+            "goal": (
+                "Your task: compare paper submission requirements between CHI 2025 and CHI 2026 "
+                "and flag differences that could cause a desk rejection.\n\n"
+                "Steps:\n"
+                "1. Find the submission/formatting requirements on chi2026.acm.org.\n"
+                "2. Navigate to chi2025.acm.org and find the equivalent page.\n"
+                "3. Compare: page limits, anonymization policy, reference format, "
+                "figure guidelines, supplemental material rules, and new requirements.\n"
+                "4. Write a summary: (a) unchanged rules, (b) changed rules, "
+                "(c) new 2026 rules not in 2025.\n"
+                "Do NOT use any tools in your final response."
+            ),
+        },
+        "9": {
+            "name": "S2 — HealthCare.gov: Insurance Plan Recommendation",
+            "url":  "healthcare.gov",
+            "site": "HealthCare.gov",
+            "goal": (
+                "Your task: recommend the best health insurance plan for this user:\n\n"
+                "Profile:\n"
+                "- Age 32, non-smoker, Austin TX (ZIP 78701)\n"
+                "- Income ~$45,000/year\n"
+                "- Needs: weekly therapy, brand-name Lexapro, preferred psychiatrist Dr. Amanda Chen\n"
+                "- Hard constraint: annual out-of-pocket must stay under $4,000\n"
+                "- Preference: lower monthly premium over lower deductible\n\n"
+                "Steps:\n"
+                "1. Browse plans available at ZIP 78701.\n"
+                "2. For the top 2–3 candidates, check: monthly premium, deductible, "
+                "mental health copay, and drug tier for Lexapro.\n"
+                "3. Recommend the best plan and explain why it fits. "
+                "Flag any plan where Lexapro is not covered or out-of-pocket risk exceeds $4,000.\n"
+                "Do NOT use any tools in your final response."
+            ),
+        },
+        "10": {
+            "name": "S3 — Travel Requirements: US Citizen to Japan",
+            "url":  "travel.state.gov",
+            "site": "the U.S. Department of State travel site",
+            "goal": (
+                "Your task: compile a complete travel requirements checklist for this trip:\n\n"
+                "Scenario: US passport holder, San Francisco → Tokyo, 14-day tourist visit, no layover.\n\n"
+                "Collect all of the following:\n"
+                "1. Passport validity requirement\n"
+                "2. Visa requirement (do US citizens need a visa for 14-day tourism?)\n"
+                "3. Entry forms or arrival cards required\n"
+                "4. Health/vaccination requirements or recommendations\n"
+                "5. Customs rules (cash limits, prohibited items)\n"
+                "6. Current travel advisories or entry restrictions\n\n"
+                "Start at travel.state.gov, then check japan.travel or japan-guide.com "
+                "for local entry details. Compile a clear checklist and flag anything "
+                "that changed in the last 6 months.\n"
+                "Do NOT use any tools in your final response."
+            ),
+        },
     }
 
     print("\n─────────────────────────────────", file=sys.stderr)
@@ -1090,7 +1250,7 @@ def task_loop():
     for k, t in TASKS.items():
         print(f"  {k}. {t['name']}", file=sys.stderr)
     print("─────────────────────────────────", file=sys.stderr)
-    choice = input("  Enter 1 / 2 / 3 / 4: ").strip()
+    choice = input("  Enter 1–10: ").strip()
     task = TASKS.get(choice, TASKS["1"])
     print(f"\n  ▶ Running: {task['name']}\n", file=sys.stderr)
 
@@ -1145,7 +1305,7 @@ def task_loop():
     }]
 
     tools = [{
-        "type": "computer_20250124",
+        "type": "computer_20251124",
         "name": "computer",
         "display_width_px": DISPLAY_W,
         "display_height_px": DISPLAY_H,
@@ -1174,12 +1334,12 @@ def task_loop():
         threading.Thread(target=_reading_sound_loop, daemon=True).start()
 
         response = client.beta.messages.create(
-            model="claude-sonnet-4-5-20250929",
+            model="claude-sonnet-4-6",
             max_tokens=4096,
             system=SYSTEM_PROMPT,
             tools=tools,
-            messages=messages,
-            betas=["computer-use-2025-01-24"],
+            messages=strip_old_screenshots(messages),
+            betas=["computer-use-2025-11-24"],
         )
 
         dom_stop_reading()
