@@ -580,25 +580,28 @@ def task_loop():
             ),
         },
         "6": {
-            "name": "T2 — Instacart: Gluten-Free Grocery Order",
+            "name": "T2 — Instacart: Vegan Pasta Primavera Shopping",
             "url":  "instacart.com",
             "site": "Instacart",
             "goal": (
-                "Your task: add grocery items to an Instacart cart for a pasta dinner. "
-                "The shopper has a gluten allergy — ALL pasta must be labeled gluten-free.\n\n"
-                "Shopping list:\n"
-                "- Gluten-free spaghetti (1 lb)\n"
-                "- Organic diced tomatoes (2 cans, 14.5 oz each)\n"
-                "- Fresh basil (1 bunch)\n"
-                "- Parmesan cheese, shredded (6 oz)\n"
-                "- Extra-virgin olive oil (16 oz)\n"
-                "- Garlic (1 head)\n\n"
-                "Constraints:\n"
-                "- Pasta MUST be gluten-free — do not substitute a regular product.\n"
-                "- Prefer organic for tomatoes.\n"
-                "- Do not exceed 2 cans of tomatoes.\n\n"
-                "Search for each item, verify it meets the constraints, and add it to cart. "
-                "Do NOT use any tools in your final response — confirm what was added."
+                "📋 Shopping for tonight's dinner\n\n"
+                "Making: Vegan pasta primavera for 4 people\n\n"
+                "Already at home:\n"
+                "✓ Pasta, garlic, cherry tomatoes, zucchini, lemon\n\n"
+                "Need to buy (3 items):\n"
+                "1. Fresh basil — 1 bunch\n"
+                "2. Olive oil — small bottle, extra virgin\n"
+                "3. Parmesan-style topping — must be vegan\n\n"
+                "⚠️ Constraints:\n"
+                "- One guest has a SEVERE tree-nut allergy (no cashews, almonds, etc.)\n"
+                "- Everyone is vegan (no dairy, no eggs)\n"
+                "- Budget: $30 total\n\n"
+                "Search for each item and add it to cart. For each item, briefly explain "
+                "why you chose that specific product over alternatives — especially for "
+                "the parmesan-style topping, which requires care: real parmesan is dairy, "
+                "and many vegan alternatives are cashew-based (tree nut). Find one that is "
+                "both vegan AND nut-free.\n"
+                "Do NOT use any tools in your final response — confirm what was added and why."
             ),
         },
         "7": {

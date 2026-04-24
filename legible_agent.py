@@ -10,7 +10,6 @@ import io
 import re
 
 import mss
-import pyperclip
 import tempfile
 from PIL import Image
 
@@ -28,7 +27,7 @@ from AppKit import (
     NSBezierPath,
     NSBorderlessWindowMask,
     NSColor,
-    NSEvent,
+
     NSSound,
     NSFloatingWindowLevel,
     NSFont,
@@ -57,7 +56,6 @@ BUBBLE_FADE_OUT    = 0.60
 BUBBLE_SLIDE_PX    = 12
 TYPE_CHAR_INTERVAL = 0.055
 
-NSEventMaskKeyDown = 1024
 
 # ── Sound effects ─────────────────────────────────────────────
 _ns_sounds: dict = {}  # path -> NSSound, lazy-init after NSApp starts
@@ -138,6 +136,7 @@ state = {
     "reading_done":       False,      # flips True when DOM reading finishes
     "cursor_state":       "default",  # "default" | "reading" | "thinking" | "clicking"
     "last_thought":       "",          # Claude's raw text (for high-stakes fallback)
+    "high_stakes_warning": "",         # task-specific warning template (optional)
 }
 
 state_lock   = threading.Lock()
@@ -543,20 +542,20 @@ def dom_start_reading():
         "}"
         "if(idx>0){"
         "var prev=els[idx-1];"
-        "prev.style.transition='background-color 0.5s ease,box-shadow 0.4s ease,border-left 0.3s ease';"
-        "prev.style.backgroundColor='rgba(255,195,60,0.05)';"
+        "prev.style.transition='background-color 0.8s ease,box-shadow 0.6s ease,border-left 0.5s ease';"
+        "prev.style.backgroundColor='rgba(255,210,60,0.10)';"
         "prev.style.boxShadow='none';"
-        "prev.style.borderLeft='3px solid rgba(255,170,30,0.12)';"
+        "prev.style.borderLeft='3px solid rgba(255,170,30,0.25)';"
         "prev.setAttribute('data-cr-read','1');"
         "}"
         "var cur=els[idx];"
-        "cur.style.transition='background-color 0.25s ease,box-shadow 0.25s ease,border-left 0.15s ease';"
-        "cur.style.backgroundColor='rgba(255,195,60,0.22)';"
-        "cur.style.boxShadow='inset 0 -2px 0 rgba(255,170,30,0.5)';"
-        "cur.style.borderLeft='3px solid rgba(255,170,30,0.65)';"
+        "cur.style.transition='background-color 0.35s ease,box-shadow 0.35s ease,border-left 0.2s ease';"
+        "cur.style.backgroundColor='rgba(255,215,60,0.42)';"
+        "cur.style.boxShadow='inset 0 -3px 0 rgba(255,165,0,0.65)';"
+        "cur.style.borderLeft='4px solid rgba(255,165,0,0.90)';"
         "cur.scrollIntoView({behavior:'smooth',block:'nearest'});"
         "var len=(cur.textContent||'').length;"
-        "var dwell=Math.min(Math.max(300,len*4),1400);"
+        "var dwell=Math.min(Math.max(700,len*7),2800);"
         "window._crIdx=idx+1;"
         "window._crTimer=setTimeout(step,dwell);"
         "}"
@@ -645,7 +644,17 @@ def _get_element_label(sx: int, sy: int) -> str:
         "if(!t)t=(el.innerText||el.textContent||'').trim();"
         "if(!t&&el.parentElement){var p=el.parentElement;"
         "t=(p.getAttribute('aria-label')||p.innerText||p.textContent||'').trim();}"
-        "return t.replace(/\\s+/g,' ').slice(0,50);"
+        "t=t.replace(/\\s+/g,' ').trim();"
+        "var tl=t.toLowerCase();"
+        "if(t.length<35&&(tl.indexOf('add')>=0||tl.indexOf('cart')>=0||tl.indexOf('buy')>=0)){"
+        "  var card=el.parentElement;"
+        "  for(var i=0;i<8&&card;i++){"
+        "    var h=card.querySelector('h1,h2,h3');"
+        "    if(h){var ht=(h.innerText||'').trim();if(ht.length>3&&ht.length<120){t=ht;break;}}"
+        "    card=card.parentElement;"
+        "  }"
+        "}"
+        "return t.replace(/\\s+/g,' ').slice(0,60);"
         "})()"
     )
     try:
@@ -935,7 +944,13 @@ def _execute_action_inner(action, params):
             stop_ev = threading.Event()
             orbit_t = threading.Thread(target=orbit_mouse, args=(x, y, stop_ev), kwargs={"min_revolutions": 1.0}, daemon=True)
             orbit_t.start()
-            speak(f"Heads up — I'm about to click '{label}'. This may be hard to undo!")
+            with state_lock:
+                warning_tpl = state.get("high_stakes_warning", "")
+            if warning_tpl:
+                warning = warning_tpl.format(label=label)
+            else:
+                warning = f"Heads up — I'm about to click '{label}'. This may be hard to undo!"
+            speak(warning)
             stop_ev.set()
             orbit_t.join(timeout=5.0)
             time.sleep(1.5)  # grace period after orbit — user can intervene
@@ -949,7 +964,7 @@ def _execute_action_inner(action, params):
         else:
             time.sleep(1.0)
         click_with_preview(x, y, speed_factor=base_speed)
-        dom_click_ripple(x, y)
+        pass  # ripple removed
 
     elif action == "double_click":
         x, y = sc(params["coordinate"])
@@ -970,7 +985,7 @@ def _execute_action_inner(action, params):
         else:
             time.sleep(1.0)
         click_with_preview(x, y, double=True, speed_factor=base_speed)
-        dom_click_ripple(x, y)
+        pass  # ripple removed
 
     elif action == "right_click":
         x, y = sc(params["coordinate"])
@@ -988,8 +1003,7 @@ def _execute_action_inner(action, params):
         short = text[:40] + ("…" if len(text) > 40 else "")
         speak(f"Typing: {short}")   # keep — shows what's being entered
         activate_chrome()
-        tx, ty = mouse_pos()
-        human_type_visible(text, target_pos=(tx, ty))
+        human_type_visible(text)
 
     elif action == "key":
         key_str = params["text"]
@@ -1142,26 +1156,34 @@ def task_loop():
             ),
         },
         "6": {
-            "name": "T2 — Instacart: Gluten-Free Grocery Order",
+            "name": "T2 — Instacart: Vegan Pasta Primavera Shopping",
             "url":  "instacart.com",
             "site": "Instacart",
             "goal": (
-                "Your task: add grocery items to an Instacart cart for a pasta dinner. "
-                "The shopper has a gluten allergy — ALL pasta must be labeled gluten-free.\n\n"
-                "Shopping list:\n"
-                "- Gluten-free spaghetti (1 lb)\n"
-                "- Organic diced tomatoes (2 cans, 14.5 oz each)\n"
-                "- Fresh basil (1 bunch)\n"
-                "- Parmesan cheese, shredded (6 oz)\n"
-                "- Extra-virgin olive oil (16 oz)\n"
-                "- Garlic (1 head)\n\n"
-                "Constraints:\n"
-                "- Pasta MUST be gluten-free — do not substitute a regular product.\n"
-                "- Prefer organic for tomatoes.\n"
-                "- Do not exceed 2 cans of tomatoes.\n\n"
-                "Search for each item, verify it meets the constraints, and add it to cart. "
-                "Do NOT use any tools in your final response — confirm what was added."
+                "📋 Shopping for tonight's dinner\n\n"
+                "Making: Vegan pasta primavera for 4 people\n\n"
+                "Already at home:\n"
+                "✓ Pasta, garlic, cherry tomatoes, zucchini, lemon\n\n"
+                "Need to buy (3 items):\n"
+                "1. Fresh basil — 1 bunch\n"
+                "2. Olive oil — small bottle, extra virgin\n"
+                "3. Parmesan-style topping — must be vegan\n\n"
+                "⚠️ Constraints:\n"
+                "- One guest has a SEVERE tree-nut allergy (no cashews, almonds, etc.)\n"
+                "- Everyone is vegan (no dairy, no eggs)\n"
+                "- Budget: $30 total\n\n"
+                "Search for each item and add it to cart. For each item, briefly explain "
+                "why you chose that specific product over alternatives — especially for "
+                "the parmesan-style topping, which requires care: real parmesan is dairy, "
+                "and many vegan alternatives are cashew-based (tree nut). Find one that is "
+                "both vegan AND nut-free.\n"
+                "For the parmesan topping: if the product name clearly signals it is vegan and "
+                "nut-free (e.g. 'Violife', 'Nooch', oat-based, rice-based), add it to cart "
+                "immediately — do NOT click into the product page hunting for an ingredient list "
+                "if the name already tells you what you need to know.\n"
+                "Do NOT use any tools in your final response — confirm what was added and why."
             ),
+            "high_stakes_warning": "About to click '{label}'.",
         },
         "7": {
             "name": "T3 — Zocdoc: Dermatology Appointment",
@@ -1268,6 +1290,10 @@ def task_loop():
         "- Never take two screenshots in a row.\n"
         "- When scrolling, use delta_y of 5–8."
     )
+
+    # Store task-specific overrides in state for use during action execution
+    with state_lock:
+        state["high_stakes_warning"] = task.get("high_stakes_warning", "")
 
     goal = task["goal"]
 
@@ -1436,35 +1462,6 @@ def task_loop():
     else:
         print("[CU] Max iterations.", file=sys.stderr)
 
-    # ── Phase 3: Open Google Doc + paste summary ──
-    if not summary_text:
-        summary_text = "UIST 2026 Formatting Guidelines\n(Agent could not retrieve summary)"
-
-    print("[CU] Phase 3: Pasting summary to Google Doc…", file=sys.stderr)
-    set_progress(4, 4, "Paste to Doc")
-
-    activate_chrome()
-    time.sleep(0.2)
-    pyautogui.hotkey("command", "t")       # new tab
-    time.sleep(0.5)
-    pyautogui.keyDown("command")
-    time.sleep(0.05)
-    pyautogui.press("l")
-    time.sleep(0.05)
-    pyautogui.keyUp("command")
-    time.sleep(0.4)
-    human_type_visible("docs.new")
-    time.sleep(0.1)
-    pyautogui.press("return")
-    time.sleep(5.0)                        # wait for Google Doc to load
-
-    # Click in the doc body and paste the summary
-    pyautogui.click(SCREEN_W // 2, SCREEN_H // 2)
-    time.sleep(0.8)
-    pyperclip.copy(summary_text)
-    pyautogui.hotkey("command", "v")
-    time.sleep(1.0)
-
     print("[CU] Done!", file=sys.stderr)
     dom_stop_reading()
     play_sound("Glass.aiff")
@@ -1481,6 +1478,9 @@ class OverlayView(NSView):
         try:
             NSColor.clearColor().set()
             NSBezierPath.fillRect_(rect)
+            self.draw_vignette()
+            self.draw_session_trail()
+            self.draw_trail()
             self.draw_progress_bar()
             self.draw_goal_bubble()
             self.draw_reasoning_bubble()
@@ -1910,22 +1910,18 @@ def build_window():
     return window
 
 def setup_esc_listener():
-    def on_key(event):
-        try:
-            if event.keyCode() == 53:
-                print("[overlay] ESC – stopping.", file=sys.stderr)
-                dom_stop_reading()
-                with state_lock:
-                    state["running_demo"] = False
-                NSApplication.sharedApplication().terminate_(None)
-        except Exception:
-            pass
-    try:
-        NSEvent.addGlobalMonitorForEventsMatchingMask_handler_(NSEventMaskKeyDown, on_key)
-    except Exception as e:
-        print(f"[esc] {e}", file=sys.stderr)
+    pass
 
 def main():
+    import signal
+    def _stop(_sig=None, _frame=None):
+        print("\n[overlay] stopping.", file=sys.stderr)
+        dom_stop_reading()
+        with state_lock:
+            state["running_demo"] = False
+        NSApplication.sharedApplication().terminate_(None)
+    signal.signal(signal.SIGINT, _stop)
+
     app = NSApplication.sharedApplication()
     app.setActivationPolicy_(NSApplicationActivationPolicyAccessory)
     build_window()
