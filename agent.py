@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+import argparse
 import math
 import time
 import random
@@ -43,6 +46,15 @@ from Foundation import NSObject, NSMakeRect, NSTimer
 load_dotenv()
 
 # ─────────────────────────────────────────────────────────────
+# Recording (optional — enabled with --record flag)
+# ─────────────────────────────────────────────────────────────
+
+from workflow_recorder import WorkflowRecorder  # noqa: E402
+
+_recorder: WorkflowRecorder | None = None
+_record_enabled: bool = False
+
+# ─────────────────────────────────────────────────────────────
 # Config
 # ─────────────────────────────────────────────────────────────
 
@@ -52,6 +64,8 @@ FPS                = 60
 TYPE_CHAR_INTERVAL = 0.055
 
 NSEventMaskKeyDown = 1024
+NSEventMaskKeyUp   = 2048
+ESC_HOLD_SEC       = 1.5   # seconds to hold ESC before quitting
 
 state = {
     "trail":              [],
@@ -61,6 +75,7 @@ state = {
     "preview_start_ts":   None,
     "cursor_pos":         (0, 0),
     "running_demo":       True,
+    "esc_hold_start":     None,   # timestamp when ESC was pressed down
     "screenshot_action":  False,
     "vignette_alpha":     0.0,
     "vignette_target":    0.0,
@@ -267,7 +282,7 @@ def screenshot_base64():
             time.sleep(0.05)
             raw = sct.grab(sct.monitors[1])
         img = Image.frombytes("RGB", raw.size, raw.bgra, "raw", "BGRX")
-        img = img.resize((DISPLAY_W, DISPLAY_H), Image.LANCZOS)
+        img = img.resize((DISPLAY_W, DISPLAY_H), Image.Resampling.LANCZOS)
         buf = io.BytesIO()
         img.save(buf, format="PNG", optimize=False)
         return base64.b64encode(buf.getvalue()).decode()
@@ -493,6 +508,8 @@ def activate_chrome():
     time.sleep(0.4)
 
 def task_loop():
+    global _recorder
+
     time.sleep(1.5)
     play_sound("Funk.aiff")
 
@@ -503,7 +520,8 @@ def task_loop():
         "1": {
             "name": "UIST 2026 — Formatting Guidelines",
             "url":  "uist.acm.org/2026",
-            "site": "the UIST 2026 website",
+            "search_name": "UIST 2026 conference",
+            "site": "Google search results",
             "goal": (
                 "Chrome is showing the UIST 2026 website.\n"
                 "Your task: find and read the submission formatting guidelines, "
@@ -520,7 +538,8 @@ def task_loop():
         "2": {
             "name": "ACM DL — Agent Legibility Papers",
             "url":  "dl.acm.org",
-            "site": "the ACM Digital Library",
+            "search_name": "ACM Digital Library",
+            "site": "Google search results",
             "goal": (
                 "Go to ACM Digital Library (dl.acm.org) and find 3 papers about agent legibility.\n\n"
                 "Steps:\n"
@@ -533,7 +552,8 @@ def task_loop():
         "3": {
             "name": "Amazon — Tennis Racket for Kids (Overall Pick)",
             "url":  "amazon.com",
-            "site": "Amazon",
+            "search_name": "Amazon",
+            "site": "Google search results",
             "goal": (
                 "On Amazon, search for 'tennis racket for toddler', find an item with an 'Overall Pick' badge or a sale/discount (e.g. 'Save 10%'), and add it to the cart. "
                 "Ignore sign-in prompts and popups."
@@ -542,7 +562,8 @@ def task_loop():
         "4": {
             "name": "Google Calendar — Send Invite",
             "url":  "calendar.google.com",
-            "site": "Google Calendar",
+            "search_name": "Google Calendar",
+            "site": "Google search results",
             "goal": (
                 "Your task: create a new Google Calendar event and invite a specific person.\n\n"
                 "Person to invite: sukmin.hci@gmail.com\n"
@@ -561,7 +582,8 @@ def task_loop():
         "5": {
             "name": "T1 — Google Calendar: Multi-Person Meeting",
             "url":  "calendar.google.com",
-            "site": "Google Calendar",
+            "search_name": "Google Calendar",
+            "site": "Google search results",
             "goal": (
                 "Your task: schedule a 1-hour team meeting and invite two people.\n\n"
                 "Meeting details:\n"
@@ -582,7 +604,8 @@ def task_loop():
         "6": {
             "name": "T2 — Instacart: Gluten-Free Grocery Order",
             "url":  "instacart.com",
-            "site": "Instacart",
+            "search_name": "Instacart grocery delivery",
+            "site": "Google search results",
             "goal": (
                 "Your task: add grocery items to an Instacart cart for a pasta dinner. "
                 "The shopper has a gluten allergy — ALL pasta must be labeled gluten-free.\n\n"
@@ -604,7 +627,8 @@ def task_loop():
         "7": {
             "name": "T3 — Zocdoc: Dermatology Appointment",
             "url":  "zocdoc.com",
-            "site": "Zocdoc",
+            "search_name": "Zocdoc find a doctor",
+            "site": "Google search results",
             "goal": (
                 "Your task: find a dermatology appointment on Zocdoc under these constraints:\n\n"
                 "Requirements:\n"
@@ -624,36 +648,59 @@ def task_loop():
         },
         # ── Information Synthesis ──────────────────────────────
         "8": {
-            "name": "S1 — CHI 2025 vs 2026: Submission Requirement Comparison",
-            "url":  "chi2026.acm.org",
-            "site": "the CHI 2026 conference website",
+            "name": "S1 — NY Grad School Financial Aid Comparison (NYU / Columbia / Cornell Tech)",
+            "url":  "google.com",
+            "search_name": "NYU graduate financial aid",
+            "site": "Google search results",
             "goal": (
-                "Your task: compare paper submission requirements between CHI 2025 and CHI 2026 "
-                "and flag differences that could cause a desk rejection.\n\n"
-                "Steps:\n"
-                "1. Find the submission/formatting requirements on chi2026.acm.org.\n"
-                "2. Navigate to chi2025.acm.org and find the equivalent page.\n"
-                "3. Compare: page limits, anonymization policy, reference format, "
-                "figure guidelines, supplemental material rules, and new requirements.\n"
-                "4. Write a summary: (a) unchanged rules, (b) changed rules, "
-                "(c) new 2026 rules not in 2025.\n"
-                "Do NOT use any tools in your final response."
+                "Your task: research graduate school financial aid at NYU.\n\n"
+                "Find and note: types of aid available, typical PhD stipend amounts, "
+                "whether Master's students are funded or self-funded, any named fellowships "
+                "or competitive awards, and requirements to be considered for aid.\n\n"
+                "Click the most relevant search result, read it carefully. "
+                "You will be told when to move to the next school.\n\n"
+                "Do NOT write a final summary yet — you will be asked to do that later."
             ),
+            "iteration_checkpoints": {
+                18: (
+                    "Good work on NYU. Now move to Columbia University.\n"
+                    "Press command+l, type 'google.com', press Enter. "
+                    "Then click the search box, type 'Columbia University graduate financial aid', "
+                    "press Enter, and click the most relevant official Columbia result. "
+                    "Gather the same info: aid types, PhD stipend, Master's funding, "
+                    "named fellowships, and application requirements."
+                ),
+                36: (
+                    "Good work on Columbia. Now move to Cornell Tech.\n"
+                    "Press command+l, type 'google.com', press Enter. "
+                    "Then click the search box, type 'Cornell Tech graduate financial aid', "
+                    "press Enter, and click the most relevant official Cornell Tech result. "
+                    "Gather the same info: aid types, PhD stipend, Master's funding, "
+                    "named fellowships, and application requirements."
+                ),
+                52: (
+                    "You have now researched all three schools. "
+                    "Write a structured comparison with a section for each school "
+                    "(NYU, Columbia, Cornell Tech), followed by a side-by-side summary table. "
+                    "Do NOT use any tools — just write the final comparison text now."
+                ),
+            },
         },
         "9": {
-            "name": "S2 — HealthCare.gov: Insurance Plan Recommendation",
-            "url":  "healthcare.gov",
-            "site": "HealthCare.gov",
+            "name": "S2 — Covered California: Insurance Plan Recommendation",
+            "url":  "coveredca.com",
+            "search_name": "Covered California health insurance",
+            "site": "Google search results",
             "goal": (
-                "Your task: recommend the best health insurance plan for this user:\n\n"
+                "Your task: recommend the best health insurance plan for this user on Covered California:\n\n"
                 "Profile:\n"
-                "- Age 32, non-smoker, Austin TX (ZIP 78701)\n"
+                "- Age 32, non-smoker, Los Angeles CA (ZIP 90012)\n"
                 "- Income ~$45,000/year\n"
                 "- Needs: weekly therapy, brand-name Lexapro, preferred psychiatrist Dr. Amanda Chen\n"
                 "- Hard constraint: annual out-of-pocket must stay under $4,000\n"
                 "- Preference: lower monthly premium over lower deductible\n\n"
                 "Steps:\n"
-                "1. Browse plans available at ZIP 78701.\n"
+                "1. Go to coveredca.com and use 'Shop and Compare' to browse plans for ZIP 90012.\n"
                 "2. For the top 2–3 candidates, check: monthly premium, deductible, "
                 "mental health copay, and drug tier for Lexapro.\n"
                 "3. Recommend the best plan and explain why it fits. "
@@ -664,7 +711,8 @@ def task_loop():
         "10": {
             "name": "S3 — Travel Requirements: US Citizen to Japan",
             "url":  "travel.state.gov",
-            "site": "the U.S. Department of State travel site",
+            "search_name": "US passport travel requirements Japan",
+            "site": "Google search results",
             "goal": (
                 "Your task: compile a complete travel requirements checklist for this trip:\n\n"
                 "Scenario: US passport holder, San Francisco → Tokyo, 14-day tourist visit, no layover.\n\n"
@@ -692,6 +740,10 @@ def task_loop():
     task = TASKS.get(choice, TASKS["1"])
     print(f"\n  ▶ Running: {task['name']}\n", file=sys.stderr)
 
+    if _record_enabled:
+        _recorder = WorkflowRecorder(task_id=choice)
+        _recorder.start(task_name=task["name"], task_goal=task["goal"])
+
     SYSTEM_PROMPT = (
         f"You are a macOS computer-use agent. "
         f"Display: {DISPLAY_W}×{DISPLAY_H}. Origin top-left. "
@@ -702,6 +754,12 @@ def task_loop():
         "e.g. \"I'll click the 'Full CFP' tab.\" "
         "e.g. \"I'll scroll down to find the submission deadline.\" "
         "Never skip this narration.\n"
+        "- Chrome already has Google open. The search has been typed — "
+        "you are now seeing Google search results. Click the most relevant result "
+        "to navigate to the target site.\n"
+        "- To search again on Google: click the search box at the top, edit the query, press Enter. "
+        "Do NOT use the Chrome address bar to search.\n"
+        "- To navigate to a new URL directly: use command+l, type the URL, press Enter.\n"
         "- Use 'command' for macOS shortcuts.\n"
         "- Never take two screenshots in a row.\n"
         "- When scrolling, use delta_y of 5–8."
@@ -709,21 +767,19 @@ def task_loop():
 
     goal = task["goal"]
 
-    # ── Phase 1: Pre-navigation ───────────────────────────────
-    print(f"[CU] Phase 1: Navigating to {task['url']}…", file=sys.stderr)
+    # ── Phase 1: Search Google (already open) ────────────────
+    search_name = task.get("search_name", task["url"])
+    print(f"[CU] Phase 1: Searching Google for '{search_name}'…", file=sys.stderr)
     activate_chrome()
-    time.sleep(0.3)
+    time.sleep(0.5)
 
-    pyautogui.keyDown("command")
-    time.sleep(0.05)
-    pyautogui.press("l")
-    time.sleep(0.05)
-    pyautogui.keyUp("command")
-    time.sleep(0.4)
-    human_type_visible(task["url"])
-    time.sleep(0.1)
+    # Google is already open — click the search box and search
+    pyautogui.click(SCREEN_W // 2, SCREEN_H // 2)
+    time.sleep(0.5)
+    human_type_visible(search_name)
+    time.sleep(0.2)
     pyautogui.press("return")
-    time.sleep(3.5)
+    time.sleep(3.0)
 
     # ── Phase 2: Agent reads page + generates summary ──
     print("[CU] Phase 2: Agent reading guidelines…", file=sys.stderr)
@@ -746,14 +802,21 @@ def task_loop():
         "display_height_px": DISPLAY_H,
     }]
 
-    MAX_ITER = 30
+    MAX_ITER = 60
     consec_shots = 0
     summary_text = ""
+    checkpoints = task.get("iteration_checkpoints", {})
 
     for iteration in range(MAX_ITER):
         with state_lock:
             if not state["running_demo"]:
                 return
+
+        # ── Inject checkpoint instruction at school boundaries ──
+        if iteration in checkpoints:
+            msg = checkpoints[iteration]
+            print(f"[CU] Checkpoint at iter {iteration}: {msg[:60]}…", file=sys.stderr)
+            messages.append({"role": "user", "content": msg})
 
         print(f"[CU] iter {iteration + 1}", file=sys.stderr)
 
@@ -773,6 +836,8 @@ def task_loop():
 
         if raw:
             print(f"\n[CLAUDE raw] {raw}", file=sys.stderr)
+            if _recorder is not None:
+                _recorder.log_reasoning(raw)
 
         messages.append({"role": "assistant", "content": response.content})
 
@@ -788,6 +853,8 @@ def task_loop():
                 continue
             action = block.input.get("action", "")
             print(f"[ACTION] {action}  {block.input}", file=sys.stderr)
+            if _recorder is not None:
+                _recorder.log_action(action, block.input)
 
             if action == "screenshot":
                 consec_shots += 1
@@ -803,12 +870,16 @@ def task_loop():
             execute_action(action, block.input)
             time.sleep(random.uniform(0.08, 0.18))
 
+            shot = screenshot_base64()
+            if _recorder is not None:
+                _recorder.log_screenshot_b64(shot)
+
             tool_results.append({
                 "type": "tool_result",
                 "tool_use_id": block.id,
                 "content": [{"type": "image", "source": {
                     "type": "base64", "media_type": "image/png",
-                    "data": screenshot_base64(),
+                    "data": shot,
                 }}],
             })
 
@@ -820,7 +891,7 @@ def task_loop():
 
     # ── Phase 3: Open Google Doc + paste summary ──
     if not summary_text:
-        summary_text = "UIST 2026 Formatting Guidelines\n(Agent could not retrieve summary)"
+        summary_text = f"{task['name']}\n(Agent could not retrieve summary)"
 
     print("[CU] Phase 3: Pasting summary to Google Doc…", file=sys.stderr)
 
@@ -849,6 +920,9 @@ def task_loop():
     print("[CU] Done!", file=sys.stderr)
     play_sound("Glass.aiff")
 
+    if _recorder is not None:
+        _recorder.stop(summary=summary_text)
+
 # ─────────────────────────────────────────────────────────────
 # Overlay
 # ─────────────────────────────────────────────────────────────
@@ -861,8 +935,60 @@ class OverlayView(NSView):
         try:
             NSColor.clearColor().set()
             NSBezierPath.fillRect_(rect)
+            self.draw_esc_hold_indicator()
         except Exception as e:
             print(f"[draw error] {e}", file=sys.stderr)
+
+    # ── ESC hold indicator ─────────────────────────────────────
+    @objc.python_method
+    def draw_esc_hold_indicator(self):
+        with state_lock:
+            t0 = state.get("esc_hold_start")
+        if not t0:
+            return
+        held = min(now() - t0, ESC_HOLD_SEC)
+        prog = held / ESC_HOLD_SEC          # 0.0 → 1.0
+
+        cx = SCREEN_W // 2
+        cy = SCREEN_H // 2
+        ccx, ccy = to_cocoa(cx, cy)
+        R = 36
+
+        # Dark backdrop
+        NSColor.colorWithCalibratedRed_green_blue_alpha_(0.05, 0.05, 0.10, 0.75).set()
+        NSBezierPath.bezierPathWithOvalInRect_(
+            NSMakeRect(ccx - R - 6, ccy - R - 6, (R + 6) * 2, (R + 6) * 2)
+        ).fill()
+
+        # Grey track ring
+        track = NSBezierPath.bezierPathWithOvalInRect_(
+            NSMakeRect(ccx - R, ccy - R, R * 2, R * 2)
+        )
+        track.setLineWidth_(4)
+        NSColor.colorWithCalibratedWhite_alpha_(1.0, 0.12).set()
+        track.stroke()
+
+        # Filling arc (red, clockwise from top)
+        if prog > 0.01:
+            arc = NSBezierPath.bezierPath()
+            import math as _math
+            start_angle = 90.0
+            end_angle   = 90.0 - prog * 360.0
+            arc.appendBezierPathWithArcWithCenter_radius_startAngle_endAngle_clockwise_(
+                (ccx, ccy), R, start_angle, end_angle, True
+            )
+            arc.setLineWidth_(4)
+            NSColor.colorWithCalibratedRed_green_blue_alpha_(0.95, 0.25, 0.25, 0.90).set()
+            arc.stroke()
+
+        # Label
+        label = "hold to quit"
+        attrs = NSMutableDictionary.dictionary()
+        attrs[NSFontAttributeName] = NSFont.monospacedSystemFontOfSize_weight_(10, 0.0)
+        attrs[NSForegroundColorAttributeName] = NSColor.colorWithCalibratedWhite_alpha_(0.9, 0.75)
+        astr = NSAttributedString.alloc().initWithString_attributes_(label, attrs)
+        sz = astr.size()
+        astr.drawAtPoint_((ccx - sz[0] / 2, ccy - sz[1] / 2))
 
     # ── Colors ─────────────────────────────────────────────────
     @objc.python_method
@@ -1120,21 +1246,53 @@ def build_window():
     return window
 
 def setup_esc_listener():
-    def on_key(event):
+    def on_key_down(event):
         try:
             if event.keyCode() == 53:
-                print("[overlay] ESC – stopping.", file=sys.stderr)
                 with state_lock:
-                    state["running_demo"] = False
-                NSApplication.sharedApplication().terminate_(None)
+                    # ignore key-repeat events — only capture the first press
+                    if state["esc_hold_start"] is None:
+                        state["esc_hold_start"] = now()
         except Exception:
             pass
+
+    def on_key_up(event):
+        try:
+            if event.keyCode() == 53:
+                with state_lock:
+                    t0 = state.get("esc_hold_start")
+                    state["esc_hold_start"] = None
+                if t0 and (now() - t0) >= ESC_HOLD_SEC:
+                    print("[overlay] ESC long-press – stopping.", file=sys.stderr)
+                    with state_lock:
+                        state["running_demo"] = False
+                    _shutdown()
+                else:
+                    print("[overlay] ESC tapped (ignored — hold to quit).", file=sys.stderr)
+        except Exception:
+            pass
+
     try:
-        NSEvent.addGlobalMonitorForEventsMatchingMask_handler_(NSEventMaskKeyDown, on_key)
+        NSEvent.addGlobalMonitorForEventsMatchingMask_handler_(NSEventMaskKeyDown, on_key_down)
+        NSEvent.addGlobalMonitorForEventsMatchingMask_handler_(NSEventMaskKeyUp,   on_key_up)
     except Exception as e:
         print(f"[esc] {e}", file=sys.stderr)
 
 def main():
+    global _recorder, _record_enabled
+
+    parser = argparse.ArgumentParser(description="Legible agent (agent.py)")
+    parser.add_argument(
+        "--record", action="store_true",
+        help="Enable workflow recording. Task id is taken from the interactive task selector. "
+             "Saves frames, log.json, report.md, and video.mp4 to recordings/<task_id>/",
+    )
+    args, _ = parser.parse_known_args()
+
+    if args.record:
+        _record_enabled = True
+        print("[main] recording enabled — task folder will be set after task selection", file=sys.stderr)
+
     app = NSApplication.sharedApplication()
     app.setActivationPolicy_(NSApplicationActivationPolicyAccessory)
     build_window()

@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+import argparse
 import math
 import time
 import random
@@ -44,6 +47,15 @@ from AppKit import (
 from Foundation import NSObject, NSMakeRect, NSTimer
 
 load_dotenv()
+
+# ─────────────────────────────────────────────────────────────
+# Recording (optional — enabled with --record flag)
+# ─────────────────────────────────────────────────────────────
+
+from workflow_recorder import WorkflowRecorder  # noqa: E402
+
+_recorder: WorkflowRecorder | None = None
+_record_enabled: bool = False
 
 # ─────────────────────────────────────────────────────────────
 # Config
@@ -1054,6 +1066,8 @@ def activate_chrome():
     time.sleep(0.4)
 
 def task_loop():
+    global _recorder
+
     time.sleep(1.5)
     play_sound("Funk.aiff")
     threading.Thread(target=_init_sfx, daemon=True).start()
@@ -1186,36 +1200,44 @@ def task_loop():
         },
         # ── Information Synthesis ──────────────────────────────
         "8": {
-            "name": "S1 — CHI 2025 vs 2026: Submission Requirement Comparison",
-            "url":  "chi2026.acm.org",
-            "site": "the CHI 2026 conference website",
+            "name": "S1 — NY Grad School Financial Aid Comparison (NYU / Columbia / Cornell Tech)",
+            "url":  "google.com",
+            "site": "Google",
             "goal": (
-                "Your task: compare paper submission requirements between CHI 2025 and CHI 2026 "
-                "and flag differences that could cause a desk rejection.\n\n"
+                "Your task: compare graduate school financial aid across three New York universities "
+                "— NYU, Columbia University, and Cornell Tech — and summarize the findings.\n\n"
+                "For each school, find and record:\n"
+                "  - Types of aid available (fellowships, assistantships, scholarships, loans)\n"
+                "  - Typical funding amounts or stipends for PhD vs Master's students\n"
+                "  - Whether Master's students are commonly funded or self-funded\n"
+                "  - Any named fellowships or competitive awards\n"
+                "  - Application deadlines or requirements to be considered for aid\n\n"
                 "Steps:\n"
-                "1. Find the submission/formatting requirements on chi2026.acm.org.\n"
-                "2. Navigate to chi2025.acm.org and find the equivalent page.\n"
-                "3. Compare: page limits, anonymization policy, reference format, "
-                "figure guidelines, supplemental material rules, and new requirements.\n"
-                "4. Write a summary: (a) unchanged rules, (b) changed rules, "
-                "(c) new 2026 rules not in 2025.\n"
-                "Do NOT use any tools in your final response."
+                "1. Click the Google search box on screen, type 'NYU graduate financial aid', "
+                "press Enter, then click the most relevant official NYU result and read it.\n"
+                "2. Go back to google.com, click the search box, type 'Columbia University graduate "
+                "financial aid', press Enter, click the official Columbia result and read it.\n"
+                "3. Go back to google.com, click the search box, type 'Cornell Tech graduate "
+                "financial aid', press Enter, click the official Cornell Tech result and read it.\n"
+                "4. Write a structured comparison with a section for each school, followed by a "
+                "summary table comparing the three side by side.\n"
+                "Do NOT use any tools in your final response — just write the comparison text."
             ),
         },
         "9": {
-            "name": "S2 — HealthCare.gov: Insurance Plan Recommendation",
-            "url":  "healthcare.gov",
-            "site": "HealthCare.gov",
+            "name": "S2 — Covered California: Insurance Plan Recommendation",
+            "url":  "coveredca.com",
+            "site": "Covered California",
             "goal": (
-                "Your task: recommend the best health insurance plan for this user:\n\n"
+                "Your task: recommend the best health insurance plan for this user on Covered California:\n\n"
                 "Profile:\n"
-                "- Age 32, non-smoker, Austin TX (ZIP 78701)\n"
+                "- Age 32, non-smoker, Los Angeles CA (ZIP 90012)\n"
                 "- Income ~$45,000/year\n"
                 "- Needs: weekly therapy, brand-name Lexapro, preferred psychiatrist Dr. Amanda Chen\n"
                 "- Hard constraint: annual out-of-pocket must stay under $4,000\n"
                 "- Preference: lower monthly premium over lower deductible\n\n"
                 "Steps:\n"
-                "1. Browse plans available at ZIP 78701.\n"
+                "1. Go to coveredca.com and use 'Shop and Compare' to browse plans for ZIP 90012.\n"
                 "2. For the top 2–3 candidates, check: monthly premium, deductible, "
                 "mental health copay, and drug tier for Lexapro.\n"
                 "3. Recommend the best plan and explain why it fits. "
@@ -1254,6 +1276,10 @@ def task_loop():
     task = TASKS.get(choice, TASKS["1"])
     print(f"\n  ▶ Running: {task['name']}\n", file=sys.stderr)
 
+    if _record_enabled:
+        _recorder = WorkflowRecorder(task_id=choice)
+        _recorder.start(task_name=task["name"], task_goal=task["goal"])
+
     SYSTEM_PROMPT = (
         f"You are a macOS computer-use agent. "
         f"Display: {DISPLAY_W}×{DISPLAY_H}. Origin top-left. "
@@ -1264,6 +1290,9 @@ def task_loop():
         "e.g. \"I'll click the 'Full CFP' tab.\" "
         "e.g. \"I'll scroll down to find the submission deadline.\" "
         "Never skip this narration.\n"
+        "- To search on Google: click the search box on the page, type your query, press Enter. "
+        "Do NOT use the Chrome address bar to search — use the Google search box on screen.\n"
+        "- To navigate to a new URL: use command+l, type the URL, press Enter.\n"
         "- Use 'command' for macOS shortcuts.\n"
         "- Never take two screenshots in a row.\n"
         "- When scrolling, use delta_y of 5–8."
@@ -1352,6 +1381,8 @@ def task_loop():
 
         if raw:
             print(f"\n[CLAUDE raw] {raw}", file=sys.stderr)
+            if _recorder is not None:
+                _recorder.log_reasoning(raw)
 
         # Speak Claude's own reasoning aloud before acting.
         # If Claude didn't write a narration, build one from the first action.
@@ -1406,6 +1437,8 @@ def task_loop():
                 continue
             action = block.input.get("action", "")
             print(f"[ACTION] {action}  {block.input}", file=sys.stderr)
+            if _recorder is not None:
+                _recorder.log_action(action, block.input)
 
             if action == "screenshot":
                 consec_shots += 1
@@ -1421,12 +1454,16 @@ def task_loop():
             execute_action(action, block.input)
             time.sleep(random.uniform(0.08, 0.18))
 
+            shot = screenshot_base64()
+            if _recorder is not None:
+                _recorder.log_screenshot_b64(shot)
+
             tool_results.append({
                 "type": "tool_result",
                 "tool_use_id": block.id,
                 "content": [{"type": "image", "source": {
                     "type": "base64", "media_type": "image/png",
-                    "data": screenshot_base64(),
+                    "data": shot,
                 }}],
             })
 
@@ -1438,7 +1475,7 @@ def task_loop():
 
     # ── Phase 3: Open Google Doc + paste summary ──
     if not summary_text:
-        summary_text = "UIST 2026 Formatting Guidelines\n(Agent could not retrieve summary)"
+        summary_text = f"{task['name']}\n(Agent could not retrieve summary)"
 
     print("[CU] Phase 3: Pasting summary to Google Doc…", file=sys.stderr)
     set_progress(4, 4, "Paste to Doc")
@@ -1468,6 +1505,9 @@ def task_loop():
     print("[CU] Done!", file=sys.stderr)
     dom_stop_reading()
     play_sound("Glass.aiff")
+
+    if _recorder is not None:
+        _recorder.stop(summary=summary_text)
 
 # ─────────────────────────────────────────────────────────────
 # Overlay — stripped to legibility only
@@ -1926,6 +1966,20 @@ def setup_esc_listener():
         print(f"[esc] {e}", file=sys.stderr)
 
 def main():
+    global _recorder, _record_enabled
+
+    parser = argparse.ArgumentParser(description="Legible agent (legible_agent.py)")
+    parser.add_argument(
+        "--record", action="store_true",
+        help="Enable workflow recording. Task id is taken from the interactive task selector. "
+             "Saves frames, log.json, report.md, and video.mp4 to recordings/<task_id>/",
+    )
+    args, _ = parser.parse_known_args()
+
+    if args.record:
+        _record_enabled = True
+        print("[main] recording enabled — task folder will be set after task selection", file=sys.stderr)
+
     app = NSApplication.sharedApplication()
     app.setActivationPolicy_(NSApplicationActivationPolicyAccessory)
     build_window()
