@@ -889,6 +889,24 @@ _KEY_MAP = {
     "enter": "return", "escape": "esc", "delete": "backspace", "del": "backspace",
 }
 
+_SUBMIT_KEYS = {"return", "enter", "escape"}
+
+def _is_trivial_action(action: str, params: dict) -> bool:
+    if action in ("mouse_move", "type"):
+        return True
+    if action == "key":
+        keys = {k.strip().lower() for k in params.get("text", "").split("+")}
+        return not keys.intersection(_SUBMIT_KEYS)
+    return False
+
+def _trivial_confirmation(action: str, params: dict) -> str:
+    if action == "type":
+        short = params.get("text", "")[:40]
+        return f"Typed: {short}"
+    if action == "key":
+        return f"Pressed {params.get('text', '')}."
+    return "Done."
+
 def execute_action(action, params):
     try:
         _execute_action_inner(action, params)
@@ -1001,7 +1019,9 @@ def _execute_action_inner(action, params):
     elif action == "type":
         text = params["text"]
         short = text[:40] + ("…" if len(text) > 40 else "")
-        speak(f"Typing: {short}")   # keep — shows what's being entered
+        with state_lock:
+            state["reasoning_text"] = f"Typing: {short}"
+            state["speech_done_ts"] = now()
         activate_chrome()
         human_type_visible(text)
 
@@ -1447,13 +1467,17 @@ def task_loop():
             execute_action(action, block.input)
             time.sleep(random.uniform(0.08, 0.18))
 
+            if _is_trivial_action(action, block.input):
+                content = _trivial_confirmation(action, block.input)
+            else:
+                content = [{"type": "image", "source": {
+                    "type": "base64", "media_type": "image/png",
+                    "data": screenshot_base64(),
+                }}]
             tool_results.append({
                 "type": "tool_result",
                 "tool_use_id": block.id,
-                "content": [{"type": "image", "source": {
-                    "type": "base64", "media_type": "image/png",
-                    "data": screenshot_base64(),
-                }}],
+                "content": content,
             })
 
         if not tool_results:
