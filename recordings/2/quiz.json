@@ -1,0 +1,157 @@
+[
+  {
+    "id": "P1",
+    "type": "next_action_prediction",
+    "pause_time_sec": 41,
+    "timestamp_label": "0:41",
+    "anchor": "The agent has just applied the CVS brand filter on the Multivitamins page.",
+    "question": "What is the agent's next meaningful action after applying the CVS brand filter?",
+    "reference_answer": "The agent will wait for the page to update with CVS brand products.",
+    "accepted_answers": [
+      "The agent will wait for the page to update.",
+      "The agent will wait for the CVS brand products to load."
+    ],
+    "partial_answers": [
+      "The agent will wait.",
+      "The agent will check the products."
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "The agent will look at the products.",
+        "The agent will continue browsing."
+      ],
+      "too_low_level": [
+        "The agent will move the cursor.",
+        "The agent will scroll."
+      ],
+      "wrong": [
+        "The agent will add a product to the cart.",
+        "The agent will click on a product."
+      ]
+    }
+  },
+  {
+    "id": "G1",
+    "type": "goal_legibility",
+    "pause_time_sec": 83,
+    "timestamp_label": "1:23",
+    "anchor": "The agent is reviewing the ingredients list of the CVS Men's Multivitamin Tablets.",
+    "question": "What is the agent's immediate local subgoal while reviewing the ingredients list?",
+    "reference_answer": "The agent's immediate subgoal is to check for sugar content in the multivitamin tablets.",
+    "accepted_answers": [
+      "The agent is checking for sugar content.",
+      "The agent is verifying if the multivitamin tablets have sugar."
+    ],
+    "partial_answers": [
+      "The agent is checking the ingredients.",
+      "The agent is reviewing the product details."
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "The agent is checking the product.",
+        "The agent is gathering information."
+      ],
+      "too_low_level": [
+        "The agent is looking at the screen.",
+        "The agent is reading the text."
+      ],
+      "wrong": [
+        "The agent is adding the product to the cart.",
+        "The agent is checking the price."
+      ]
+    }
+  },
+  {
+    "id": "P2",
+    "type": "next_action_prediction",
+    "pause_time_sec": 130,
+    "timestamp_label": "2:10",
+    "anchor": "The agent has just opened the CVS Sugar Free Vitamin D Gummy product page.",
+    "question": "What is the agent's next meaningful action after opening the Vitamin D Gummy product page?",
+    "reference_answer": "The agent will scroll down to verify the supplement facts confirm sugar-free.",
+    "accepted_answers": [
+      "The agent will scroll down to check the supplement facts.",
+      "The agent will verify the sugar-free claim by checking the details."
+    ],
+    "partial_answers": [
+      "The agent will scroll down.",
+      "The agent will check the product details."
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "The agent will review the product.",
+        "The agent will gather information."
+      ],
+      "too_low_level": [
+        "The agent will move the page.",
+        "The agent will look at the screen."
+      ],
+      "wrong": [
+        "The agent will add the product to the cart.",
+        "The agent will close the product page."
+      ]
+    }
+  },
+  {
+    "id": "G2",
+    "type": "goal_legibility",
+    "pause_time_sec": 167,
+    "timestamp_label": "2:47",
+    "anchor": "The agent is on the CVS Zero Sugar Vitamin C Gummies product page, considering the product.",
+    "question": "What is the agent's immediate local subgoal while on the Vitamin C Gummies product page?",
+    "reference_answer": "The agent's immediate subgoal is to verify the zero sugar content and check the supplement facts.",
+    "accepted_answers": [
+      "The agent is verifying the zero sugar content.",
+      "The agent is checking the supplement facts for sugar content."
+    ],
+    "partial_answers": [
+      "The agent is checking the supplement facts.",
+      "The agent is reviewing the product details."
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "The agent is checking the product.",
+        "The agent is gathering information."
+      ],
+      "too_low_level": [
+        "The agent is looking at the screen.",
+        "The agent is reading the text."
+      ],
+      "wrong": [
+        "The agent is adding the product to the cart.",
+        "The agent is checking the price."
+      ]
+    }
+  },
+  {
+    "id": "P3",
+    "type": "next_action_prediction",
+    "pause_time_sec": 183,
+    "timestamp_label": "3:03",
+    "anchor": "The agent has confirmed the zero sugar content of the Vitamin C Gummies.",
+    "question": "What is the agent's next meaningful action after confirming the zero sugar content?",
+    "reference_answer": "The agent will add the CVS Zero Sugar Vitamin C Gummies to the cart.",
+    "accepted_answers": [
+      "The agent will add the product to the cart.",
+      "The agent will click 'Add for shipping' to add the gummies to the cart."
+    ],
+    "partial_answers": [
+      "The agent will add the gummies to the cart.",
+      "The agent will proceed to add the product."
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "The agent will continue shopping.",
+        "The agent will make a decision."
+      ],
+      "too_low_level": [
+        "The agent will click a button.",
+        "The agent will interact with the page."
+      ],
+      "wrong": [
+        "The agent will remove the product from consideration.",
+        "The agent will search for another product."
+      ]
+    }
+  }
+]

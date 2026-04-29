@@ -1,4 +1,5 @@
 anthropic
+elevenlabs
 pyautogui
 pyobjc
 mss
