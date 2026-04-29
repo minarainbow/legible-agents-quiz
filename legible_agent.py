@@ -69,7 +69,6 @@ BUBBLE_FADE_OUT    = 0.60
 BUBBLE_SLIDE_PX    = 12
 TYPE_CHAR_INTERVAL = 0.055
 
-NSEventMaskKeyDown = 1024
 
 # ── Sound effects ─────────────────────────────────────────────
 _ns_sounds: dict = {}  # path -> NSSound, lazy-init after NSApp starts
@@ -1076,133 +1075,118 @@ def task_loop():
 
     # ── Task selection ────────────────────────────────────────
     TASKS = {
+        # ── Transactional (T1–T3) ──────────────────────────────
         "1": {
-            "name": "UIST 2026 — Formatting Guidelines",
-            "url":  "uist.acm.org/2026",
-            "site": "the UIST 2026 website",
+            "name": "T1 — Sephora: Foundation, Mascara & Lip Gloss",
+            "url":  "google.com",
+            "site": "Sephora website",
             "goal": (
-                "Chrome is showing the UIST 2026 website.\n"
-                "Your task: find and read the submission formatting guidelines, "
-                "then write a concise summary.\n\n"
-                "Steps:\n"
-                "1. Look for a link to 'Call for Papers', 'Author Guide', 'Submissions', "
-                "or 'Formatting Guidelines'. Click it.\n"
-                "2. Scroll down and read the formatting requirements "
-                "(page limits, column format, template, anonymization, etc).\n"
-                "3. Write a concise summary (3-5 bullet points). "
-                "Do NOT use any tools in your final response."
+                "Your task: find 3 makeup products on Sephora's website.\n\n"
+                "Start by browsing Foundation. You will be guided to the next item.\n\n"
+                "Preferences (apply to all items):\n"
+                "- Prefer hypoallergenic, fragrance-free, or sensitive-skin formulas\n"
+                "- Avoid products with known irritants (fragrances, parabens, harsh dyes)\n\n"
+                "Browse and add your pick to cart. "
+                "Do NOT write your final response yet — you will be told when to do that."
             ),
+            "iteration_checkpoints": {
+                15: (
+                    "Good. Commit to one foundation now — pick the option and add it to cart.\n"
+                    "Then navigate to the Mascara section. Browse mascaras, look for "
+                    "hypoallergenic or sensitive-eye formulas. Change colors if needed."
+                ),
+                30: (
+                    "Good. Commit to one mascara and add it to cart.\n"
+                    "Then navigate to Lip Gloss with color. Browse the lip gloss section, "
+                    "prefer fragrance-free or gentle formulas with a tinted/colored finish."
+                ),
+                45: (
+                    "Good. Commit to one lip gloss with color and add it to cart.\n"
+                    "You now have all 3 items."
+                ),
+            },
         },
         "2": {
-            "name": "ACM DL — Agent Legibility Papers",
-            "url":  "dl.acm.org",
-            "site": "the ACM Digital Library",
+            "name": "T2 — CVS: 3 Vitamins",
+            "url":  "google.com",
+            "site": "CVS website",
             "goal": (
-                "Go to ACM Digital Library (dl.acm.org) and find 3 papers about agent legibility.\n\n"
-                "Steps:\n"
-                "1. Search for 'agent legibility' in the ACM DL search bar.\n"
-                "2. Browse results, click into promising papers, read their abstracts.\n"
-                "3. Write a summary: title, authors, one sentence per paper. "
-                "Do NOT use any tools in your final response."
+                "Your task: find 3 vitamins or supplements on CVS's website and add each to cart.\n\n"
+                "Start with Multivitamins. You will be guided to the next category.\n\n"
+                "Preferences (apply to all items):\n"
+                "- Prefer low-sugar or sugar-free options (check the label)\n"
+                "- Prefer highly-rated products (4+ stars)\n"
+                "- Prefer CVS store brand when quality is comparable\n\n"
+                "Browse carefully, read labels and reviews, then add your pick to cart. "
+                "Do NOT write your final response yet — you will be told when to do that."
             ),
+            "iteration_checkpoints": {
+                15: (
+                    "Good. Commit to one multivitamin — the lowest-sugar, highest-rated option — "
+                    "and add it to cart.\n"
+                    "Then navigate to find Vitamin D products. "
+                    "Search 'Vitamin D' or browse the vitamins section. "
+                    "Read labels carefully before deciding."
+                ),
+                30: (
+                    "Good. Commit to one Vitamin D option and add it to cart.\n"
+                    "Then navigate to find Vitamin C products. "
+                    "Search 'Vitamin C' and browse, checking for low-sugar and high ratings."
+                ),
+                45: (
+                    "Good. Commit to one Vitamin C option and add it to cart.\n"
+                    "You now have all 3 items. Do NOT use any tools — write your final list: "
+                    "product name, brand, and price for each item."
+                ),
+            },
         },
         "3": {
-            "name": "Amazon — Tennis Racket for Kids (Overall Pick)",
-            "url":  "amazon.com",
-            "site": "Amazon",
-            "goal": (
-                "On Amazon, search for 'tennis racket for toddler', find an item with an 'Overall Pick' badge or a sale/discount (e.g. 'Save 10%'), and add it to the cart. "
-                "Ignore sign-in prompts and popups."
-            ),
-        },
-        "4": {
-            "name": "Google Calendar — Send Invite",
-            "url":  "calendar.google.com",
-            "site": "Google Calendar",
-            "goal": (
-                "Your task: create a new Google Calendar event and invite a specific person.\n\n"
-                "Person to invite: sukmin.hci@gmail.com\n"
-                "Message to include in the description: 'Hey! Sending you a calendar invite — let me know if this time works for you.'\n\n"
-                "Steps:\n"
-                "1. Click the '+ Create' button (top-left) to open a new event form.\n"
-                "2. Enter a title such as 'Quick Sync'.\n"
-                "3. Click 'More options' to open the full event editor.\n"
-                "4. In the 'Add guests' field, type 'sukmin.hci@gmail.com' and press Enter to add them.\n"
-                "5. In the Description field, type the message above.\n"
-                "6. Click 'Save'. If a dialog asks whether to send invites, click 'Send'.\n"
-                "Do NOT use any tools in your final response."
-            ),
-        },
-        # ── Transactional ──────────────────────────────────────
-        "5": {
-            "name": "T1 — Google Calendar: Multi-Person Meeting",
-            "url":  "calendar.google.com",
-            "site": "Google Calendar",
-            "goal": (
-                "Your task: schedule a 1-hour team meeting and invite two people.\n\n"
-                "Meeting details:\n"
-                "- Title: 'Research Planning Session'\n"
-                "- Date: this coming Friday at 2:00 PM\n"
-                "- Attendees: sukmin.hci@gmail.com and alice.researcher@gmail.com\n"
-                "- Description: 'Hi team! Scheduling our weekly research planning session. "
-                "Please come prepared with progress updates and blockers.'\n\n"
-                "Steps:\n"
-                "1. Click '+ Create', set the title, date (this Friday), 2:00–3:00 PM.\n"
-                "2. Click 'More options'.\n"
-                "3. Add both guests (press Enter after each email).\n"
-                "4. Add the description.\n"
-                "5. Click 'Save', then 'Send' to dispatch invitations.\n"
-                "Do NOT use any tools in your final response."
-            ),
-        },
-        "6": {
-            "name": "T2 — Instacart: Gluten-Free Grocery Order",
-            "url":  "instacart.com",
+            "name": "T3 — Instacart: Gluten-Free Grocery Order",
+            "url":  "google.com",
             "site": "Instacart",
             "goal": (
                 "Your task: add grocery items to an Instacart cart for a pasta dinner. "
                 "The shopper has a gluten allergy — ALL pasta must be labeled gluten-free.\n\n"
-                "Shopping list:\n"
-                "- Gluten-free spaghetti (1 lb)\n"
-                "- Organic diced tomatoes (2 cans, 14.5 oz each)\n"
-                "- Fresh basil (1 bunch)\n"
-                "- Parmesan cheese, shredded (6 oz)\n"
-                "- Extra-virgin olive oil (16 oz)\n"
-                "- Garlic (1 head)\n\n"
+                "Start by searching for gluten-free spaghetti. You will be guided to each item.\n\n"
                 "Constraints:\n"
                 "- Pasta MUST be gluten-free — do not substitute a regular product.\n"
                 "- Prefer organic for tomatoes.\n"
                 "- Do not exceed 2 cans of tomatoes.\n\n"
-                "Search for each item, verify it meets the constraints, and add it to cart. "
-                "Do NOT use any tools in your final response — confirm what was added."
+                "Do NOT write your final response yet — you will be told when to do that."
             ),
+            "iteration_checkpoints": {
+                8: (
+                    "Good. Choose a gluten-free spaghetti and add it to cart. "
+                    "Then search for 'diced tomatoes' — find an organic 14.5 oz option (2 cans)."
+                ),
+                16: (
+                    "Good. Add the organic diced tomatoes (2 cans) to cart. "
+                    "Then search for 'fresh basil' and add a bunch."
+                ),
+                24: (
+                    "Good. Add the fresh basil to cart. "
+                    "Then search for 'parmesan cheese shredded' and add a 6 oz option."
+                ),
+                32: (
+                    "Good. Add the parmesan to cart. "
+                    "Then search for 'extra virgin olive oil' and add a 16 oz bottle."
+                ),
+                40: (
+                    "Good. Add the olive oil to cart. "
+                    "Then search for 'garlic' and add one head of garlic."
+                ),
+                45: (
+                    "Good. Add the garlic to cart. All 6 items should now be in the cart. "
+                    "Do NOT use any tools — write your final confirmation of what was added."
+                ),
+            },
         },
-        "7": {
-            "name": "T3 — Zocdoc: Dermatology Appointment",
-            "url":  "zocdoc.com",
-            "site": "Zocdoc",
-            "goal": (
-                "Your task: find a dermatology appointment on Zocdoc under these constraints:\n\n"
-                "Requirements:\n"
-                "- Specialty: Dermatology\n"
-                "- Location: San Francisco, CA\n"
-                "- Insurance: Aetna\n"
-                "- Visit type: New patient\n"
-                "- Availability: within the next 2 weeks\n"
-                "- Note to provider: 'Concerned about a mole on my left arm that has changed color.'\n\n"
-                "Steps:\n"
-                "1. Search for dermatologists in San Francisco accepting Aetna.\n"
-                "2. Pick a provider with an available new-patient slot within 2 weeks.\n"
-                "3. Select that slot and fill in the note above.\n"
-                "4. Proceed as far as the booking flow allows without entering real personal info.\n"
-                "Do NOT use any tools in your final response — summarize what you found."
-            ),
-        },
-        # ── Information Synthesis ──────────────────────────────
-        "8": {
+        # ── Information Synthesis (S1–S3) ──────────────────────
+        "4": {
             "name": "S1 — NY Grad School Financial Aid Comparison (NYU / Columbia / Cornell Tech)",
             "url":  "google.com",
             "site": "Google",
+            "write_doc": True,
             "goal": (
                 "Your task: compare graduate school financial aid across three New York universities "
                 "— NYU, Columbia University, and Cornell Tech — and summarize the findings.\n\n"
@@ -1224,8 +1208,201 @@ def task_loop():
                 "Do NOT use any tools in your final response — just write the comparison text."
             ),
         },
+        "5": {
+            "name": "S2 — Mobile Plan Comparison (Verizon / AT&T / T-Mobile)",
+            "url":  "google.com",
+            "site": "Google",
+            "write_doc": True,
+            "goal": (
+                "Your task: research unlimited mobile phone plans from Verizon.\n\n"
+                "For Verizon, find and note:\n"
+                "- Lowest-cost unlimited plan price for one line\n"
+                "- Data limits or throttling policy\n"
+                "- Hotspot allowance\n"
+                "- International roaming or texting benefits\n"
+                "- Streaming perks or included subscriptions\n"
+                "- Autopay discount requirements\n"
+                "- Any activation fees or hidden monthly fees\n\n"
+                "Click the most relevant official result and read carefully. "
+                "You will be told when to move to the next carrier.\n\n"
+                "Do NOT write a final summary yet — you will be asked to do that later."
+            ),
+            "iteration_checkpoints": {
+                15: (
+                    "Good work on Verizon. Now move to AT&T.\n"
+                    "Press command+l, type 'google.com', press Enter. "
+                    "Then click the search box, type 'AT&T unlimited phone plans', "
+                    "press Enter, and click the most relevant official AT&T result. "
+                    "Gather the same info: lowest-cost unlimited plan price for one line, "
+                    "data limits or throttling, hotspot allowance, international benefits, "
+                    "streaming perks, autopay discount requirements, and hidden fees."
+                ),
+                30: (
+                    "Good work on AT&T. Now move to T-Mobile.\n"
+                    "Press command+l, type 'google.com', press Enter. "
+                    "Then click the search box, type 'T-Mobile unlimited phone plans', "
+                    "press Enter, and click the most relevant official T-Mobile result. "
+                    "Gather the same info: lowest-cost unlimited plan price for one line, "
+                    "data limits or throttling, hotspot allowance, international benefits, "
+                    "streaming perks, autopay discount requirements, and hidden fees."
+                ),
+                45: (
+                    "You have now researched all three carriers. "
+                    "Write a structured comparison with a section for each carrier "
+                    "(Verizon, AT&T, T-Mobile), followed by a side-by-side summary table "
+                    "with columns: Carrier | Cheapest Unlimited Price | Data Policy | Hotspot | "
+                    "International Benefits | Perks | Autopay Requirement | Extra Fees. "
+                    "Do NOT use any tools — just write the final comparison text now."
+                ),
+            },
+        },
+        "6": {
+            "name": "S3 — Travel Requirements: US Citizen to Japan, Korea & China",
+            "url":  "google.com",
+            "site": "Google",
+            "write_doc": True,
+            "goal": (
+                "Your task: research US passport holder entry requirements for Japan.\n\n"
+                "For Japan, find and note:\n"
+                "- Visa requirement for US citizens (14-day tourist visit)\n"
+                "- Passport validity requirement\n"
+                "- Entry forms or arrival cards required\n"
+                "- Health/vaccination requirements\n"
+                "- Customs rules (cash limits, prohibited items)\n"
+                "- Current travel advisories\n\n"
+                "Click the most relevant official result and read carefully. "
+                "You will be told when to move to the next country.\n\n"
+                "Do NOT write a final summary yet — you will be asked to do that later."
+            ),
+            "iteration_checkpoints": {
+                15: (
+                    "Good work on Japan. Now move to South Korea.\n"
+                    "Press command+l, type 'google.com', press Enter. "
+                    "Then click the search box, type 'US passport visa requirements South Korea tourism', "
+                    "press Enter, and click the most relevant official result. "
+                    "Gather the same info: visa requirement, passport validity, entry forms, "
+                    "health requirements, customs rules, and travel advisories."
+                ),
+                30: (
+                    "Good work on South Korea. Now move to China.\n"
+                    "Press command+l, type 'google.com', press Enter. "
+                    "Then click the search box, type 'US passport visa requirements China tourism 2026', "
+                    "press Enter, and click the most relevant official result. "
+                    "Gather the same info: visa requirement, passport validity, entry forms, "
+                    "health requirements, customs rules, and travel advisories."
+                ),
+                45: (
+                    "You have now researched all three countries. "
+                    "Write a structured comparison with a section for each country "
+                    "(Japan, South Korea, China), followed by a side-by-side summary table "
+                    "with columns: Country | Visa Required | Passport Validity | Entry Forms | "
+                    "Health Requirements | Cash Limit | Travel Advisory Level. "
+                    "Do NOT use any tools — just write the final comparison text now."
+                ),
+            },
+        },
+        # ── Optional / warm-up tasks ───────────────────────────
+        "7": {
+            "name": "UIST 2026 — Formatting Guidelines",
+            "url":  "uist.acm.org/2026",
+            "site": "the UIST 2026 website",
+            "goal": (
+                "Chrome is showing the UIST 2026 website.\n"
+                "Your task: find and read the submission formatting guidelines, "
+                "then write a concise summary.\n\n"
+                "Steps:\n"
+                "1. Look for a link to 'Call for Papers', 'Author Guide', 'Submissions', "
+                "or 'Formatting Guidelines'. Click it.\n"
+                "2. Scroll down and read the formatting requirements "
+                "(page limits, column format, template, anonymization, etc).\n"
+                "3. Write a concise summary (3-5 bullet points). "
+                "Do NOT use any tools in your final response."
+            ),
+        },
+        "8": {
+            "name": "ACM DL — Agent Legibility Papers",
+            "url":  "dl.acm.org",
+            "site": "the ACM Digital Library",
+            "goal": (
+                "Go to ACM Digital Library (dl.acm.org) and find 3 papers about agent legibility.\n\n"
+                "Steps:\n"
+                "1. Search for 'agent legibility' in the ACM DL search bar.\n"
+                "2. Browse results, click into promising papers, read their abstracts.\n"
+                "3. Write a summary: title, authors, one sentence per paper. "
+                "Do NOT use any tools in your final response."
+            ),
+        },
         "9": {
-            "name": "S2 — Covered California: Insurance Plan Recommendation",
+            "name": "Amazon — Tennis Racket for Kids (Overall Pick)",
+            "url":  "amazon.com",
+            "site": "Amazon",
+            "goal": (
+                "On Amazon, search for 'tennis racket for toddler', find an item with an 'Overall Pick' badge or a sale/discount (e.g. 'Save 10%'), and add it to the cart. "
+                "Ignore sign-in prompts and popups."
+            ),
+        },
+        "10": {
+            "name": "Google Calendar — Send Invite",
+            "url":  "calendar.google.com",
+            "site": "Google Calendar",
+            "goal": (
+                "Your task: create a new Google Calendar event and invite a specific person.\n\n"
+                "Person to invite: sukmin.hci@gmail.com\n"
+                "Message to include in the description: 'Hey! Sending you a calendar invite — let me know if this time works for you.'\n\n"
+                "Steps:\n"
+                "1. Click the '+ Create' button (top-left) to open a new event form.\n"
+                "2. Enter a title such as 'Quick Sync'.\n"
+                "3. Click 'More options' to open the full event editor.\n"
+                "4. In the 'Add guests' field, type 'sukmin.hci@gmail.com' and press Enter to add them.\n"
+                "5. In the Description field, type the message above.\n"
+                "6. Click 'Save'. If a dialog asks whether to send invites, click 'Send'.\n"
+                "Do NOT use any tools in your final response."
+            ),
+        },
+        "11": {
+            "name": "Google Calendar — Multi-Person Meeting",
+            "url":  "calendar.google.com",
+            "site": "Google Calendar",
+            "goal": (
+                "Your task: schedule a 1-hour team meeting and invite two people.\n\n"
+                "Meeting details:\n"
+                "- Title: 'Research Planning Session'\n"
+                "- Date: this coming Friday at 2:00 PM\n"
+                "- Attendees: sukmin.hci@gmail.com and alice.researcher@gmail.com\n"
+                "- Description: 'Hi team! Scheduling our weekly research planning session. "
+                "Please come prepared with progress updates and blockers.'\n\n"
+                "Steps:\n"
+                "1. Click '+ Create', set the title, date (this Friday), 2:00–3:00 PM.\n"
+                "2. Click 'More options'.\n"
+                "3. Add both guests (press Enter after each email).\n"
+                "4. Add the description.\n"
+                "5. Click 'Save', then 'Send' to dispatch invitations.\n"
+                "Do NOT use any tools in your final response."
+            ),
+        },
+        "12": {
+            "name": "Zocdoc — Dermatology Appointment (optional)",
+            "url":  "zocdoc.com",
+            "site": "Zocdoc",
+            "goal": (
+                "Your task: find a dermatology appointment on Zocdoc under these constraints:\n\n"
+                "Requirements:\n"
+                "- Specialty: Dermatology\n"
+                "- Location: San Francisco, CA\n"
+                "- Insurance: Aetna\n"
+                "- Visit type: New patient\n"
+                "- Availability: within the next 2 weeks\n"
+                "- Note to provider: 'Concerned about a mole on my left arm that has changed color.'\n\n"
+                "Steps:\n"
+                "1. Search for dermatologists in San Francisco accepting Aetna.\n"
+                "2. Pick a provider with an available new-patient slot within 2 weeks.\n"
+                "3. Select that slot and fill in the note above.\n"
+                "4. Proceed as far as the booking flow allows without entering real personal info.\n"
+                "Do NOT use any tools in your final response — summarize what you found."
+            ),
+        },
+        "13": {
+            "name": "Covered California — Insurance Plan Recommendation (optional)",
             "url":  "coveredca.com",
             "site": "Covered California",
             "goal": (
@@ -1245,26 +1422,6 @@ def task_loop():
                 "Do NOT use any tools in your final response."
             ),
         },
-        "10": {
-            "name": "S3 — Travel Requirements: US Citizen to Japan",
-            "url":  "travel.state.gov",
-            "site": "the U.S. Department of State travel site",
-            "goal": (
-                "Your task: compile a complete travel requirements checklist for this trip:\n\n"
-                "Scenario: US passport holder, San Francisco → Tokyo, 14-day tourist visit, no layover.\n\n"
-                "Collect all of the following:\n"
-                "1. Passport validity requirement\n"
-                "2. Visa requirement (do US citizens need a visa for 14-day tourism?)\n"
-                "3. Entry forms or arrival cards required\n"
-                "4. Health/vaccination requirements or recommendations\n"
-                "5. Customs rules (cash limits, prohibited items)\n"
-                "6. Current travel advisories or entry restrictions\n\n"
-                "Start at travel.state.gov, then check japan.travel or japan-guide.com "
-                "for local entry details. Compile a clear checklist and flag anything "
-                "that changed in the last 6 months.\n"
-                "Do NOT use any tools in your final response."
-            ),
-        },
     }
 
     print("\n─────────────────────────────────", file=sys.stderr)
@@ -1272,7 +1429,7 @@ def task_loop():
     for k, t in TASKS.items():
         print(f"  {k}. {t['name']}", file=sys.stderr)
     print("─────────────────────────────────", file=sys.stderr)
-    choice = input("  Enter 1–10: ").strip()
+    choice = input("  Enter 1–13: ").strip()
     task = TASKS.get(choice, TASKS["1"])
     print(f"\n  ▶ Running: {task['name']}\n", file=sys.stderr)
 
@@ -1340,14 +1497,21 @@ def task_loop():
         "display_height_px": DISPLAY_H,
     }]
 
-    MAX_ITER = 30
+    MAX_ITER = 60
     consec_shots = 0
     summary_text = ""
+    checkpoints = task.get("iteration_checkpoints", {})
 
     for iteration in range(MAX_ITER):
         with state_lock:
             if not state["running_demo"]:
                 return
+
+        # ── Inject checkpoint instruction at country/topic boundaries ──
+        if iteration in checkpoints:
+            msg = checkpoints[iteration]
+            print(f"[CU] Checkpoint at iter {iteration}: {msg[:60]}…", file=sys.stderr)
+            messages.append({"role": "user", "content": msg})
 
         print(f"[CU] iter {iteration + 1}", file=sys.stderr)
 
@@ -1473,34 +1637,35 @@ def task_loop():
     else:
         print("[CU] Max iterations.", file=sys.stderr)
 
-    # ── Phase 3: Open Google Doc + paste summary ──
+    # ── Phase 3: Open Google Doc + paste summary (S tasks only) ──
     if not summary_text:
         summary_text = f"{task['name']}\n(Agent could not retrieve summary)"
 
-    print("[CU] Phase 3: Pasting summary to Google Doc…", file=sys.stderr)
-    set_progress(4, 4, "Paste to Doc")
+    if task.get("write_doc"):
+        print("[CU] Phase 3: Pasting summary to Google Doc…", file=sys.stderr)
+        set_progress(4, 4, "Paste to Doc")
 
-    activate_chrome()
-    time.sleep(0.2)
-    pyautogui.hotkey("command", "t")       # new tab
-    time.sleep(0.5)
-    pyautogui.keyDown("command")
-    time.sleep(0.05)
-    pyautogui.press("l")
-    time.sleep(0.05)
-    pyautogui.keyUp("command")
-    time.sleep(0.4)
-    human_type_visible("docs.new")
-    time.sleep(0.1)
-    pyautogui.press("return")
-    time.sleep(5.0)                        # wait for Google Doc to load
+        activate_chrome()
+        time.sleep(0.2)
+        pyautogui.hotkey("command", "t")       # new tab
+        time.sleep(0.5)
+        pyautogui.keyDown("command")
+        time.sleep(0.05)
+        pyautogui.press("l")
+        time.sleep(0.05)
+        pyautogui.keyUp("command")
+        time.sleep(0.4)
+        human_type_visible("docs.new")
+        time.sleep(0.1)
+        pyautogui.press("return")
+        time.sleep(5.0)                        # wait for Google Doc to load
 
-    # Click in the doc body and paste the summary
-    pyautogui.click(SCREEN_W // 2, SCREEN_H // 2)
-    time.sleep(0.8)
-    pyperclip.copy(summary_text)
-    pyautogui.hotkey("command", "v")
-    time.sleep(1.0)
+        # Click in the doc body and paste the summary
+        pyautogui.click(SCREEN_W // 2, SCREEN_H // 2)
+        time.sleep(0.8)
+        pyperclip.copy(summary_text)
+        pyautogui.hotkey("command", "v")
+        time.sleep(1.0)
 
     print("[CU] Done!", file=sys.stderr)
     dom_stop_reading()
@@ -1918,7 +2083,7 @@ class OverlayView(NSView):
                                 max_chars=56, above=True, slide=slide)
 
 # ─────────────────────────────────────────────────────────────
-# Timer / Window / ESC
+# Timer / Window
 # ─────────────────────────────────────────────────────────────
 
 class TimerTarget(NSObject):
@@ -1949,22 +2114,6 @@ def build_window():
     window.setCanHide_(False)
     return window
 
-def setup_esc_listener():
-    def on_key(event):
-        try:
-            if event.keyCode() == 53:
-                print("[overlay] ESC – stopping.", file=sys.stderr)
-                dom_stop_reading()
-                with state_lock:
-                    state["running_demo"] = False
-                NSApplication.sharedApplication().terminate_(None)
-        except Exception:
-            pass
-    try:
-        NSEvent.addGlobalMonitorForEventsMatchingMask_handler_(NSEventMaskKeyDown, on_key)
-    except Exception as e:
-        print(f"[esc] {e}", file=sys.stderr)
-
 def main():
     global _recorder, _record_enabled
 
@@ -1983,7 +2132,6 @@ def main():
     app = NSApplication.sharedApplication()
     app.setActivationPolicy_(NSApplicationActivationPolicyAccessory)
     build_window()
-    setup_esc_listener()
     timer_target = TimerTarget.alloc().init()
     NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
         1.0 / FPS, timer_target, "tick:", None, True,

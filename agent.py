@@ -63,9 +63,6 @@ PREVIEW_SEC        = 0.20
 FPS                = 60
 TYPE_CHAR_INTERVAL = 0.055
 
-NSEventMaskKeyDown = 1024
-NSEventMaskKeyUp   = 2048
-ESC_HOLD_SEC       = 1.5   # seconds to hold ESC before quitting
 
 state = {
     "trail":              [],
@@ -75,7 +72,6 @@ state = {
     "preview_start_ts":   None,
     "cursor_pos":         (0, 0),
     "running_demo":       True,
-    "esc_hold_start":     None,   # timestamp when ESC was pressed down
     "screenshot_action":  False,
     "vignette_alpha":     0.0,
     "vignette_target":    0.0,
@@ -517,11 +513,241 @@ def task_loop():
 
     # ── Task selection ────────────────────────────────────────
     TASKS = {
+        # ── Transactional (T1–T3) ──────────────────────────────
         "1": {
+            "name": "T1 — Sephora: Foundation, Mascara & Lip Gloss",
+            "url":  "google.com",
+            "search_name": "Sephora makeup",
+            "site": "Sephora website",
+            "goal": (
+                "Your task: find 3 makeup products on Sephora's website.\n\n"
+                "Start by browsing Foundation. You will be guided to the next item.\n\n"
+                "Preferences (apply to all items):\n"
+                "- Prefer hypoallergenic, fragrance-free, or sensitive-skin formulas\n"
+                "Browse and add your pick to cart. "
+            ),
+            "iteration_checkpoints": {
+                15: (
+                    "Good. Commit to one foundation now — pick the option and add it to cart.\n"
+                    "Then navigate to the Mascara section. Browse mascaras, look for "
+                    "hypoallergenic formulas. Change colors if needed."
+                ),
+                30: (
+                    "Good. Commit to one mascara and add it to cart.\n"
+                    "Then navigate to Lip Gloss with color. Browse the lip gloss section."
+                ),
+                45: (
+                    "Good. Commit to one lip gloss with color and add it to cart.\n"
+                    "You now have all 3 items."
+                ),
+            },
+        },
+        "2": {
+            "name": "T2 — CVS: 3 Vitamins",
+            "url":  "google.com",
+            "search_name": "CVS vitamins supplements",
+            "site": "CVS website",
+            "goal": (
+                "Your task: find 3 vitamins or supplements on CVS's website and add each to cart.\n\n"
+                "Start with Multivitamins. You will be guided to the next category.\n\n"
+                "Preferences (apply to all items):\n"
+                "- Prefer low-sugar or sugar-free options (check the label)\n"
+                "- Prefer highly-rated products (4+ stars)\n"
+                "- Prefer CVS store brand when quality is comparable\n\n"
+                "Browse carefully, read labels and reviews, then add your pick to cart. "
+                "Do NOT write your final response yet — you will be told when to do that."
+            ),
+            "iteration_checkpoints": {
+                15: (
+                    "Good. Commit to one multivitamin — the lowest-sugar, highest-rated option — "
+                    "and add it to cart.\n"
+                    "Then navigate to find Vitamin D products. "
+                    "Search 'Vitamin D' or browse the vitamins section. "
+                    "Read labels carefully before deciding."
+                ),
+                30: (
+                    "Good. Commit to one Vitamin D option and add it to cart.\n"
+                    "Then navigate to find Vitamin C products. "
+                    "Search 'Vitamin C' and browse, checking for low-sugar and high ratings."
+                ),
+                45: (
+                    "Good. Commit to one Vitamin C option and add it to cart.\n"
+                    "You now have all 3 items. Do NOT use any tools — write your final list: "
+                    "product name, brand, and price for each item."
+                ),
+            },
+        },
+        "3": {
+            "name": "T3 — Instacart: Gluten-Free Grocery Order",
+            "url":  "google.com",
+            "search_name": "Instacart grocery delivery",
+            "site": "Instacart",
+            "goal": (
+                "Your task: add grocery items to an Instacart cart for a pasta dinner. "
+                "The shopper has a gluten allergy — ALL pasta must be labeled gluten-free.\n\n"
+                "Start by searching for gluten-free spaghetti. You will be guided to each item.\n\n"
+                "Constraints:\n"
+                "- Pasta MUST be gluten-free — do not substitute a regular product.\n"
+                "- Prefer organic for tomatoes.\n"
+                "- Do not exceed 2 cans of tomatoes.\n\n"
+                "Do NOT write your final response yet — you will be told when to do that."
+            ),
+            "iteration_checkpoints": {
+                8: (
+                    "Good. Choose a gluten-free spaghetti and add it to cart. "
+                    "Then search for 'diced tomatoes' — find an organic 14.5 oz option (2 cans)."
+                ),
+                16: (
+                    "Good. Add the organic diced tomatoes (2 cans) to cart. "
+                    "Then search for 'fresh basil' and add a bunch."
+                ),
+                24: (
+                    "Good. Add the fresh basil to cart. "
+                    "Then search for 'parmesan cheese shredded' and add a 6 oz option."
+                ),
+                32: (
+                    "Good. Add the parmesan to cart. "
+                    "Then search for 'extra virgin olive oil' and add a 16 oz bottle."
+                ),
+                40: (
+                    "Good. Add the olive oil to cart. "
+                    "Then search for 'garlic' and add one head of garlic."
+                ),
+                45: (
+                    "Good. Add the garlic to cart. All 6 items should now be in the cart. "
+                    "Do NOT use any tools — write your final confirmation of what was added."
+                ),
+            },
+        },
+        # ── Information Synthesis (S1–S3) ──────────────────────
+        "4": {
+            "name": "S1 — NY Grad School Financial Aid Comparison (NYU / Columbia / Cornell Tech)",
+            "url":  "google.com",
+            "search_name": "NYU graduate financial aid",
+            "site": "Google",
+            "write_doc": True,
+            "goal": (
+                "Your task: compare graduate school financial aid across three New York universities "
+                "— NYU, Columbia University, and Cornell Tech — and summarize the findings.\n\n"
+                "For each school, find and record:\n"
+                "  - Types of aid available (fellowships, assistantships, scholarships, loans)\n"
+                "  - Typical funding amounts or stipends for PhD vs Master's students\n"
+                "  - Whether Master's students are commonly funded or self-funded\n"
+                "  - Any named fellowships or competitive awards\n"
+                "  - Application deadlines or requirements to be considered for aid\n\n"
+                "Steps:\n"
+                "1. Click the Google search box on screen, type 'NYU graduate financial aid', "
+                "press Enter, then click the most relevant official NYU result and read it.\n"
+                "2. Go back to google.com, click the search box, type 'Columbia University graduate "
+                "financial aid', press Enter, click the official Columbia result and read it.\n"
+                "3. Go back to google.com, click the search box, type 'Cornell Tech graduate "
+                "financial aid', press Enter, click the official Cornell Tech result and read it.\n"
+                "4. Write a structured comparison with a section for each school, followed by a "
+                "summary table comparing the three side by side.\n"
+                "Do NOT use any tools in your final response — just write the comparison text."
+            ),
+        },
+        "5": {
+            "name": "S2 — Mobile Plan Comparison (Verizon / AT&T / T-Mobile)",
+            "url":  "google.com",
+            "search_name": "Verizon unlimited phone plans",
+            "site": "Google",
+            "write_doc": True,
+            "goal": (
+                "Your task: research unlimited mobile phone plans from Verizon.\n\n"
+                "For Verizon, find and note:\n"
+                "- Lowest-cost unlimited plan price for one line\n"
+                "- Data limits or throttling policy\n"
+                "- Hotspot allowance\n"
+                "- International roaming or texting benefits\n"
+                "- Streaming perks or included subscriptions\n"
+                "- Autopay discount requirements\n"
+                "- Any activation fees or hidden monthly fees\n\n"
+                "Click the most relevant official result and read carefully. "
+                "You will be told when to move to the next carrier.\n\n"
+                "Do NOT write a final summary yet — you will be asked to do that later."
+            ),
+            "iteration_checkpoints": {
+                15: (
+                    "Good work on Verizon. Now move to AT&T.\n"
+                    "Press command+l, type 'google.com', press Enter. "
+                    "Then click the search box, type 'AT&T unlimited phone plans', "
+                    "press Enter, and click the most relevant official AT&T result. "
+                    "Gather the same info: lowest-cost unlimited plan price for one line, "
+                    "data limits or throttling, hotspot allowance, international benefits, "
+                    "streaming perks, autopay discount requirements, and hidden fees."
+                ),
+                30: (
+                    "Good work on AT&T. Now move to T-Mobile.\n"
+                    "Press command+l, type 'google.com', press Enter. "
+                    "Then click the search box, type 'T-Mobile unlimited phone plans', "
+                    "press Enter, and click the most relevant official T-Mobile result. "
+                    "Gather the same info: lowest-cost unlimited plan price for one line, "
+                    "data limits or throttling, hotspot allowance, international benefits, "
+                    "streaming perks, autopay discount requirements, and hidden fees."
+                ),
+                45: (
+                    "You have now researched all three carriers. "
+                    "Write a structured comparison with a section for each carrier "
+                    "(Verizon, AT&T, T-Mobile), followed by a side-by-side summary table "
+                    "with columns: Carrier | Cheapest Unlimited Price | Data Policy | Hotspot | "
+                    "International Benefits | Perks | Autopay Requirement | Extra Fees. "
+                    "Do NOT use any tools — just write the final comparison text now."
+                ),
+            },
+        },
+        "6": {
+            "name": "S3 — Travel Requirements: US Citizen to Japan, Korea & China",
+            "url":  "google.com",
+            "search_name": "US passport visa requirements Japan tourism",
+            "site": "Google",
+            "write_doc": True,
+            "goal": (
+                "Your task: research US passport holder entry requirements for Japan.\n\n"
+                "For Japan, find and note:\n"
+                "- Visa requirement for US citizens (14-day tourist visit)\n"
+                "- Passport validity requirement\n"
+                "- Entry forms or arrival cards required\n"
+                "- Health/vaccination requirements\n"
+                "- Customs rules (cash limits, prohibited items)\n"
+                "- Current travel advisories\n\n"
+                "Click the most relevant official result and read carefully. "
+                "You will be told when to move to the next country.\n\n"
+                "Do NOT write a final summary yet — you will be asked to do that later."
+            ),
+            "iteration_checkpoints": {
+                15: (
+                    "Good work on Japan. Now move to South Korea.\n"
+                    "Press command+l, type 'google.com', press Enter. "
+                    "Then click the search box, type 'US passport visa requirements South Korea tourism', "
+                    "press Enter, and click the most relevant official result. "
+                    "Gather the same info: visa requirement, passport validity, entry forms, "
+                    "health requirements, customs rules, and travel advisories."
+                ),
+                30: (
+                    "Good work on South Korea. Now move to China.\n"
+                    "Press command+l, type 'google.com', press Enter. "
+                    "Then click the search box, type 'US passport visa requirements China tourism 2026', "
+                    "press Enter, and click the most relevant official result. "
+                    "Gather the same info: visa requirement, passport validity, entry forms, "
+                    "health requirements, customs rules, and travel advisories."
+                ),
+                45: (
+                    "You have now researched all three countries. "
+                    "Write a structured comparison with a section for each country "
+                    "(Japan, South Korea, China), followed by a side-by-side summary table "
+                    "with columns: Country | Visa Required | Passport Validity | Entry Forms | "
+                    "Health Requirements | Cash Limit | Travel Advisory Level. "
+                    "Do NOT use any tools — just write the final comparison text now."
+                ),
+            },
+        },
+        # ── Optional / warm-up tasks ───────────────────────────
+        "7": {
             "name": "UIST 2026 — Formatting Guidelines",
             "url":  "uist.acm.org/2026",
             "search_name": "UIST 2026 conference",
-            "site": "Google search results",
+            "site": "the UIST 2026 website",
             "goal": (
                 "Chrome is showing the UIST 2026 website.\n"
                 "Your task: find and read the submission formatting guidelines, "
@@ -535,11 +761,11 @@ def task_loop():
                 "Do NOT use any tools in your final response."
             ),
         },
-        "2": {
+        "8": {
             "name": "ACM DL — Agent Legibility Papers",
             "url":  "dl.acm.org",
             "search_name": "ACM Digital Library",
-            "site": "Google search results",
+            "site": "the ACM Digital Library",
             "goal": (
                 "Go to ACM Digital Library (dl.acm.org) and find 3 papers about agent legibility.\n\n"
                 "Steps:\n"
@@ -549,21 +775,21 @@ def task_loop():
                 "Do NOT use any tools in your final response."
             ),
         },
-        "3": {
+        "9": {
             "name": "Amazon — Tennis Racket for Kids (Overall Pick)",
             "url":  "amazon.com",
             "search_name": "Amazon",
-            "site": "Google search results",
+            "site": "Amazon",
             "goal": (
                 "On Amazon, search for 'tennis racket for toddler', find an item with an 'Overall Pick' badge or a sale/discount (e.g. 'Save 10%'), and add it to the cart. "
                 "Ignore sign-in prompts and popups."
             ),
         },
-        "4": {
+        "10": {
             "name": "Google Calendar — Send Invite",
             "url":  "calendar.google.com",
             "search_name": "Google Calendar",
-            "site": "Google search results",
+            "site": "Google Calendar",
             "goal": (
                 "Your task: create a new Google Calendar event and invite a specific person.\n\n"
                 "Person to invite: sukmin.hci@gmail.com\n"
@@ -578,12 +804,11 @@ def task_loop():
                 "Do NOT use any tools in your final response."
             ),
         },
-        # ── Transactional ──────────────────────────────────────
-        "5": {
-            "name": "T1 — Google Calendar: Multi-Person Meeting",
+        "11": {
+            "name": "Google Calendar — Multi-Person Meeting",
             "url":  "calendar.google.com",
             "search_name": "Google Calendar",
-            "site": "Google search results",
+            "site": "Google Calendar",
             "goal": (
                 "Your task: schedule a 1-hour team meeting and invite two people.\n\n"
                 "Meeting details:\n"
@@ -601,34 +826,11 @@ def task_loop():
                 "Do NOT use any tools in your final response."
             ),
         },
-        "6": {
-            "name": "T2 — Instacart: Gluten-Free Grocery Order",
-            "url":  "instacart.com",
-            "search_name": "Instacart grocery delivery",
-            "site": "Google search results",
-            "goal": (
-                "Your task: add grocery items to an Instacart cart for a pasta dinner. "
-                "The shopper has a gluten allergy — ALL pasta must be labeled gluten-free.\n\n"
-                "Shopping list:\n"
-                "- Gluten-free spaghetti (1 lb)\n"
-                "- Organic diced tomatoes (2 cans, 14.5 oz each)\n"
-                "- Fresh basil (1 bunch)\n"
-                "- Parmesan cheese, shredded (6 oz)\n"
-                "- Extra-virgin olive oil (16 oz)\n"
-                "- Garlic (1 head)\n\n"
-                "Constraints:\n"
-                "- Pasta MUST be gluten-free — do not substitute a regular product.\n"
-                "- Prefer organic for tomatoes.\n"
-                "- Do not exceed 2 cans of tomatoes.\n\n"
-                "Search for each item, verify it meets the constraints, and add it to cart. "
-                "Do NOT use any tools in your final response — confirm what was added."
-            ),
-        },
-        "7": {
-            "name": "T3 — Zocdoc: Dermatology Appointment",
+        "12": {
+            "name": "Zocdoc — Dermatology Appointment (optional)",
             "url":  "zocdoc.com",
             "search_name": "Zocdoc find a doctor",
-            "site": "Google search results",
+            "site": "Zocdoc",
             "goal": (
                 "Your task: find a dermatology appointment on Zocdoc under these constraints:\n\n"
                 "Requirements:\n"
@@ -646,51 +848,11 @@ def task_loop():
                 "Do NOT use any tools in your final response — summarize what you found."
             ),
         },
-        # ── Information Synthesis ──────────────────────────────
-        "8": {
-            "name": "S1 — NY Grad School Financial Aid Comparison (NYU / Columbia / Cornell Tech)",
-            "url":  "google.com",
-            "search_name": "NYU graduate financial aid",
-            "site": "Google search results",
-            "goal": (
-                "Your task: research graduate school financial aid at NYU.\n\n"
-                "Find and note: types of aid available, typical PhD stipend amounts, "
-                "whether Master's students are funded or self-funded, any named fellowships "
-                "or competitive awards, and requirements to be considered for aid.\n\n"
-                "Click the most relevant search result, read it carefully. "
-                "You will be told when to move to the next school.\n\n"
-                "Do NOT write a final summary yet — you will be asked to do that later."
-            ),
-            "iteration_checkpoints": {
-                18: (
-                    "Good work on NYU. Now move to Columbia University.\n"
-                    "Press command+l, type 'google.com', press Enter. "
-                    "Then click the search box, type 'Columbia University graduate financial aid', "
-                    "press Enter, and click the most relevant official Columbia result. "
-                    "Gather the same info: aid types, PhD stipend, Master's funding, "
-                    "named fellowships, and application requirements."
-                ),
-                36: (
-                    "Good work on Columbia. Now move to Cornell Tech.\n"
-                    "Press command+l, type 'google.com', press Enter. "
-                    "Then click the search box, type 'Cornell Tech graduate financial aid', "
-                    "press Enter, and click the most relevant official Cornell Tech result. "
-                    "Gather the same info: aid types, PhD stipend, Master's funding, "
-                    "named fellowships, and application requirements."
-                ),
-                52: (
-                    "You have now researched all three schools. "
-                    "Write a structured comparison with a section for each school "
-                    "(NYU, Columbia, Cornell Tech), followed by a side-by-side summary table. "
-                    "Do NOT use any tools — just write the final comparison text now."
-                ),
-            },
-        },
-        "9": {
-            "name": "S2 — Covered California: Insurance Plan Recommendation",
+        "13": {
+            "name": "Covered California — Insurance Plan Recommendation (optional)",
             "url":  "coveredca.com",
             "search_name": "Covered California health insurance",
-            "site": "Google search results",
+            "site": "Covered California",
             "goal": (
                 "Your task: recommend the best health insurance plan for this user on Covered California:\n\n"
                 "Profile:\n"
@@ -708,27 +870,6 @@ def task_loop():
                 "Do NOT use any tools in your final response."
             ),
         },
-        "10": {
-            "name": "S3 — Travel Requirements: US Citizen to Japan",
-            "url":  "travel.state.gov",
-            "search_name": "US passport travel requirements Japan",
-            "site": "Google search results",
-            "goal": (
-                "Your task: compile a complete travel requirements checklist for this trip:\n\n"
-                "Scenario: US passport holder, San Francisco → Tokyo, 14-day tourist visit, no layover.\n\n"
-                "Collect all of the following:\n"
-                "1. Passport validity requirement\n"
-                "2. Visa requirement (do US citizens need a visa for 14-day tourism?)\n"
-                "3. Entry forms or arrival cards required\n"
-                "4. Health/vaccination requirements or recommendations\n"
-                "5. Customs rules (cash limits, prohibited items)\n"
-                "6. Current travel advisories or entry restrictions\n\n"
-                "Start at travel.state.gov, then check japan.travel or japan-guide.com "
-                "for local entry details. Compile a clear checklist and flag anything "
-                "that changed in the last 6 months.\n"
-                "Do NOT use any tools in your final response."
-            ),
-        },
     }
 
     print("\n─────────────────────────────────", file=sys.stderr)
@@ -736,7 +877,7 @@ def task_loop():
     for k, t in TASKS.items():
         print(f"  {k}. {t['name']}", file=sys.stderr)
     print("─────────────────────────────────", file=sys.stderr)
-    choice = input("  Enter 1–10: ").strip()
+    choice = input("  Enter 1–13: ").strip()
     task = TASKS.get(choice, TASKS["1"])
     print(f"\n  ▶ Running: {task['name']}\n", file=sys.stderr)
 
@@ -889,33 +1030,34 @@ def task_loop():
     else:
         print("[CU] Max iterations.", file=sys.stderr)
 
-    # ── Phase 3: Open Google Doc + paste summary ──
+    # ── Phase 3: Open Google Doc + paste summary (S tasks only) ──
     if not summary_text:
         summary_text = f"{task['name']}\n(Agent could not retrieve summary)"
 
-    print("[CU] Phase 3: Pasting summary to Google Doc…", file=sys.stderr)
+    if task.get("write_doc"):
+        print("[CU] Phase 3: Pasting summary to Google Doc…", file=sys.stderr)
 
-    activate_chrome()
-    time.sleep(0.2)
-    pyautogui.hotkey("command", "t")       # new tab
-    time.sleep(0.5)
-    pyautogui.keyDown("command")
-    time.sleep(0.05)
-    pyautogui.press("l")
-    time.sleep(0.05)
-    pyautogui.keyUp("command")
-    time.sleep(0.4)
-    human_type_visible("docs.new")
-    time.sleep(0.1)
-    pyautogui.press("return")
-    time.sleep(5.0)                        # wait for Google Doc to load
+        activate_chrome()
+        time.sleep(0.2)
+        pyautogui.hotkey("command", "t")       # new tab
+        time.sleep(0.5)
+        pyautogui.keyDown("command")
+        time.sleep(0.05)
+        pyautogui.press("l")
+        time.sleep(0.05)
+        pyautogui.keyUp("command")
+        time.sleep(0.4)
+        human_type_visible("docs.new")
+        time.sleep(0.1)
+        pyautogui.press("return")
+        time.sleep(5.0)                        # wait for Google Doc to load
 
-    # Click in the doc body and paste the summary
-    pyautogui.click(SCREEN_W // 2, SCREEN_H // 2)
-    time.sleep(0.8)
-    pyperclip.copy(summary_text)
-    pyautogui.hotkey("command", "v")
-    time.sleep(1.0)
+        # Click in the doc body and paste the summary
+        pyautogui.click(SCREEN_W // 2, SCREEN_H // 2)
+        time.sleep(0.8)
+        pyperclip.copy(summary_text)
+        pyautogui.hotkey("command", "v")
+        time.sleep(1.0)
 
     print("[CU] Done!", file=sys.stderr)
     play_sound("Glass.aiff")
@@ -935,60 +1077,8 @@ class OverlayView(NSView):
         try:
             NSColor.clearColor().set()
             NSBezierPath.fillRect_(rect)
-            self.draw_esc_hold_indicator()
         except Exception as e:
             print(f"[draw error] {e}", file=sys.stderr)
-
-    # ── ESC hold indicator ─────────────────────────────────────
-    @objc.python_method
-    def draw_esc_hold_indicator(self):
-        with state_lock:
-            t0 = state.get("esc_hold_start")
-        if not t0:
-            return
-        held = min(now() - t0, ESC_HOLD_SEC)
-        prog = held / ESC_HOLD_SEC          # 0.0 → 1.0
-
-        cx = SCREEN_W // 2
-        cy = SCREEN_H // 2
-        ccx, ccy = to_cocoa(cx, cy)
-        R = 36
-
-        # Dark backdrop
-        NSColor.colorWithCalibratedRed_green_blue_alpha_(0.05, 0.05, 0.10, 0.75).set()
-        NSBezierPath.bezierPathWithOvalInRect_(
-            NSMakeRect(ccx - R - 6, ccy - R - 6, (R + 6) * 2, (R + 6) * 2)
-        ).fill()
-
-        # Grey track ring
-        track = NSBezierPath.bezierPathWithOvalInRect_(
-            NSMakeRect(ccx - R, ccy - R, R * 2, R * 2)
-        )
-        track.setLineWidth_(4)
-        NSColor.colorWithCalibratedWhite_alpha_(1.0, 0.12).set()
-        track.stroke()
-
-        # Filling arc (red, clockwise from top)
-        if prog > 0.01:
-            arc = NSBezierPath.bezierPath()
-            import math as _math
-            start_angle = 90.0
-            end_angle   = 90.0 - prog * 360.0
-            arc.appendBezierPathWithArcWithCenter_radius_startAngle_endAngle_clockwise_(
-                (ccx, ccy), R, start_angle, end_angle, True
-            )
-            arc.setLineWidth_(4)
-            NSColor.colorWithCalibratedRed_green_blue_alpha_(0.95, 0.25, 0.25, 0.90).set()
-            arc.stroke()
-
-        # Label
-        label = "hold to quit"
-        attrs = NSMutableDictionary.dictionary()
-        attrs[NSFontAttributeName] = NSFont.monospacedSystemFontOfSize_weight_(10, 0.0)
-        attrs[NSForegroundColorAttributeName] = NSColor.colorWithCalibratedWhite_alpha_(0.9, 0.75)
-        astr = NSAttributedString.alloc().initWithString_attributes_(label, attrs)
-        sz = astr.size()
-        astr.drawAtPoint_((ccx - sz[0] / 2, ccy - sz[1] / 2))
 
     # ── Colors ─────────────────────────────────────────────────
     @objc.python_method
@@ -1214,7 +1304,7 @@ class OverlayView(NSView):
         self.stroke_circle(tx, ty, 14, 1.5, self.cyan, target_a * 0.50)
 
 # ─────────────────────────────────────────────────────────────
-# Timer / Window / ESC
+# Timer / Window
 # ─────────────────────────────────────────────────────────────
 
 class TimerTarget(NSObject):
@@ -1245,39 +1335,6 @@ def build_window():
     window.setCanHide_(False)
     return window
 
-def setup_esc_listener():
-    def on_key_down(event):
-        try:
-            if event.keyCode() == 53:
-                with state_lock:
-                    # ignore key-repeat events — only capture the first press
-                    if state["esc_hold_start"] is None:
-                        state["esc_hold_start"] = now()
-        except Exception:
-            pass
-
-    def on_key_up(event):
-        try:
-            if event.keyCode() == 53:
-                with state_lock:
-                    t0 = state.get("esc_hold_start")
-                    state["esc_hold_start"] = None
-                if t0 and (now() - t0) >= ESC_HOLD_SEC:
-                    print("[overlay] ESC long-press – stopping.", file=sys.stderr)
-                    with state_lock:
-                        state["running_demo"] = False
-                    _shutdown()
-                else:
-                    print("[overlay] ESC tapped (ignored — hold to quit).", file=sys.stderr)
-        except Exception:
-            pass
-
-    try:
-        NSEvent.addGlobalMonitorForEventsMatchingMask_handler_(NSEventMaskKeyDown, on_key_down)
-        NSEvent.addGlobalMonitorForEventsMatchingMask_handler_(NSEventMaskKeyUp,   on_key_up)
-    except Exception as e:
-        print(f"[esc] {e}", file=sys.stderr)
-
 def main():
     global _recorder, _record_enabled
 
@@ -1296,7 +1353,6 @@ def main():
     app = NSApplication.sharedApplication()
     app.setActivationPolicy_(NSApplicationActivationPolicyAccessory)
     build_window()
-    setup_esc_listener()
     timer_target = TimerTarget.alloc().init()
     NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
         1.0 / FPS, timer_target, "tick:", None, True,
