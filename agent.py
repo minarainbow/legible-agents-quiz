@@ -1,6 +1,3 @@
-from __future__ import annotations
-
-import argparse
 import math
 import time
 import random
@@ -11,8 +8,10 @@ import base64
 import os
 import io
 import re
+import concurrent.futures
 
 import mss
+import pyperclip
 from PIL import Image
 
 import objc
@@ -28,7 +27,6 @@ from AppKit import (
     NSBezierPath,
     NSBorderlessWindowMask,
     NSColor,
-    NSEvent,
     NSFloatingWindowLevel,
     NSFont,
     NSFontAttributeName,
@@ -46,15 +44,6 @@ from WebKit import WKWebView, WKWebViewConfiguration
 load_dotenv()
 
 # ─────────────────────────────────────────────────────────────
-# Recording (optional — enabled with --record flag)
-# ─────────────────────────────────────────────────────────────
-
-from workflow_recorder import WorkflowRecorder  # noqa: E402
-
-_recorder: WorkflowRecorder | None = None
-_record_enabled: bool = False
-
-# ─────────────────────────────────────────────────────────────
 # Config
 # ─────────────────────────────────────────────────────────────
 
@@ -63,6 +52,7 @@ PREVIEW_SEC        = 0.20
 FPS                = 60
 TYPE_CHAR_INTERVAL = 0.055
 
+NSEventMaskKeyDown = 1024
 
 state = {
     "trail":              [],
@@ -292,7 +282,7 @@ def screenshot_base64():
             time.sleep(0.05)
             raw = sct.grab(sct.monitors[1])
         img = Image.frombytes("RGB", raw.size, raw.bgra, "raw", "BGRX")
-        img = img.resize((DISPLAY_W, DISPLAY_H), Image.Resampling.LANCZOS)
+        img = img.resize((DISPLAY_W, DISPLAY_H), Image.LANCZOS)
         buf = io.BytesIO()
         img.save(buf, format="PNG", optimize=False)
         return base64.b64encode(buf.getvalue()).decode()
@@ -518,8 +508,6 @@ def activate_chrome():
     time.sleep(0.4)
 
 def task_loop():
-    global _recorder
-
     time.sleep(1.5)
     play_sound("Funk.aiff")
 
@@ -527,28 +515,29 @@ def task_loop():
 
     # ── Task selection ────────────────────────────────────────
     TASKS = {
-        # ── Transactional (T1–T3) ──────────────────────────────
         "1": {
             "name": "T1 — Sephora: Foundation, Mascara & Lip Gloss",
             "url":  "google.com",
-            "search_name": "Sephora makeup",
             "site": "Sephora website",
             "goal": (
                 "Your task: find 3 makeup products on Sephora's website.\n\n"
                 "Start by browsing Foundation. You will be guided to the next item.\n\n"
                 "Preferences (apply to all items):\n"
                 "- Prefer hypoallergenic, fragrance-free, or sensitive-skin formulas\n"
+                "- Avoid products with known irritants (fragrances, parabens, harsh dyes)\n\n"
                 "Browse and add your pick to cart. "
+                "Do NOT write your final response yet — you will be told when to do that."
             ),
             "iteration_checkpoints": {
                 15: (
                     "Good. Commit to one foundation now — pick the option and add it to cart.\n"
                     "Then navigate to the Mascara section. Browse mascaras, look for "
-                    "hypoallergenic formulas. Change colors if needed."
+                    "hypoallergenic or sensitive-eye formulas. Change colors if needed."
                 ),
                 30: (
                     "Good. Commit to one mascara and add it to cart.\n"
-                    "Then navigate to Lip Gloss with color. Browse the lip gloss section."
+                    "Then navigate to Lip Gloss with color. Browse the lip gloss section, "
+                    "prefer fragrance-free or gentle formulas with a tinted/colored finish."
                 ),
                 45: (
                     "Good. Commit to one lip gloss with color and add it to cart.\n"
@@ -559,7 +548,6 @@ def task_loop():
         "2": {
             "name": "T2 — CVS: 3 Vitamins",
             "url":  "google.com",
-            "search_name": "CVS vitamins supplements",
             "site": "CVS website",
             "goal": (
                 "Your task: find 3 vitamins or supplements on CVS's website and add each to cart.\n\n"
@@ -594,7 +582,6 @@ def task_loop():
         "3": {
             "name": "T3 — Instacart: Gluten-Free Grocery Order",
             "url":  "google.com",
-            "search_name": "Instacart grocery delivery",
             "site": "Instacart",
             "goal": (
                 "Your task: add grocery items to an Instacart cart for a pasta dinner. "
@@ -607,37 +594,23 @@ def task_loop():
                 "Do NOT write your final response yet — you will be told when to do that."
             ),
             "iteration_checkpoints": {
-                8: (
-                    "Good. Choose a gluten-free spaghetti and add it to cart. "
-                    "Then search for 'diced tomatoes' — find an organic 14.5 oz option (2 cans)."
-                ),
-                16: (
-                    "Good. Add the organic diced tomatoes (2 cans) to cart. "
-                    "Then search for 'fresh basil' and add a bunch."
-                ),
-                24: (
-                    "Good. Add the fresh basil to cart. "
-                    "Then search for 'parmesan cheese shredded' and add a 6 oz option."
-                ),
-                32: (
-                    "Good. Add the parmesan to cart. "
-                    "Then search for 'extra virgin olive oil' and add a 16 oz bottle."
-                ),
-                40: (
-                    "Good. Add the olive oil to cart. "
-                    "Then search for 'garlic' and add one head of garlic."
-                ),
-                45: (
-                    "Good. Add the garlic to cart. All 6 items should now be in the cart. "
-                    "Do NOT use any tools — write your final confirmation of what was added."
-                ),
+                8:  ("Good. Choose a gluten-free spaghetti and add it to cart. "
+                     "Then search for 'diced tomatoes' — find an organic 14.5 oz option (2 cans)."),
+                16: ("Good. Add the organic diced tomatoes (2 cans) to cart. "
+                     "Then search for 'fresh basil' and add a bunch."),
+                24: ("Good. Add the fresh basil to cart. "
+                     "Then search for 'parmesan cheese shredded' and add a 6 oz option."),
+                32: ("Good. Add the parmesan to cart. "
+                     "Then search for 'extra virgin olive oil' and add a 16 oz bottle."),
+                40: ("Good. Add the olive oil to cart. "
+                     "Then search for 'garlic' and add one head of garlic."),
+                45: ("Good. Add the garlic to cart. All 6 items should now be in the cart. "
+                     "Do NOT use any tools — write your final confirmation of what was added."),
             },
         },
-        # ── Information Synthesis (S1–S3) ──────────────────────
         "4": {
-            "name": "S1 — NY Grad School Financial Aid Comparison (NYU / Columbia / Cornell Tech)",
+            "name": "S1 — NY Grad School Financial Aid (NYU / Columbia / Cornell Tech)",
             "url":  "google.com",
-            "search_name": "NYU graduate financial aid",
             "site": "Google",
             "write_doc": True,
             "goal": (
@@ -664,7 +637,6 @@ def task_loop():
         "5": {
             "name": "S2 — Mobile Plan Comparison (Verizon / AT&T / T-Mobile)",
             "url":  "google.com",
-            "search_name": "Verizon unlimited phone plans",
             "site": "Google",
             "write_doc": True,
             "goal": (
@@ -703,9 +675,7 @@ def task_loop():
                 45: (
                     "You have now researched all three carriers. "
                     "Write a structured comparison with a section for each carrier "
-                    "(Verizon, AT&T, T-Mobile), followed by a side-by-side summary table "
-                    "with columns: Carrier | Cheapest Unlimited Price | Data Policy | Hotspot | "
-                    "International Benefits | Perks | Autopay Requirement | Extra Fees. "
+                    "(Verizon, AT&T, T-Mobile), followed by a side-by-side summary table. "
                     "Do NOT use any tools — just write the final comparison text now."
                 ),
             },
@@ -713,7 +683,6 @@ def task_loop():
         "6": {
             "name": "S3 — Travel Requirements: US Citizen to Japan, Korea & China",
             "url":  "google.com",
-            "search_name": "US passport visa requirements Japan tourism",
             "site": "Google",
             "write_doc": True,
             "goal": (
@@ -749,18 +718,14 @@ def task_loop():
                 45: (
                     "You have now researched all three countries. "
                     "Write a structured comparison with a section for each country "
-                    "(Japan, South Korea, China), followed by a side-by-side summary table "
-                    "with columns: Country | Visa Required | Passport Validity | Entry Forms | "
-                    "Health Requirements | Cash Limit | Travel Advisory Level. "
+                    "(Japan, South Korea, China), followed by a side-by-side summary table. "
                     "Do NOT use any tools — just write the final comparison text now."
                 ),
             },
         },
-        # ── Optional / warm-up tasks ───────────────────────────
         "7": {
             "name": "UIST 2026 — Formatting Guidelines",
             "url":  "uist.acm.org/2026",
-            "search_name": "UIST 2026 conference",
             "site": "the UIST 2026 website",
             "goal": (
                 "Chrome is showing the UIST 2026 website.\n"
@@ -778,7 +743,6 @@ def task_loop():
         "8": {
             "name": "ACM DL — Agent Legibility Papers",
             "url":  "dl.acm.org",
-            "search_name": "ACM Digital Library",
             "site": "the ACM Digital Library",
             "goal": (
                 "Go to ACM Digital Library (dl.acm.org) and find 3 papers about agent legibility.\n\n"
@@ -792,7 +756,6 @@ def task_loop():
         "9": {
             "name": "Amazon — Tennis Racket for Kids (Overall Pick)",
             "url":  "amazon.com",
-            "search_name": "Amazon",
             "site": "Amazon",
             "goal": (
                 "On Amazon, search for 'tennis racket for toddler', find an item with an 'Overall Pick' badge or a sale/discount (e.g. 'Save 10%'), and add it to the cart. "
@@ -802,7 +765,6 @@ def task_loop():
         "10": {
             "name": "Google Calendar — Send Invite",
             "url":  "calendar.google.com",
-            "search_name": "Google Calendar",
             "site": "Google Calendar",
             "goal": (
                 "Your task: create a new Google Calendar event and invite a specific person.\n\n"
@@ -821,7 +783,6 @@ def task_loop():
         "11": {
             "name": "Google Calendar — Multi-Person Meeting",
             "url":  "calendar.google.com",
-            "search_name": "Google Calendar",
             "site": "Google Calendar",
             "goal": (
                 "Your task: schedule a 1-hour team meeting and invite two people.\n\n"
@@ -841,9 +802,8 @@ def task_loop():
             ),
         },
         "12": {
-            "name": "Zocdoc — Dermatology Appointment (optional)",
+            "name": "Zocdoc — Dermatology Appointment",
             "url":  "zocdoc.com",
-            "search_name": "Zocdoc find a doctor",
             "site": "Zocdoc",
             "goal": (
                 "Your task: find a dermatology appointment on Zocdoc under these constraints:\n\n"
@@ -863,9 +823,8 @@ def task_loop():
             ),
         },
         "13": {
-            "name": "Covered California — Insurance Plan Recommendation (optional)",
+            "name": "Covered California — Insurance Plan Recommendation",
             "url":  "coveredca.com",
-            "search_name": "Covered California health insurance",
             "site": "Covered California",
             "goal": (
                 "Your task: recommend the best health insurance plan for this user on Covered California:\n\n"
@@ -895,26 +854,21 @@ def task_loop():
     task = TASKS.get(choice, TASKS["1"])
     print(f"\n  ▶ Running: {task['name']}\n", file=sys.stderr)
 
-    if _record_enabled:
-        _recorder = WorkflowRecorder(task_id=choice)
-        _recorder.start(task_name=task["name"], task_goal=task["goal"])
-
     SYSTEM_PROMPT = (
         f"You are a macOS computer-use agent. "
         f"Display: {DISPLAY_W}×{DISPLAY_H}. Origin top-left. "
         f"Chrome is showing {task['site']}.\n"
         "Rules:\n"
-        "- ALWAYS write a short narration sentence (max 12 words) before any tool call. "
-        "Name the exact UI element: "
-        "e.g. \"I'll click the 'Full CFP' tab.\" "
-        "e.g. \"I'll scroll down to find the submission deadline.\" "
-        "Never skip this narration.\n"
-        "- Chrome already has Google open. The search has been typed — "
-        "you are now seeing Google search results. Click the most relevant result "
-        "to navigate to the target site.\n"
-        "- To search again on Google: click the search box at the top, edit the query, press Enter. "
-        "Do NOT use the Chrome address bar to search.\n"
-        "- To navigate to a new URL directly: use command+l, type the URL, press Enter.\n"
+        "- ALWAYS write 1–2 short sentences before every tool call (never skip).\n"
+        "  Sentence 1 (if something changed): one phrase on what you now see or what changed. "
+        "e.g. \"The CFP page loaded.\" or \"The search results appeared.\"\n"
+        "  Sentence 2 (always): exactly what you will do next, naming the UI element. "
+        "e.g. \"I'll click the 'Author Guidelines' link.\" "
+        "e.g. \"I'll scroll down to find the deadline section.\"\n"
+        "  Keep each sentence under 12 words. Never use vague phrases like 'I will proceed' or 'I will continue'.\n"
+        "- To search on Google: click the search box on the page, type your query, press Enter. "
+        "Do NOT use the Chrome address bar to search — use the Google search box on screen.\n"
+        "- To navigate to a new URL: use command+l, type the URL, press Enter.\n"
         "- Use 'command' for macOS shortcuts.\n"
         "- Never take two screenshots in a row.\n"
         "- When scrolling, use delta_y of 5–8."
@@ -923,19 +877,21 @@ def task_loop():
     goal = task["goal"]
     push_chat_message("goal", f"Task: {task['name']}\n\n{goal}")
 
-    # ── Phase 1: Search Google (already open) ────────────────
-    search_name = task.get("search_name", task["url"])
-    print(f"[CU] Phase 1: Searching Google for '{search_name}'…", file=sys.stderr)
+    # ── Phase 1: Pre-navigation ───────────────────────────────
+    print(f"[CU] Phase 1: Navigating to {task['url']}…", file=sys.stderr)
     activate_chrome()
-    time.sleep(0.5)
+    time.sleep(0.3)
 
-    # Google is already open — click the search box and search
-    pyautogui.click(SCREEN_W // 2, SCREEN_H // 2)
-    time.sleep(0.5)
-    human_type_visible(search_name)
-    time.sleep(0.2)
+    pyautogui.keyDown("command")
+    time.sleep(0.05)
+    pyautogui.press("l")
+    time.sleep(0.05)
+    pyautogui.keyUp("command")
+    time.sleep(0.3)
+    human_type_visible(task["url"])
+    time.sleep(0.1)
     pyautogui.press("return")
-    time.sleep(3.0)
+    time.sleep(1.5)
 
     # ── Phase 2: Agent reads page + generates summary ──
     print("[CU] Phase 2: Agent reading guidelines…", file=sys.stderr)
@@ -968,11 +924,11 @@ def task_loop():
             if not state["running_demo"]:
                 return
 
-        # ── Inject checkpoint instruction at school boundaries ──
         if iteration in checkpoints:
             msg = checkpoints[iteration]
             print(f"[CU] Checkpoint at iter {iteration}: {msg[:60]}…", file=sys.stderr)
             messages.append({"role": "user", "content": msg})
+            push_chat_message("goal", f"[Checkpoint] {msg}")
 
         print(f"[CU] iter {iteration + 1}", file=sys.stderr)
 
@@ -992,8 +948,6 @@ def task_loop():
 
         if raw:
             print(f"\n[CLAUDE raw] {raw}", file=sys.stderr)
-            if _recorder is not None:
-                _recorder.log_reasoning(raw)
             push_chat_message("thought", raw)
 
         messages.append({"role": "assistant", "content": response.content})
@@ -1012,8 +966,6 @@ def task_loop():
                 continue
             action = block.input.get("action", "")
             print(f"[ACTION] {action}  {block.input}", file=sys.stderr)
-            if _recorder is not None:
-                _recorder.log_action(action, block.input)
             if action != "screenshot":
                 inp = block.input
                 coord = f" ({inp.get('coordinate', inp.get('x',''))})" if inp.get('coordinate') or inp.get('x') else ""
@@ -1040,18 +992,14 @@ def task_loop():
                 consec_shots = 0
 
             execute_action(action, block.input)
-            time.sleep(random.uniform(0.08, 0.18))
-
-            shot = screenshot_base64()
-            if _recorder is not None:
-                _recorder.log_screenshot_b64(shot)
+            time.sleep(random.uniform(0.04, 0.09))
 
             tool_results.append({
                 "type": "tool_result",
                 "tool_use_id": block.id,
                 "content": [{"type": "image", "source": {
                     "type": "base64", "media_type": "image/png",
-                    "data": shot,
+                    "data": screenshot_base64(),
                 }}],
             })
 
@@ -1061,40 +1009,33 @@ def task_loop():
     else:
         print("[CU] Max iterations.", file=sys.stderr)
 
-    # ── Phase 3: Open Google Doc + paste summary (S tasks only) ──
     if not summary_text:
         summary_text = f"{task['name']}\n(Agent could not retrieve summary)"
 
     if task.get("write_doc"):
-        print("[CU] Phase 3: Pasting summary to Google Doc…", file=sys.stderr)
-
+        print("[CU] Pasting summary to Google Doc…", file=sys.stderr)
         activate_chrome()
         time.sleep(0.2)
-        pyautogui.hotkey("command", "t")       # new tab
+        pyautogui.hotkey("command", "t")
         time.sleep(0.5)
         pyautogui.keyDown("command")
         time.sleep(0.05)
         pyautogui.press("l")
         time.sleep(0.05)
         pyautogui.keyUp("command")
-        time.sleep(0.4)
+        time.sleep(0.3)
         human_type_visible("docs.new")
         time.sleep(0.1)
         pyautogui.press("return")
-        time.sleep(5.0)                        # wait for Google Doc to load
-
-        # Click in the doc body and paste the summary
+        time.sleep(4.0)
         pyautogui.click(SCREEN_W // 2, SCREEN_H // 2)
-        time.sleep(0.8)
+        time.sleep(0.5)
         pyperclip.copy(summary_text)
         pyautogui.hotkey("command", "v")
         time.sleep(1.0)
 
     print("[CU] Done!", file=sys.stderr)
     play_sound("Glass.aiff")
-
-    if _recorder is not None:
-        _recorder.stop(summary=summary_text)
 
 # ─────────────────────────────────────────────────────────────
 # Overlay
@@ -1335,7 +1276,7 @@ class OverlayView(NSView):
         self.stroke_circle(tx, ty, 14, 1.5, self.cyan, target_a * 0.50)
 
 # ─────────────────────────────────────────────────────────────
-# Timer / Window
+# Timer / Window / ESC
 # ─────────────────────────────────────────────────────────────
 
 class TimerTarget(NSObject):
@@ -1446,7 +1387,8 @@ function addMsg(role, text, ts) {
 
 def build_chat_panel():
     global _chat_webview, _chat_window
-    rect = NSMakeRect(SCREEN_W - PANEL_W, 0, PANEL_W, SCREEN_H)
+    MENU_BAR_H = 28
+    rect = NSMakeRect(SCREEN_W - PANEL_W, MENU_BAR_H, PANEL_W, SCREEN_H - MENU_BAR_H)
     win = NSWindow.alloc().initWithContentRect_styleMask_backing_defer_(
         rect, NSBorderlessWindowMask, NSBackingStoreBuffered, False,
     )
@@ -1472,35 +1414,9 @@ def build_chat_panel():
     return win
 
 def setup_esc_listener():
-    def on_key(event):
-        try:
-            if event.keyCode() == 53:
-                print("[overlay] ESC – stopping.", file=sys.stderr)
-                with state_lock:
-                    state["running_demo"] = False
-                NSApplication.sharedApplication().terminate_(None)
-        except Exception:
-            pass
-    try:
-        NSEvent.addGlobalMonitorForEventsMatchingMask_handler_(NSEventMaskKeyDown, on_key)
-    except Exception as e:
-        print(f"[esc] {e}", file=sys.stderr)
+    pass
 
 def main():
-    global _recorder, _record_enabled
-
-    parser = argparse.ArgumentParser(description="Legible agent (agent.py)")
-    parser.add_argument(
-        "--record", action="store_true",
-        help="Enable workflow recording. Task id is taken from the interactive task selector. "
-             "Saves frames, log.json, report.md, and video.mp4 to recordings/<task_id>/",
-    )
-    args, _ = parser.parse_known_args()
-
-    if args.record:
-        _record_enabled = True
-        print("[main] recording enabled — task folder will be set after task selection", file=sys.stderr)
-
     app = NSApplication.sharedApplication()
     app.setActivationPolicy_(NSApplicationActivationPolicyAccessory)
     build_window()
