@@ -1172,6 +1172,10 @@ def task_loop():
             "name": "T1 — Sephora: Foundation, Mascara & Lip Gloss",
             "url":  "google.com",
             "site": "Sephora website",
+            "display_goal": (
+                "Find 3 makeup products on Sephora — Foundation, Mascara, and Lip Gloss.\n"
+                "Prefer hypoallergenic, fragrance-free formulas. Add each to cart."
+            ),
             "goal": (
                 "Your task: find 3 makeup products on Sephora's website.\n\n"
                 "Start by browsing Foundation. You will be guided to the next item.\n\n"
@@ -1202,6 +1206,10 @@ def task_loop():
             "name": "T2 — CVS: 3 Vitamins",
             "url":  "google.com",
             "site": "CVS website",
+            "display_goal": (
+                "Find 3 vitamins on CVS — Multivitamin, Vitamin D, and Vitamin C.\n"
+                "Prefer low-sugar, highly-rated options. Add each to cart."
+            ),
             "goal": (
                 "Your task: find 3 vitamins or supplements on CVS's website and add each to cart.\n\n"
                 "Start with Multivitamins. You will be guided to the next category.\n\n"
@@ -1236,6 +1244,11 @@ def task_loop():
             "name": "T3 — Instacart: Gluten-Free Grocery Order",
             "url":  "google.com",
             "site": "Instacart",
+            "display_goal": (
+                "Order pasta dinner ingredients on Instacart.\n"
+                "Shopper has a gluten allergy — all pasta must be gluten-free.\n"
+                "Items: gluten-free spaghetti, organic diced tomatoes (×2), fresh basil, parmesan, olive oil, garlic."
+            ),
             "goal": (
                 "Your task: add grocery items to an Instacart cart for a pasta dinner. "
                 "The shopper has a gluten allergy — ALL pasta must be labeled gluten-free.\n\n"
@@ -1266,6 +1279,10 @@ def task_loop():
             "url":  "google.com",
             "site": "Google",
             "write_doc": True,
+            "display_goal": (
+                "Compare graduate financial aid at NYU, Columbia, and Cornell Tech.\n"
+                "Find aid types, funding amounts, fellowship names, and application deadlines for each."
+            ),
             "goal": (
                 "Your task: compare graduate school financial aid across three New York universities "
                 "— NYU, Columbia University, and Cornell Tech — and summarize the findings.\n\n"
@@ -1292,6 +1309,10 @@ def task_loop():
             "url":  "google.com",
             "site": "Google",
             "write_doc": True,
+            "display_goal": (
+                "Compare unlimited phone plans from Verizon, AT&T, and T-Mobile.\n"
+                "Find price, data limits, hotspot, international benefits, and perks for each carrier."
+            ),
             "goal": (
                 "Your task: research unlimited mobile phone plans from Verizon.\n\n"
                 "For Verizon, find and note:\n"
@@ -1338,6 +1359,10 @@ def task_loop():
             "url":  "google.com",
             "site": "Google",
             "write_doc": True,
+            "display_goal": (
+                "Research US passport entry requirements for Japan, South Korea, and China.\n"
+                "Find visa rules, passport validity, entry forms, health requirements, and customs rules."
+            ),
             "goal": (
                 "Your task: research US passport holder entry requirements for Japan.\n\n"
                 "For Japan, find and note:\n"
@@ -1380,6 +1405,7 @@ def task_loop():
             "name": "UIST 2026 — Formatting Guidelines",
             "url":  "uist.acm.org/2026",
             "site": "the UIST 2026 website",
+            "display_goal": "Find and summarize the UIST 2026 paper submission formatting guidelines.",
             "goal": (
                 "Chrome is showing the UIST 2026 website.\n"
                 "Your task: find and read the submission formatting guidelines, "
@@ -1397,6 +1423,7 @@ def task_loop():
             "name": "ACM DL — Agent Legibility Papers",
             "url":  "dl.acm.org",
             "site": "the ACM Digital Library",
+            "display_goal": "Find 3 papers about agent legibility on ACM Digital Library and summarize each.",
             "goal": (
                 "Go to ACM Digital Library (dl.acm.org) and find 3 papers about agent legibility.\n\n"
                 "Steps:\n"
@@ -1410,6 +1437,7 @@ def task_loop():
             "name": "Amazon — Tennis Racket for Kids (Overall Pick)",
             "url":  "amazon.com",
             "site": "Amazon",
+            "display_goal": "Search Amazon for a toddler tennis racket with an 'Overall Pick' badge or discount, and add it to cart.",
             "goal": (
                 "On Amazon, search for 'tennis racket for toddler', find an item with an 'Overall Pick' badge or a sale/discount (e.g. 'Save 10%'), and add it to the cart. "
                 "Ignore sign-in prompts and popups."
@@ -1419,6 +1447,10 @@ def task_loop():
             "name": "Google Calendar — Send Invite",
             "url":  "calendar.google.com",
             "site": "Google Calendar",
+            "display_goal": (
+                "Create a Google Calendar event titled 'Quick Sync' and invite sukmin.hci@gmail.com.\n"
+                "Include the message: 'Hey! Sending you a calendar invite — let me know if this time works for you.'"
+            ),
             "goal": (
                 "Your task: create a new Google Calendar event and invite a specific person.\n\n"
                 "Person to invite: sukmin.hci@gmail.com\n"
@@ -1437,6 +1469,10 @@ def task_loop():
             "name": "Google Calendar — Multi-Person Meeting",
             "url":  "calendar.google.com",
             "site": "Google Calendar",
+            "display_goal": (
+                "Schedule a 1-hour 'Research Planning Session' this Friday at 2 PM.\n"
+                "Invite sukmin.hci@gmail.com and alice.researcher@gmail.com."
+            ),
             "goal": (
                 "Your task: schedule a 1-hour team meeting and invite two people.\n\n"
                 "Meeting details:\n"
@@ -1458,6 +1494,10 @@ def task_loop():
             "name": "Zocdoc — Dermatology Appointment",
             "url":  "zocdoc.com",
             "site": "Zocdoc",
+            "display_goal": (
+                "Book a dermatology appointment on Zocdoc in San Francisco, CA.\n"
+                "New patient, Aetna insurance, within 2 weeks. Note: concerned about a changing mole."
+            ),
             "goal": (
                 "Your task: find a dermatology appointment on Zocdoc under these constraints:\n\n"
                 "Requirements:\n"
@@ -1479,6 +1519,10 @@ def task_loop():
             "name": "Covered California — Insurance Plan Recommendation",
             "url":  "coveredca.com",
             "site": "Covered California",
+            "display_goal": (
+                "Find the best Covered California health plan for a 32-year-old in LA (ZIP 90012), $45K income.\n"
+                "Needs weekly therapy, brand-name Lexapro. Max out-of-pocket: $4,000/year."
+            ),
             "goal": (
                 "Your task: recommend the best health insurance plan for this user on Covered California:\n\n"
                 "Profile:\n"
@@ -1532,7 +1576,8 @@ def task_loop():
         state["high_stakes_warning"] = task.get("high_stakes_warning", "")
 
     goal = task["goal"]
-    push_chat_message("goal", f"Task: {task['name']}\n\n{goal}")
+    display_goal = task.get("display_goal", goal)
+    push_chat_message("goal", f"Task: {task['name']}\n\n{display_goal}")
 
     # ── Phase 1: Pre-navigation ───────────────────────────────
     print(f"[CU] Phase 1: Navigating to {task['url']}…", file=sys.stderr)
