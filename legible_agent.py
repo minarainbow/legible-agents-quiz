@@ -11,10 +11,11 @@ import base64
 import os
 import io
 import re
+import concurrent.futures
 
 import mss
-import pyperclip
 import tempfile
+import pyperclip
 from PIL import Image
 
 import objc
@@ -31,7 +32,7 @@ from AppKit import (
     NSBezierPath,
     NSBorderlessWindowMask,
     NSColor,
-    NSEvent,
+
     NSSound,
     NSFloatingWindowLevel,
     NSFont,
@@ -45,6 +46,7 @@ from AppKit import (
     NSWindowCollectionBehaviorFullScreenAuxiliary,
 )
 from Foundation import NSObject, NSMakeRect, NSTimer
+from WebKit import WKWebView, WKWebViewConfiguration
 
 load_dotenv()
 
@@ -149,7 +151,23 @@ state = {
     "reading_done":       False,      # flips True when DOM reading finishes
     "cursor_state":       "default",  # "default" | "reading" | "thinking" | "clicking"
     "last_thought":       "",          # Claude's raw text (for high-stakes fallback)
+    "high_stakes_warning": "",         # task-specific warning template (optional)
+    "chat_history":       [],          # list of {"role": str, "text": str} for panel
 }
+
+# ── Chat panel globals ─────────────────────────────────────────
+_chat_webview = None   # WKWebView instance
+_chat_window  = None   # NSWindow for the panel
+
+def push_chat_message(role: str, text: str):
+    """Append a message to the chat panel. Safe to call before panel is built (no-op)."""
+    if _chat_webview is None:
+        return
+    import time as _time
+    ts = _time.strftime("%H:%M:%S")
+    safe = text.replace("\\", "\\\\").replace("`", "\\`").replace("\n", "\\n")
+    js = f"addMsg(`{role}`, `{safe}`, `{ts}`);"
+    _chat_webview.evaluateJavaScript_completionHandler_(js, None)
 
 state_lock   = threading.Lock()
 overlay_view = None
@@ -320,7 +338,7 @@ def human_move_to(x, y, speed_factor=1.0):
         return
 
     steps = max(14, int(dist / 10))
-    base_time = (0.020 + (dist / 3200) ** 0.6) * random.uniform(0.85, 1.15)
+    base_time = (0.007 + (dist / 6500) ** 0.6) * random.uniform(0.85, 1.15)
     total_time = base_time / max(speed_factor, 0.2)
 
     overshoot = random.uniform(0.0, 0.06) if dist > 60 else 0.0
@@ -554,20 +572,20 @@ def dom_start_reading():
         "}"
         "if(idx>0){"
         "var prev=els[idx-1];"
-        "prev.style.transition='background-color 0.5s ease,box-shadow 0.4s ease,border-left 0.3s ease';"
-        "prev.style.backgroundColor='rgba(255,195,60,0.05)';"
+        "prev.style.transition='background-color 0.8s ease,box-shadow 0.6s ease,border-left 0.5s ease';"
+        "prev.style.backgroundColor='rgba(255,210,60,0.10)';"
         "prev.style.boxShadow='none';"
-        "prev.style.borderLeft='3px solid rgba(255,170,30,0.12)';"
+        "prev.style.borderLeft='3px solid rgba(255,170,30,0.25)';"
         "prev.setAttribute('data-cr-read','1');"
         "}"
         "var cur=els[idx];"
-        "cur.style.transition='background-color 0.25s ease,box-shadow 0.25s ease,border-left 0.15s ease';"
-        "cur.style.backgroundColor='rgba(255,195,60,0.22)';"
-        "cur.style.boxShadow='inset 0 -2px 0 rgba(255,170,30,0.5)';"
-        "cur.style.borderLeft='3px solid rgba(255,170,30,0.65)';"
+        "cur.style.transition='background-color 0.35s ease,box-shadow 0.35s ease,border-left 0.2s ease';"
+        "cur.style.backgroundColor='rgba(255,215,60,0.42)';"
+        "cur.style.boxShadow='inset 0 -3px 0 rgba(255,165,0,0.65)';"
+        "cur.style.borderLeft='4px solid rgba(255,165,0,0.90)';"
         "cur.scrollIntoView({behavior:'smooth',block:'nearest'});"
         "var len=(cur.textContent||'').length;"
-        "var dwell=Math.min(Math.max(300,len*4),1400);"
+        "var dwell=Math.min(Math.max(700,len*7),2800);"
         "window._crIdx=idx+1;"
         "window._crTimer=setTimeout(step,dwell);"
         "}"
@@ -656,7 +674,17 @@ def _get_element_label(sx: int, sy: int) -> str:
         "if(!t)t=(el.innerText||el.textContent||'').trim();"
         "if(!t&&el.parentElement){var p=el.parentElement;"
         "t=(p.getAttribute('aria-label')||p.innerText||p.textContent||'').trim();}"
-        "return t.replace(/\\s+/g,' ').slice(0,50);"
+        "t=t.replace(/\\s+/g,' ').trim();"
+        "var tl=t.toLowerCase();"
+        "if(t.length<35&&(tl.indexOf('add')>=0||tl.indexOf('cart')>=0||tl.indexOf('buy')>=0)){"
+        "  var card=el.parentElement;"
+        "  for(var i=0;i<8&&card;i++){"
+        "    var h=card.querySelector('h1,h2,h3');"
+        "    if(h){var ht=(h.innerText||'').trim();if(ht.length>3&&ht.length<120){t=ht;break;}}"
+        "    card=card.parentElement;"
+        "  }"
+        "}"
+        "return t.replace(/\\s+/g,' ').slice(0,60);"
         "})()"
     )
     try:
@@ -687,22 +715,28 @@ def orbit_mouse(cx: int, cy: int, stop_event: threading.Event, radius: int = 55,
     human_move_to(cx, cy, speed_factor=3.0)
 
 
-def dom_click_preview(sx: int, sy: int, ms=1200, high_stakes=False):
-    """Before clicking: dramatic grow + warm glow + expanding radar ring.
-    high_stakes=True uses red/orange warning colors + double ring."""
-    if high_stakes:
-        el_color  = "rgba(255,70,50"    # red-orange for warning
-        ring_color = "rgba(255,70,50"
-        scale_peak = "1.35"
-        ring_border = "4px"
-        el_anim_dur = "1.4s"
-        ms = max(ms, 2500)
-    else:
-        el_color  = "rgba(255,195,60"   # amber for normal
-        ring_color = "rgba(255,195,60"
-        scale_peak = "1.25"
-        ring_border = "3px"
-        el_anim_dur = "1.1s"
+def dom_click_preview(sx: int, sy: int, high_stakes=False):
+    """Highlight target element with a persistent border overlay until dom_remove_click_preview() is called.
+    high_stakes uses red; normal uses amber. No scaling or expanding rings."""
+    color     = "255,55,45"  if high_stakes else "255,185,30"
+    glow_col  = "255,80,60"  if high_stakes else "255,200,50"
+    border    = "3px"        if high_stakes else "2.5px"
+
+    # Two keyframe animations: pulse (glow in/out) + shake (subtle X jitter)
+    keyframes = (
+        f"@keyframes _cr_hl_pulse{{"
+        f"0%{{box-shadow:0 0 0 3px rgba({color},0.5),0 0 14px 4px rgba({glow_col},0.35);transform:scale(1);}}"
+        f"50%{{box-shadow:0 0 0 7px rgba({color},0.15),0 0 24px 8px rgba({glow_col},0.15);transform:scale(1.018);}}"
+        f"100%{{box-shadow:0 0 0 3px rgba({color},0.5),0 0 14px 4px rgba({glow_col},0.35);transform:scale(1);}}"
+        f"}}"
+        f"@keyframes _cr_hl_shake{{"
+        f"0%,100%{{transform:translateX(0);}}"
+        f"20%{{transform:translateX(-2px);}}"
+        f"40%{{transform:translateX(2px);}}"
+        f"60%{{transform:translateX(-1.5px);}}"
+        f"80%{{transform:translateX(1px);}}"
+        f"}}"
+    )
 
     js = (
         "(function(){"
@@ -710,62 +744,42 @@ def dom_click_preview(sx: int, sy: int, ms=1200, high_stakes=False):
         f"ey={sy}-window.screenY-(window.outerHeight-window.innerHeight);"
         "var el=document.elementFromPoint(ex,ey);"
         "if(!el||el.tagName==='HTML'||el.tagName==='BODY')return;"
-        # Inject / update keyframes
-        "var s=document.getElementById('_cr_attn_style');"
-        "if(!s){s=document.createElement('style');s.id='_cr_attn_style';document.head.appendChild(s);}"
-        f"s.textContent='"
-        "@keyframes _cr_attn{"
-        f"0%  {{transform:scale(1);    filter:brightness(1)   drop-shadow(0 0 0px  {el_color},0));}}"
-        f"15% {{transform:scale({scale_peak}); filter:brightness(1.8) drop-shadow(0 0 24px {el_color},1.0));}}"
-        f"40% {{transform:scale(1.18); filter:brightness(1.5) drop-shadow(0 0 16px {el_color},0.8));}}"
-        f"65% {{transform:scale(1.22); filter:brightness(1.7) drop-shadow(0 0 20px {el_color},0.9));}}"
-        f"100%{{transform:scale(1);    filter:brightness(1)   drop-shadow(0 0 0px  {el_color},0));}}"
+        "var IACT=['A','BUTTON','INPUT','SELECT','TEXTAREA','LABEL'];"
+        "for(var up=el,i=0;i<7&&up&&up.tagName!=='BODY';i++,up=up.parentElement){"
+        "  if(IACT.indexOf(up.tagName)>=0||up.getAttribute('role')==='button'||up.getAttribute('role')==='link'||up.getAttribute('onclick')){el=up;break;}"
         "}"
-        "@keyframes _cr_ring{"
-        "0%  {opacity:1.0;transform:scale(1.0);}"
-        "100%{opacity:0.0;transform:scale(1.7);}"
-        "}"
-        "@keyframes _cr_ring2{"
-        "0%  {opacity:0.8;transform:scale(1.0);}"
-        "100%{opacity:0.0;transform:scale(2.1);}"
-        "}"
-        "';"
-        # Element glow
-        "el.style.transformOrigin='center';"
-        f"el.style.animation='_cr_attn {el_anim_dur} ease-in-out';"
-        f"setTimeout(function(){{el.style.animation='';}},{ms});"
-        # Ring 1
+        "var s=document.getElementById('_cr_hl_style');"
+        "if(!s){s=document.createElement('style');s.id='_cr_hl_style';document.head.appendChild(s);}"
+        f"s.textContent={repr(keyframes)};"
+        "var prev=document.getElementById('_cr_hl_overlay');"
+        "if(prev&&prev.parentNode)prev.parentNode.removeChild(prev);"
         "var rect=el.getBoundingClientRect();"
-        "var ring=document.createElement('div');"
-        "ring.style.cssText='position:fixed;"
-        "left:'+(rect.left-12)+'px;top:'+(rect.top-12)+'px;"
-        "width:'+(rect.width+24)+'px;height:'+(rect.height+24)+'px;"
-        f"border:{ring_border} solid {ring_color},0.95);"
-        "border-radius:10px;pointer-events:none;z-index:2147483647;"
-        "animation:_cr_ring 1.0s ease-out forwards;';"
-        "document.body.appendChild(ring);"
-        f"setTimeout(function(){{if(ring.parentNode)ring.parentNode.removeChild(ring);}},{ms});"
+        "var ov=document.createElement('div');"
+        "ov.id='_cr_hl_overlay';"
+        "ov.style.cssText='position:fixed;"
+        "left:'+(rect.left-5)+'px;top:'+(rect.top-5)+'px;"
+        "width:'+(rect.width+10)+'px;height:'+(rect.height+10)+'px;"
+        f"border:{border} solid rgba({color},0.95);"
+        "border-radius:7px;pointer-events:none;z-index:2147483647;"
+        "animation:_cr_hl_shake 0.35s ease-in-out 1,_cr_hl_pulse 1.0s ease-in-out 0.35s infinite;';"
+        "document.body.appendChild(ov);"
+        "setTimeout(function(){if(ov.parentNode)ov.parentNode.removeChild(ov);},9000);"
+        "})()"
     )
+    _chrome_js(js)
 
-    if high_stakes:
-        # Second ring with delay — double ping for warning
-        js += (
-            "var ring2=document.createElement('div');"
-            "ring2.style.cssText='position:fixed;"
-            "left:'+(rect.left-16)+'px;top:'+(rect.top-16)+'px;"
-            "width:'+(rect.width+32)+'px;height:'+(rect.height+32)+'px;"
-            f"border:3px solid {ring_color},0.7);"
-            "border-radius:12px;pointer-events:none;z-index:2147483646;"
-            "animation:_cr_ring2 1.2s 0.5s ease-out forwards;opacity:0;';"
-            "document.body.appendChild(ring2);"
-            f"setTimeout(function(){{if(ring2.parentNode)ring2.parentNode.removeChild(ring2);}},{ms});"
-            # Red text + underline on the element itself
-            "var _origColor=el.style.color,_origDeco=el.style.textDecoration,_origWeight=el.style.fontWeight;"
-            "el.style.color='#e8002d';el.style.textDecoration='underline';el.style.fontWeight='bold';"
-            f"setTimeout(function(){{el.style.color=_origColor;el.style.textDecoration=_origDeco;el.style.fontWeight=_origWeight;}},{ms});"
-        )
 
-    js += "})()"
+def dom_remove_click_preview():
+    """Fade out and remove the click preview border overlay."""
+    js = (
+        "(function(){"
+        "var ov=document.getElementById('_cr_hl_overlay');"
+        "if(!ov||!ov.parentNode)return;"
+        "ov.style.transition='opacity 0.15s ease';"
+        "ov.style.opacity='0';"
+        "setTimeout(function(){if(ov.parentNode)ov.parentNode.removeChild(ov);},150);"
+        "})()"
+    )
     _chrome_js(js)
 
 
@@ -870,16 +884,63 @@ def speak(text: str):
             for chunk in audio:
                 f.write(chunk)
             tmp = f.name
-        subprocess.run(["afplay", tmp])
+        subprocess.run(["afplay", "-r", "1.15", tmp])
     except Exception as e:
         print(f"[TTS] error: {e}, falling back to say", file=sys.stderr)
-        subprocess.run(["say", "-v", "Samantha", "-r", "210", text])
+        subprocess.run(["say", "-v", "Samantha", "-r", "230", text])
     finally:
         if tmp:
             try: os.unlink(tmp)
             except: pass
         with state_lock:
             state["speech_done_ts"] = now()  # bubble starts fade timer
+
+_tts_executor = concurrent.futures.ThreadPoolExecutor(max_workers=1, thread_name_prefix="tts-prefetch")
+
+def speak_async(text: str):
+    """Show bubble immediately, fire TTS in background — returns at once."""
+    threading.Thread(target=speak, args=(text,), daemon=True).start()
+
+def _tts_fetch(text: str):
+    """Download TTS audio to a temp file in background. Returns path or None."""
+    try:
+        audio = _eleven.text_to_speech.convert(
+            text=text,
+            voice_id="XrExE9yKIg1WjnnlVkGX",
+            model_id="eleven_turbo_v2_5",
+            output_format="mp3_44100_128",
+        )
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
+            for chunk in audio:
+                f.write(chunk)
+            return f.name
+    except Exception as e:
+        print(f"[TTS] prefetch error: {e}", file=sys.stderr)
+        return None
+
+def prefetch_tts(text: str):
+    """Submit TTS download to background thread. Returns a Future[str | None]."""
+    return _tts_executor.submit(_tts_fetch, text)
+
+def play_prefetched(text: str, future: concurrent.futures.Future):
+    """Update bubble, wait for prefetched audio, and play it. Sequential — no overlap."""
+    with state_lock:
+        state["reasoning_text"] = text
+        state["reasoning_end_ts"] = now()
+        state["speech_done_ts"] = None
+        state["reasoning"] = False
+    tmp = future.result()  # blocks only for remaining download time
+    try:
+        if tmp:
+            subprocess.run(["afplay", "-r", "1.15", tmp])
+        else:
+            subprocess.run(["say", "-v", "Samantha", "-r", "230", text])
+    finally:
+        if tmp:
+            try: os.unlink(tmp)
+            except: pass
+        with state_lock:
+            state["speech_done_ts"] = now()
 
 def play_sound(name: str):
     """Non-blocking audio notification using a system sound."""
@@ -890,6 +951,24 @@ _KEY_MAP = {
     "super": "command", "win": "command", "return": "return",
     "enter": "return", "escape": "esc", "delete": "backspace", "del": "backspace",
 }
+
+_SUBMIT_KEYS = {"return", "enter", "escape"}
+
+def _is_trivial_action(action: str, params: dict) -> bool:
+    if action in ("mouse_move", "type"):
+        return True
+    if action == "key":
+        keys = {k.strip().lower() for k in params.get("text", "").split("+")}
+        return not keys.intersection(_SUBMIT_KEYS)
+    return False
+
+def _trivial_confirmation(action: str, params: dict) -> str:
+    if action == "type":
+        short = params.get("text", "")[:40]
+        return f"Typed: {short}"
+    if action == "key":
+        return f"Pressed {params.get('text', '')}."
+    return "Done."
 
 def execute_action(action, params):
     try:
@@ -941,55 +1020,62 @@ def _execute_action_inner(action, params):
                         label = kw  # use keyword as display label
                     break
         print(f"[CLICK] label={label!r} high_stakes={high_stakes}", file=sys.stderr)
-        dom_click_preview(x, y, high_stakes=high_stakes)
         if high_stakes:
+            with state_lock:
+                warning_tpl = state.get("high_stakes_warning", "")
+            warning = warning_tpl.format(label=label) if warning_tpl else f"Heads up — I'm about to click '{label}'. This may be hard to undo!"
+            tts_future = prefetch_tts(warning)
+            dom_click_preview(x, y, high_stakes=True)
             stop_ev = threading.Event()
             orbit_t = threading.Thread(target=orbit_mouse, args=(x, y, stop_ev), kwargs={"min_revolutions": 1.0}, daemon=True)
             orbit_t.start()
-            speak(f"Heads up — I'm about to click '{label}'. This may be hard to undo!")
+            play_prefetched(warning, tts_future)
             stop_ev.set()
             orbit_t.join(timeout=5.0)
             time.sleep(1.5)  # grace period after orbit — user can intervene
-        elif label:
-            stop_ev = threading.Event()
-            orbit_t = threading.Thread(target=orbit_mouse, args=(x, y, stop_ev), daemon=True)
-            orbit_t.start()
-            speak(f"I'll click '{label}'.")
-            stop_ev.set()
-            orbit_t.join(timeout=1.5)
         else:
-            time.sleep(1.0)
+            tts_text = f"I'll click '{label}'." if label else "I'll click here."
+            tts_future = prefetch_tts(tts_text)
+            dom_click_preview(x, y)
+            move_t = threading.Thread(target=human_move_to, args=(x, y), kwargs={"speed_factor": base_speed}, daemon=True)
+            move_t.start()
+            play_prefetched(tts_text, tts_future)
+            move_t.join(timeout=2.0)
+        dom_remove_click_preview()
         click_with_preview(x, y, speed_factor=base_speed)
-        dom_click_ripple(x, y)
 
     elif action == "double_click":
         x, y = sc(params["coordinate"])
         activate_chrome()
         label = _get_element_label(x, y)
         high_stakes = _is_high_stakes(label) if label else False
-        dom_click_preview(x, y, high_stakes=high_stakes)
         if high_stakes:
-            speak(f"I'm about to double-click '{label}'. This may be hard to undo.")
+            tts_text = f"I'm about to double-click '{label}'. This may be hard to undo."
+            tts_future = prefetch_tts(tts_text)
+            dom_click_preview(x, y, high_stakes=True)
+            play_prefetched(tts_text, tts_future)
             time.sleep(3.0)
-        elif label:
-            stop_ev = threading.Event()
-            orbit_t = threading.Thread(target=orbit_mouse, args=(x, y, stop_ev), daemon=True)
-            orbit_t.start()
-            speak(f"I'll double-click '{label}'.")
-            stop_ev.set()
-            orbit_t.join(timeout=1.5)
         else:
-            time.sleep(1.0)
+            tts_text = f"I'll double-click '{label}'." if label else "I'll double-click here."
+            tts_future = prefetch_tts(tts_text)
+            dom_click_preview(x, y)
+            move_t = threading.Thread(target=human_move_to, args=(x, y), kwargs={"speed_factor": base_speed}, daemon=True)
+            move_t.start()
+            play_prefetched(tts_text, tts_future)
+            move_t.join(timeout=2.0)
+        dom_remove_click_preview()
         click_with_preview(x, y, double=True, speed_factor=base_speed)
-        dom_click_ripple(x, y)
+        pass  # ripple removed
 
     elif action == "right_click":
         x, y = sc(params["coordinate"])
         activate_chrome()
         label = _get_element_label(x, y)
-        if label:
-            speak(f"Right-clicking '{label}'.")
+        tts_future = prefetch_tts(f"Right-clicking '{label}'.") if label else None
         dom_click_preview(x, y)
+        if tts_future:
+            play_prefetched(f"Right-clicking '{label}'.", tts_future)
+        dom_remove_click_preview()
         time.sleep(0.55)
         human_move_to(x, y, speed_factor=base_speed)
         pyautogui.rightClick()
@@ -997,10 +1083,11 @@ def _execute_action_inner(action, params):
     elif action == "type":
         text = params["text"]
         short = text[:40] + ("…" if len(text) > 40 else "")
-        speak(f"Typing: {short}")   # keep — shows what's being entered
+        with state_lock:
+            state["reasoning_text"] = f"Typing: {short}"
+            state["speech_done_ts"] = now()
         activate_chrome()
-        tx, ty = mouse_pos()
-        human_type_visible(text, target_pos=(tx, ty))
+        human_type_visible(text)
 
     elif action == "key":
         key_str = params["text"]
@@ -1020,9 +1107,9 @@ def _execute_action_inner(action, params):
 
         last = keys[-1]
         if last in ("return", "enter"):
-            time.sleep(2.5)
+            time.sleep(1.5)
         elif "space" in keys and "command" in keys:
-            time.sleep(0.8)
+            time.sleep(0.6)
         else:
             time.sleep(0.15)
 
@@ -1063,6 +1150,28 @@ def activate_chrome():
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
     )
     time.sleep(0.4)
+
+def _ensure_chrome_english():
+    """Force Chrome UI language to English via defaults write (takes effect on next launch)."""
+    subprocess.run(
+        ["defaults", "write", "com.google.Chrome", "AppleLanguages", "-array", "en-US", "en"],
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+    )
+
+def navigate_to_url(url: str):
+    """Focus Chrome address bar and navigate to url."""
+    _ensure_chrome_english()
+
+    pyautogui.keyDown("command")
+    time.sleep(0.05)
+    pyautogui.press("l")
+    time.sleep(0.05)
+    pyautogui.keyUp("command")
+    time.sleep(0.3)
+    human_type_visible(url)
+    time.sleep(0.1)
+    pyautogui.press("return")
+    time.sleep(1.5)
 
 def task_loop():
     global _recorder
@@ -1442,11 +1551,13 @@ def task_loop():
         f"Display: {DISPLAY_W}×{DISPLAY_H}. Origin top-left. "
         f"Chrome is showing {task['site']}.\n"
         "Rules:\n"
-        "- ALWAYS write a short narration sentence (max 12 words) before any tool call. "
-        "Name the exact UI element: "
-        "e.g. \"I'll click the 'Full CFP' tab.\" "
-        "e.g. \"I'll scroll down to find the submission deadline.\" "
-        "Never skip this narration.\n"
+        "- ALWAYS write 1–2 short sentences before every tool call (never skip).\n"
+        "  Sentence 1 (if something changed): one phrase on what you now see or what changed. "
+        "e.g. \"The CFP page loaded.\" or \"The search results appeared.\"\n"
+        "  Sentence 2 (always): exactly what you will do next, naming the UI element. "
+        "e.g. \"I'll click the 'Author Guidelines' link.\" "
+        "e.g. \"I'll scroll down to find the deadline section.\"\n"
+        "  Keep each sentence under 12 words. Never use vague phrases like 'I will proceed' or 'I will continue'.\n"
         "- To search on Google: click the search box on the page, type your query, press Enter. "
         "Do NOT use the Chrome address bar to search — use the Google search box on screen.\n"
         "- To navigate to a new URL: use command+l, type the URL, press Enter.\n"
@@ -1455,23 +1566,18 @@ def task_loop():
         "- When scrolling, use delta_y of 5–8."
     )
 
+    # Store task-specific overrides in state for use during action execution
+    with state_lock:
+        state["high_stakes_warning"] = task.get("high_stakes_warning", "")
+
     goal = task["goal"]
+    push_chat_message("goal", f"Task: {task['name']}\n\n{goal}")
 
     # ── Phase 1: Pre-navigation ───────────────────────────────
     print(f"[CU] Phase 1: Navigating to {task['url']}…", file=sys.stderr)
     activate_chrome()
     time.sleep(0.3)
-
-    pyautogui.keyDown("command")
-    time.sleep(0.05)
-    pyautogui.press("l")
-    time.sleep(0.05)
-    pyautogui.keyUp("command")
-    time.sleep(0.4)
-    human_type_visible(task["url"])
-    time.sleep(0.1)
-    pyautogui.press("return")
-    time.sleep(3.5)
+    navigate_to_url(task["url"])
 
     set_progress(1, 4, f"Navigate to {task['url']}")
 
@@ -1512,6 +1618,7 @@ def task_loop():
             msg = checkpoints[iteration]
             print(f"[CU] Checkpoint at iter {iteration}: {msg[:60]}…", file=sys.stderr)
             messages.append({"role": "user", "content": msg})
+            push_chat_message("goal", f"[Checkpoint] {msg}")
 
         print(f"[CU] iter {iteration + 1}", file=sys.stderr)
 
@@ -1547,6 +1654,7 @@ def task_loop():
             print(f"\n[CLAUDE raw] {raw}", file=sys.stderr)
             if _recorder is not None:
                 _recorder.log_reasoning(raw)
+            push_chat_message("thought", raw)
 
         # Speak Claude's own reasoning aloud before acting.
         # If Claude didn't write a narration, build one from the first action.
@@ -1571,8 +1679,9 @@ def task_loop():
             print(f"[CLAUDE] fallback narration: {thought!r}", file=sys.stderr)
 
         # For click actions, skip generic thought — per-action speak uses real element label
+        # Non-click narrations fire async so the agent moves immediately after showing the bubble
         if thought and first_action_type not in _CLICK_ACTIONS:
-            speak(thought)
+            speak_async(thought)
         elif thought and first_action_type in _CLICK_ACTIONS:
             # Still update the bubble text with Claude's thought (shown visually)
             # but don't speak it — _execute_action_inner will speak the element label
@@ -1593,6 +1702,8 @@ def task_loop():
             summary_text = raw
             print(f"\n[CLAUDE] === SUMMARY ===\n{summary_text}\n", file=sys.stderr)
             set_progress(3, 4, "Summary ready")
+            if summary_text:
+                push_chat_message("summary", summary_text)
             break
 
         tool_results = []
@@ -1603,6 +1714,20 @@ def task_loop():
             print(f"[ACTION] {action}  {block.input}", file=sys.stderr)
             if _recorder is not None:
                 _recorder.log_action(action, block.input)
+
+            if action not in ("screenshot",):
+                inp = block.input
+                coord = f" ({inp.get('coordinate', inp.get('x',''))})" if inp.get('coordinate') or inp.get('x') else ""
+                _action_label = {
+                    "left_click":   f"left_click{coord}",
+                    "double_click": f"double_click{coord}",
+                    "right_click":  f"right_click{coord}",
+                    "type":         f"type: {str(inp.get('text',''))[:80]}",
+                    "key":          f"key: {inp.get('text','')}",
+                    "scroll":       f"scroll  delta_y={inp.get('delta_y','?')}",
+                    "mouse_move":   f"mouse_move{coord}",
+                }.get(action, f"{action}  {inp}")
+                push_chat_message("action", _action_label)
 
             if action == "screenshot":
                 consec_shots += 1
@@ -1616,19 +1741,24 @@ def task_loop():
                 consec_shots = 0
 
             execute_action(action, block.input)
-            time.sleep(random.uniform(0.08, 0.18))
+            time.sleep(random.uniform(0.04, 0.09))
 
-            shot = screenshot_base64()
-            if _recorder is not None:
-                _recorder.log_screenshot_b64(shot)
-
+            if _is_trivial_action(action, block.input):
+                content = _trivial_confirmation(action, block.input)
+                if _recorder is not None:
+                    _recorder.log_screenshot_b64(screenshot_base64())
+            else:
+                shot = screenshot_base64()
+                if _recorder is not None:
+                    _recorder.log_screenshot_b64(shot)
+                content = [{"type": "image", "source": {
+                    "type": "base64", "media_type": "image/png",
+                    "data": shot,
+                }}]
             tool_results.append({
                 "type": "tool_result",
                 "tool_use_id": block.id,
-                "content": [{"type": "image", "source": {
-                    "type": "base64", "media_type": "image/png",
-                    "data": shot,
-                }}],
+                "content": content,
             })
 
         if not tool_results:
@@ -1642,27 +1772,24 @@ def task_loop():
         summary_text = f"{task['name']}\n(Agent could not retrieve summary)"
 
     if task.get("write_doc"):
-        print("[CU] Phase 3: Pasting summary to Google Doc…", file=sys.stderr)
+        print("[CU] Pasting summary to Google Doc…", file=sys.stderr)
         set_progress(4, 4, "Paste to Doc")
-
         activate_chrome()
         time.sleep(0.2)
-        pyautogui.hotkey("command", "t")       # new tab
+        pyautogui.hotkey("command", "t")
         time.sleep(0.5)
         pyautogui.keyDown("command")
         time.sleep(0.05)
         pyautogui.press("l")
         time.sleep(0.05)
         pyautogui.keyUp("command")
-        time.sleep(0.4)
+        time.sleep(0.3)
         human_type_visible("docs.new")
         time.sleep(0.1)
         pyautogui.press("return")
-        time.sleep(5.0)                        # wait for Google Doc to load
-
-        # Click in the doc body and paste the summary
+        time.sleep(4.0)
         pyautogui.click(SCREEN_W // 2, SCREEN_H // 2)
-        time.sleep(0.8)
+        time.sleep(0.5)
         pyperclip.copy(summary_text)
         pyautogui.hotkey("command", "v")
         time.sleep(1.0)
@@ -1686,6 +1813,9 @@ class OverlayView(NSView):
         try:
             NSColor.clearColor().set()
             NSBezierPath.fillRect_(rect)
+            self.draw_vignette()
+            self.draw_session_trail()
+            self.draw_trail()
             self.draw_progress_bar()
             self.draw_goal_bubble()
             self.draw_reasoning_bubble()
@@ -2046,23 +2176,22 @@ class OverlayView(NSView):
     @objc.python_method
     def draw_reasoning_bubble(self):
         with state_lock:
-            reasoning    = state.get("reasoning", False)
-            text         = state.get("reasoning_text", "")
-            start_ts     = state.get("reasoning_start_ts")
-            end_ts       = state.get("reasoning_end_ts")
-            reading_done = state.get("reading_done", False)
-            cx, cy       = state["cursor_pos"]
+            reasoning      = state.get("reasoning", False)
+            text           = state.get("reasoning_text", "")
+            start_ts       = state.get("reasoning_start_ts")
+            end_ts         = state.get("reasoning_end_ts")
+            reading_done   = state.get("reading_done", False)
+            speech_done_ts = state.get("speech_done_ts")
+            cx, cy         = state["cursor_pos"]
 
         t = now()
-        if reasoning and start_ts:
-            age = t - start_ts
-            alpha = min(age / BUBBLE_FADE_IN, 1.0) * 0.85
-            slide = min(age / BUBBLE_FADE_IN, 1.0)
-            dots = "·" * (int(t * 3) % 4)
-            display = f"thinking{dots}" if reading_done else f"reading{dots}"
-        elif not reasoning and text and end_ts:
-            with state_lock:
-                speech_done_ts = state.get("speech_done_ts")
+
+        # Narration always wins — show it as long as it's alive (even during next reading/thinking)
+        narration_alive = (
+            text and end_ts and
+            (speech_done_ts is None or (t - speech_done_ts) < 3.0 + BUBBLE_FADE_OUT)
+        )
+        if narration_alive:
             if speech_done_ts is None:
                 alpha = 0.85
             else:
@@ -2072,15 +2201,21 @@ class OverlayView(NSView):
                         state["reasoning_text"] = ""
                     return
                 alpha = 0.85 if age < 3.0 else 0.85 * (1.0 - (age - 3.0) / BUBBLE_FADE_OUT)
-            slide = 1.0
-            display = text
-        else:
+            self.draw_speech_bubble(cx, cy, text, self.soft_blue, alpha,
+                                    max_chars=56, above=True, slide=1.0)
             return
-        if not display:
-            return
-        color_fn = self.soft_blue
-        self.draw_speech_bubble(cx, cy, display, color_fn, alpha,
-                                max_chars=56, above=True, slide=slide)
+
+        # Only show reading/thinking if there's no narration to display
+        if reasoning and start_ts:
+            age = t - start_ts
+            if age < 1.5:
+                return
+            alpha = min((age - 1.5) / BUBBLE_FADE_IN, 1.0) * 0.85
+            slide = min((age - 1.5) / BUBBLE_FADE_IN, 1.0)
+            dots = "·" * (int(t * 3) % 4)
+            display = f"thinking{dots}" if reading_done else f"reading{dots}"
+            self.draw_speech_bubble(cx, cy, display, self.soft_blue, alpha,
+                                    max_chars=56, above=True, slide=slide)
 
 # ─────────────────────────────────────────────────────────────
 # Timer / Window
@@ -2092,9 +2227,12 @@ class TimerTarget(NSObject):
         if overlay_view is not None:
             overlay_view.setNeedsDisplay_(True)
 
+PANEL_W = int(SCREEN_W * 0.22)
+OVERLAY_W = SCREEN_W - PANEL_W
+
 def build_window():
     global overlay_view
-    rect   = NSMakeRect(0, 0, SCREEN_W, SCREEN_H)
+    rect   = NSMakeRect(0, 0, OVERLAY_W, SCREEN_H)
     window = NSWindow.alloc().initWithContentRect_styleMask_backing_defer_(
         rect, NSBorderlessWindowMask, NSBackingStoreBuffered, False,
     )
@@ -2107,15 +2245,169 @@ def build_window():
         NSWindowCollectionBehaviorCanJoinAllSpaces
         | NSWindowCollectionBehaviorFullScreenAuxiliary
     )
-    overlay_view = OverlayView.alloc().initWithFrame_(rect)
+    overlay_view = OverlayView.alloc().initWithFrame_(NSMakeRect(0, 0, OVERLAY_W, SCREEN_H))
     overlay_view.setWantsLayer_(True)
     window.setContentView_(overlay_view)
     window.orderFront_(None)
     window.setCanHide_(False)
     return window
 
+_CHAT_HTML = """<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: rgba(10, 12, 18, 0.92);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+  font-size: 13px;
+  color: #e0e4ef;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+#header {
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.35);
+  flex-shrink: 0;
+}
+#messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 0 20px;
+  scroll-behavior: smooth;
+}
+#messages::-webkit-scrollbar { width: 4px; }
+#messages::-webkit-scrollbar-track { background: transparent; }
+#messages::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 2px; }
+.msg {
+  padding: 8px 16px;
+  line-height: 1.55;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.msg + .msg { margin-top: 2px; }
+.icon {
+  font-size: 14px;
+  flex-shrink: 0;
+  margin-top: 1px;
+  opacity: 0.9;
+}
+.bubble {
+  background: rgba(255,255,255,0.05);
+  border-radius: 10px;
+  padding: 7px 11px;
+  max-width: 100%;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+.msg.thought .bubble {
+  background: rgba(115, 160, 255, 0.10);
+  border-left: 2px solid rgba(115, 160, 255, 0.45);
+  color: #c5d3ff;
+}
+.msg.action .bubble {
+  background: rgba(255, 195, 80, 0.08);
+  border-left: 2px solid rgba(255, 195, 80, 0.40);
+  color: #ffe0a0;
+}
+.msg.summary .bubble {
+  background: rgba(80, 210, 140, 0.09);
+  border-left: 2px solid rgba(80, 210, 140, 0.40);
+  color: #b0f0d0;
+}
+.msg.goal .bubble {
+  background: rgba(255,255,255,0.07);
+  border-left: 2px solid rgba(255,255,255,0.25);
+  color: #d8dce8;
+  font-weight: 500;
+}
+.ts {
+  font-size: 10px;
+  color: rgba(255,255,255,0.22);
+  margin-top: 4px;
+}
+</style>
+</head>
+<body>
+<div id="header">Agent Reasoning</div>
+<div id="messages"></div>
+<script>
+function addMsg(role, text, ts) {
+  var icons = {thought:'💭', action:'⚡', summary:'✅', goal:'🎯'};
+  var icon = icons[role] || '•';
+  var el = document.createElement('div');
+  el.className = 'msg ' + role;
+  el.innerHTML =
+    '<span class="icon">' + icon + '</span>' +
+    '<div><div class="bubble">' + text.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</div>' +
+    '<div class="ts">' + ts + '</div></div>';
+  document.getElementById('messages').appendChild(el);
+  el.scrollIntoView({behavior:'smooth', block:'end'});
+}
+</script>
+</body>
+</html>
+"""
+
+MENU_BAR_H = 28   # macOS menu bar height in points
+
+def build_chat_panel():
+    global _chat_webview, _chat_window
+    panel_w = PANEL_W
+    panel_y = MENU_BAR_H
+    panel_h = SCREEN_H - MENU_BAR_H
+
+    rect = NSMakeRect(SCREEN_W - panel_w, panel_y, panel_w, panel_h)
+    win = NSWindow.alloc().initWithContentRect_styleMask_backing_defer_(
+        rect, NSBorderlessWindowMask, NSBackingStoreBuffered, False,
+    )
+    win.setOpaque_(False)
+    win.setBackgroundColor_(NSColor.clearColor())
+    win.setHasShadow_(True)
+    win.setIgnoresMouseEvents_(False)
+    win.setLevel_(NSFloatingWindowLevel)
+    win.setCollectionBehavior_(
+        NSWindowCollectionBehaviorCanJoinAllSpaces
+        | NSWindowCollectionBehaviorFullScreenAuxiliary
+    )
+
+    cfg = WKWebViewConfiguration.alloc().init()
+    wv = WKWebView.alloc().initWithFrame_configuration_(
+        NSMakeRect(0, 0, panel_w, panel_h), cfg
+    )
+    wv.loadHTMLString_baseURL_(_CHAT_HTML, None)
+
+    win.setContentView_(wv)
+    win.orderFront_(None)
+    win.setCanHide_(False)
+
+    _chat_webview = wv
+    _chat_window  = win
+    return win
+
+
+def setup_esc_listener():
+    pass
+
 def main():
+    import signal
     global _recorder, _record_enabled
+
+    def _stop(_sig=None, _frame=None):
+        print("\n[overlay] stopping.", file=sys.stderr)
+        dom_stop_reading()
+        with state_lock:
+            state["running_demo"] = False
+        NSApplication.sharedApplication().terminate_(None)
+    signal.signal(signal.SIGINT, _stop)
 
     parser = argparse.ArgumentParser(description="Legible agent (legible_agent.py)")
     parser.add_argument(
@@ -2132,6 +2424,8 @@ def main():
     app = NSApplication.sharedApplication()
     app.setActivationPolicy_(NSApplicationActivationPolicyAccessory)
     build_window()
+    build_chat_panel()
+    setup_esc_listener()
     timer_target = TimerTarget.alloc().init()
     NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
         1.0 / FPS, timer_target, "tick:", None, True,
