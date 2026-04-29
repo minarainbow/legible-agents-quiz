@@ -136,6 +136,7 @@ state = {
     "action_count":       0,         # total actions taken (for tempo acceleration)
     "scroll_count":       0,         # consecutive scrolls (for tempo acceleration)
     "reading_done":       False,      # flips True when DOM reading finishes
+    "reading_start_ts":   None,       # set when DOM reading begins (for scan line)
     "cursor_state":       "default",  # "default" | "reading" | "thinking" | "clicking"
     "last_thought":       "",          # Claude's raw text (for high-stakes fallback)
     "high_stakes_warning": "",         # task-specific warning template (optional)
@@ -863,6 +864,10 @@ def speak(text: str):
 
 _tts_executor = concurrent.futures.ThreadPoolExecutor(max_workers=1, thread_name_prefix="tts-prefetch")
 
+def speak_async(text: str):
+    """Show bubble immediately, fire TTS in background — returns at once."""
+    threading.Thread(target=speak, args=(text,), daemon=True).start()
+
 def _tts_fetch(text: str):
     """Download TTS audio to a temp file in background. Returns path or None."""
     try:
@@ -1418,6 +1423,7 @@ def task_loop():
             state["reasoning_end_ts"]   = None
             state["reasoning_text"]     = ""
             state["reading_done"]       = False
+            state["reading_start_ts"]   = now()
 
         dom_start_reading()
         threading.Thread(target=_poll_reading_done, daemon=True).start()
@@ -1467,8 +1473,9 @@ def task_loop():
             print(f"[CLAUDE] fallback narration: {thought!r}", file=sys.stderr)
 
         # For click actions, skip generic thought — per-action speak uses real element label
+        # Non-click narrations fire async so the agent moves immediately after showing the bubble
         if thought and first_action_type not in _CLICK_ACTIONS:
-            speak(thought)
+            speak_async(thought)
         elif thought and first_action_type in _CLICK_ACTIONS:
             # Still update the bubble text with Claude's thought (shown visually)
             # but don't speak it — _execute_action_inner will speak the element label
@@ -1567,6 +1574,7 @@ class OverlayView(NSView):
             self.draw_session_trail()
             self.draw_trail()
             self.draw_progress_bar()
+            self.draw_scan_line()
             self.draw_goal_bubble()
             self.draw_reasoning_bubble()
         except Exception as e:
@@ -1843,6 +1851,34 @@ class OverlayView(NSView):
             astr.drawAtPoint_((cx, cy))
         except Exception:
             pass
+
+    @objc.python_method
+    def draw_scan_line(self):
+        """Horizontal scan line that sweeps top→bottom while the agent is reading the page."""
+        with state_lock:
+            reading   = state["reasoning"]
+            start_ts  = state["reading_start_ts"]
+            done      = state["reading_done"]
+        if not reading or start_ts is None:
+            return
+        SCAN_DURATION = 6.0   # seconds to sweep full screen height
+        elapsed = now() - start_ts
+        progress = min(elapsed / SCAN_DURATION, 1.0)
+        if done:
+            return
+        y = int(OVERLAY_W * 0)  # x unused; line spans full width
+        scan_y = progress * SCREEN_H  # pixel y in screen coords (top-down)
+        # Convert to Cocoa coords (bottom-up)
+        cocoa_y = SCREEN_H - int(scan_y)
+
+        # Glow: three horizontal lines with decreasing opacity
+        for offset, alpha, width in [(0, 0.55, 1.5), (-3, 0.20, 6.0), (3, 0.12, 10.0)]:
+            p = NSBezierPath.bezierPath()
+            p.moveToPoint_((0, cocoa_y + offset))
+            p.lineToPoint_((OVERLAY_W, cocoa_y + offset))
+            p.setLineWidth_(width)
+            NSColor.colorWithCalibratedRed_green_blue_alpha_(0.45, 0.85, 1.0, alpha).set()
+            p.stroke()
 
     # ── Glass bubble (for goal + reasoning) ────────────────────
     @objc.python_method
