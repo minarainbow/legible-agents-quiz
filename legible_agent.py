@@ -2396,8 +2396,12 @@ def main():
         dom_stop_reading()
         with state_lock:
             state["running_demo"] = False
+        if _chat_window is not None:
+            _chat_window.orderOut_(None)
         NSApplication.sharedApplication().terminate_(None)
+        import os; os._exit(0)
     signal.signal(signal.SIGINT, _stop)
+    signal.signal(signal.SIGTERM, _stop)
 
     app = NSApplication.sharedApplication()
     app.setActivationPolicy_(NSApplicationActivationPolicyAccessory)
