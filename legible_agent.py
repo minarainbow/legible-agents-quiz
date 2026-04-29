@@ -838,7 +838,6 @@ def speak(text: str):
         state["reasoning_end_ts"] = now()
         state["speech_done_ts"] = None   # bubble stays visible while None
         state["reasoning"] = False
-    push_chat_message("thought", text)
     tmp = None
     try:
         audio = _eleven.text_to_speech.convert(
@@ -1431,6 +1430,7 @@ def task_loop():
 
         if raw:
             print(f"\n[CLAUDE raw] {raw}", file=sys.stderr)
+            push_chat_message("thought", raw)
 
         # Speak Claude's own reasoning aloud before acting.
         # If Claude didn't write a narration, build one from the first action.
@@ -1489,15 +1489,17 @@ def task_loop():
             print(f"[ACTION] {action}  {block.input}", file=sys.stderr)
 
             if action not in ("screenshot",):
+                inp = block.input
+                coord = f" ({inp.get('coordinate', inp.get('x',''))})" if inp.get('coordinate') or inp.get('x') else ""
                 _action_label = {
-                    "left_click":   "Click",
-                    "double_click": "Double-click",
-                    "right_click":  "Right-click",
-                    "type":         f"Type: {str(block.input.get('text',''))[:60]}",
-                    "key":          f"Key: {block.input.get('text','')}",
-                    "scroll":       "Scroll",
-                    "mouse_move":   "Move mouse",
-                }.get(action, action)
+                    "left_click":   f"left_click{coord}",
+                    "double_click": f"double_click{coord}",
+                    "right_click":  f"right_click{coord}",
+                    "type":         f"type: {str(inp.get('text',''))[:80]}",
+                    "key":          f"key: {inp.get('text','')}",
+                    "scroll":       f"scroll  delta_y={inp.get('delta_y','?')}",
+                    "mouse_move":   f"mouse_move{coord}",
+                }.get(action, f"{action}  {inp}")
                 push_chat_message("action", _action_label)
 
             if action == "screenshot":
@@ -1958,9 +1960,12 @@ class TimerTarget(NSObject):
         if overlay_view is not None:
             overlay_view.setNeedsDisplay_(True)
 
+PANEL_W = int(SCREEN_W * 0.22)
+OVERLAY_W = SCREEN_W - PANEL_W
+
 def build_window():
     global overlay_view
-    rect   = NSMakeRect(0, 0, SCREEN_W, SCREEN_H)
+    rect   = NSMakeRect(0, 0, OVERLAY_W, SCREEN_H)
     window = NSWindow.alloc().initWithContentRect_styleMask_backing_defer_(
         rect, NSBorderlessWindowMask, NSBackingStoreBuffered, False,
     )
@@ -1973,7 +1978,7 @@ def build_window():
         NSWindowCollectionBehaviorCanJoinAllSpaces
         | NSWindowCollectionBehaviorFullScreenAuxiliary
     )
-    overlay_view = OverlayView.alloc().initWithFrame_(rect)
+    overlay_view = OverlayView.alloc().initWithFrame_(NSMakeRect(0, 0, OVERLAY_W, SCREEN_H))
     overlay_view.setWantsLayer_(True)
     window.setContentView_(overlay_view)
     window.orderFront_(None)
@@ -2085,13 +2090,10 @@ function addMsg(role, text, ts) {
 </html>
 """
 
-_PANEL_W = 0  # set in build_chat_panel after SCREEN_W is known
-
 def build_chat_panel():
-    global _chat_webview, _chat_window, _PANEL_W
-    panel_w = int(SCREEN_W * 0.22)
+    global _chat_webview, _chat_window
+    panel_w = PANEL_W
     panel_h = SCREEN_H
-    _PANEL_W = panel_w
 
     rect = NSMakeRect(SCREEN_W - panel_w, 0, panel_w, panel_h)
     win = NSWindow.alloc().initWithContentRect_styleMask_backing_defer_(
