@@ -325,7 +325,7 @@ def human_move_to(x, y, speed_factor=1.0):
         return
 
     steps = max(14, int(dist / 10))
-    base_time = (0.010 + (dist / 5000) ** 0.6) * random.uniform(0.85, 1.15)
+    base_time = (0.007 + (dist / 6500) ** 0.6) * random.uniform(0.85, 1.15)
     total_time = base_time / max(speed_factor, 0.2)
 
     overshoot = random.uniform(0.0, 0.06) if dist > 60 else 0.0
@@ -731,6 +731,10 @@ def dom_click_preview(sx: int, sy: int, high_stakes=False):
         f"ey={sy}-window.screenY-(window.outerHeight-window.innerHeight);"
         "var el=document.elementFromPoint(ex,ey);"
         "if(!el||el.tagName==='HTML'||el.tagName==='BODY')return;"
+        "var IACT=['A','BUTTON','INPUT','SELECT','TEXTAREA','LABEL'];"
+        "for(var up=el,i=0;i<7&&up&&up.tagName!=='BODY';i++,up=up.parentElement){"
+        "  if(IACT.indexOf(up.tagName)>=0||up.getAttribute('role')==='button'||up.getAttribute('role')==='link'||up.getAttribute('onclick')){el=up;break;}"
+        "}"
         "var s=document.getElementById('_cr_hl_style');"
         "if(!s){s=document.createElement('style');s.id='_cr_hl_style';document.head.appendChild(s);}"
         f"s.textContent={repr(keyframes)};"
@@ -1090,7 +1094,7 @@ def _execute_action_inner(action, params):
 
         last = keys[-1]
         if last in ("return", "enter"):
-            time.sleep(1.8)
+            time.sleep(1.5)
         elif "space" in keys and "command" in keys:
             time.sleep(0.6)
         else:
@@ -1154,7 +1158,7 @@ def navigate_to_url(url: str):
     human_type_visible(url)
     time.sleep(0.1)
     pyautogui.press("return")
-    time.sleep(2.8)
+    time.sleep(1.5)
 
 def task_loop():
     time.sleep(1.5)
