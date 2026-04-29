@@ -39,6 +39,7 @@ from AppKit import (
     NSWindowCollectionBehaviorFullScreenAuxiliary,
 )
 from Foundation import NSObject, NSMakeRect, NSTimer
+from WebKit import WKWebView, WKWebViewConfiguration
 
 load_dotenv()
 
@@ -76,6 +77,20 @@ screen   = NSScreen.mainScreen()
 frame    = screen.frame()
 SCREEN_W = int(frame.size.width)
 SCREEN_H = int(frame.size.height)
+
+PANEL_W   = int(SCREEN_W * 0.22)
+OVERLAY_W = SCREEN_W - PANEL_W
+
+_chat_webview = None
+_chat_window  = None
+
+def push_chat_message(role: str, text: str):
+    if _chat_webview is None:
+        return
+    import time as _time
+    ts = _time.strftime("%H:%M:%S")
+    safe = text.replace("\\", "\\\\").replace("`", "\\`").replace("\n", "\\n")
+    _chat_webview.evaluateJavaScript_completionHandler_(f"addMsg(`{role}`, `{safe}`, `{ts}`);", None)
 
 DISPLAY_W = 1280
 DISPLAY_H = 720
@@ -711,6 +726,7 @@ def task_loop():
     )
 
     goal = task["goal"]
+    push_chat_message("goal", f"Task: {task['name']}\n\n{goal}")
 
     # ── Phase 1: Pre-navigation ───────────────────────────────
     print(f"[CU] Phase 1: Navigating to {task['url']}…", file=sys.stderr)
@@ -776,6 +792,7 @@ def task_loop():
 
         if raw:
             print(f"\n[CLAUDE raw] {raw}", file=sys.stderr)
+            push_chat_message("thought", raw)
 
         messages.append({"role": "assistant", "content": response.content})
 
@@ -783,6 +800,8 @@ def task_loop():
         if response.stop_reason == "end_turn":
             summary_text = raw
             print(f"\n[CLAUDE] === SUMMARY ===\n{summary_text}\n", file=sys.stderr)
+            if summary_text:
+                push_chat_message("summary", summary_text)
             break
 
         tool_results = []
@@ -791,6 +810,19 @@ def task_loop():
                 continue
             action = block.input.get("action", "")
             print(f"[ACTION] {action}  {block.input}", file=sys.stderr)
+            if action != "screenshot":
+                inp = block.input
+                coord = f" ({inp.get('coordinate', inp.get('x',''))})" if inp.get('coordinate') or inp.get('x') else ""
+                _action_label = {
+                    "left_click":   f"left_click{coord}",
+                    "double_click": f"double_click{coord}",
+                    "right_click":  f"right_click{coord}",
+                    "type":         f"type: {str(inp.get('text',''))[:80]}",
+                    "key":          f"key: {inp.get('text','')}",
+                    "scroll":       f"scroll  delta_y={inp.get('delta_y','?')}",
+                    "mouse_move":   f"mouse_move{coord}",
+                }.get(action, f"{action}  {inp}")
+                push_chat_message("action", _action_label)
 
             if action == "screenshot":
                 consec_shots += 1
@@ -1102,7 +1134,7 @@ class TimerTarget(NSObject):
 
 def build_window():
     global overlay_view
-    rect   = NSMakeRect(0, 0, SCREEN_W, SCREEN_H)
+    rect   = NSMakeRect(0, 0, OVERLAY_W, SCREEN_H)
     window = NSWindow.alloc().initWithContentRect_styleMask_backing_defer_(
         rect, NSBorderlessWindowMask, NSBackingStoreBuffered, False,
     )
@@ -1115,12 +1147,117 @@ def build_window():
         NSWindowCollectionBehaviorCanJoinAllSpaces
         | NSWindowCollectionBehaviorFullScreenAuxiliary
     )
-    overlay_view = OverlayView.alloc().initWithFrame_(rect)
+    overlay_view = OverlayView.alloc().initWithFrame_(NSMakeRect(0, 0, OVERLAY_W, SCREEN_H))
     overlay_view.setWantsLayer_(True)
     window.setContentView_(overlay_view)
     window.orderFront_(None)
     window.setCanHide_(False)
     return window
+
+_CHAT_HTML = """<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: rgba(10, 12, 18, 0.92);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+  font-size: 13px;
+  color: #e0e4ef;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+#header {
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.35);
+  flex-shrink: 0;
+}
+#messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 0 20px;
+  scroll-behavior: smooth;
+}
+#messages::-webkit-scrollbar { width: 4px; }
+#messages::-webkit-scrollbar-track { background: transparent; }
+#messages::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 2px; }
+.msg {
+  padding: 8px 16px;
+  line-height: 1.55;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.msg + .msg { margin-top: 2px; }
+.icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; opacity: 0.9; }
+.bubble {
+  background: rgba(255,255,255,0.05);
+  border-radius: 10px;
+  padding: 7px 11px;
+  max-width: 100%;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+.msg.thought .bubble { background: rgba(115,160,255,0.10); border-left: 2px solid rgba(115,160,255,0.45); color: #c5d3ff; }
+.msg.action .bubble  { background: rgba(255,195,80,0.08);  border-left: 2px solid rgba(255,195,80,0.40);  color: #ffe0a0; }
+.msg.summary .bubble { background: rgba(80,210,140,0.09);  border-left: 2px solid rgba(80,210,140,0.40);  color: #b0f0d0; }
+.msg.goal .bubble    { background: rgba(255,255,255,0.07); border-left: 2px solid rgba(255,255,255,0.25); color: #d8dce8; font-weight: 500; }
+.ts { font-size: 10px; color: rgba(255,255,255,0.22); margin-top: 4px; }
+</style>
+</head>
+<body>
+<div id="header">Agent Reasoning</div>
+<div id="messages"></div>
+<script>
+function addMsg(role, text, ts) {
+  var icons = {thought:'💭', action:'⚡', summary:'✅', goal:'🎯'};
+  var el = document.createElement('div');
+  el.className = 'msg ' + role;
+  el.innerHTML =
+    '<span class="icon">' + (icons[role]||'•') + '</span>' +
+    '<div><div class="bubble">' + text.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</div>' +
+    '<div class="ts">' + ts + '</div></div>';
+  document.getElementById('messages').appendChild(el);
+  el.scrollIntoView({behavior:'smooth', block:'end'});
+}
+</script>
+</body>
+</html>
+"""
+
+def build_chat_panel():
+    global _chat_webview, _chat_window
+    rect = NSMakeRect(SCREEN_W - PANEL_W, 0, PANEL_W, SCREEN_H)
+    win = NSWindow.alloc().initWithContentRect_styleMask_backing_defer_(
+        rect, NSBorderlessWindowMask, NSBackingStoreBuffered, False,
+    )
+    win.setOpaque_(False)
+    win.setBackgroundColor_(NSColor.clearColor())
+    win.setHasShadow_(True)
+    win.setIgnoresMouseEvents_(False)
+    win.setLevel_(NSFloatingWindowLevel)
+    win.setCollectionBehavior_(
+        NSWindowCollectionBehaviorCanJoinAllSpaces
+        | NSWindowCollectionBehaviorFullScreenAuxiliary
+    )
+    cfg = WKWebViewConfiguration.alloc().init()
+    wv = WKWebView.alloc().initWithFrame_configuration_(
+        NSMakeRect(0, 0, PANEL_W, SCREEN_H), cfg
+    )
+    wv.loadHTMLString_baseURL_(_CHAT_HTML, None)
+    win.setContentView_(wv)
+    win.orderFront_(None)
+    win.setCanHide_(False)
+    _chat_webview = wv
+    _chat_window  = win
+    return win
 
 def setup_esc_listener():
     def on_key(event):
@@ -1141,6 +1278,7 @@ def main():
     app = NSApplication.sharedApplication()
     app.setActivationPolicy_(NSApplicationActivationPolicyAccessory)
     build_window()
+    build_chat_panel()
     setup_esc_listener()
     timer_target = TimerTarget.alloc().init()
     NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
