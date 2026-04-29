@@ -10,7 +10,6 @@ import io
 import re
 
 import mss
-import pyperclip
 from PIL import Image
 
 import objc
@@ -852,34 +851,6 @@ def task_loop():
         messages.append({"role": "user", "content": tool_results})
     else:
         print("[CU] Max iterations.", file=sys.stderr)
-
-    # ── Phase 3: Open Google Doc + paste summary ──
-    if not summary_text:
-        summary_text = "UIST 2026 Formatting Guidelines\n(Agent could not retrieve summary)"
-
-    print("[CU] Phase 3: Pasting summary to Google Doc…", file=sys.stderr)
-
-    activate_chrome()
-    time.sleep(0.2)
-    pyautogui.hotkey("command", "t")       # new tab
-    time.sleep(0.5)
-    pyautogui.keyDown("command")
-    time.sleep(0.05)
-    pyautogui.press("l")
-    time.sleep(0.05)
-    pyautogui.keyUp("command")
-    time.sleep(0.4)
-    human_type_visible("docs.new")
-    time.sleep(0.1)
-    pyautogui.press("return")
-    time.sleep(5.0)                        # wait for Google Doc to load
-
-    # Click in the doc body and paste the summary
-    pyautogui.click(SCREEN_W // 2, SCREEN_H // 2)
-    time.sleep(0.8)
-    pyperclip.copy(summary_text)
-    pyautogui.hotkey("command", "v")
-    time.sleep(1.0)
 
     print("[CU] Done!", file=sys.stderr)
     play_sound("Glass.aiff")
