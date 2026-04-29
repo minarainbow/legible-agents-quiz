@@ -1118,6 +1118,41 @@ def activate_chrome():
     )
     time.sleep(0.4)
 
+def _ensure_chrome_english():
+    """Force Chrome UI language to English via defaults write (takes effect on next launch)."""
+    subprocess.run(
+        ["defaults", "write", "com.google.Chrome", "AppleLanguages", "-array", "en-US", "en"],
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+    )
+
+def navigate_to_url(url: str):
+    """Focus Chrome address bar and navigate to url, bypassing IME/language issues."""
+    # Ensure Chrome language is English (persistent setting)
+    _ensure_chrome_english()
+
+    # Cmd+L: focus address bar no matter where focus currently is
+    pyautogui.keyDown("command")
+    time.sleep(0.05)
+    pyautogui.press("l")
+    time.sleep(0.05)
+    pyautogui.keyUp("command")
+    time.sleep(0.5)   # wait for omnibox to focus and select existing text
+
+    # Select all existing text first, then overwrite via clipboard paste
+    # (avoids IME / Korean input issues with char-by-char typing)
+    import pyperclip
+    pyperclip.copy(url)
+    pyautogui.keyDown("command")
+    time.sleep(0.04)
+    pyautogui.press("a")   # select all in address bar
+    time.sleep(0.04)
+    pyautogui.press("v")   # paste url
+    time.sleep(0.04)
+    pyautogui.keyUp("command")
+    time.sleep(0.2)
+    pyautogui.press("return")
+    time.sleep(3.5)
+
 def task_loop():
     time.sleep(1.5)
     play_sound("Funk.aiff")
@@ -1353,17 +1388,7 @@ def task_loop():
     print(f"[CU] Phase 1: Navigating to {task['url']}…", file=sys.stderr)
     activate_chrome()
     time.sleep(0.3)
-
-    pyautogui.keyDown("command")
-    time.sleep(0.05)
-    pyautogui.press("l")
-    time.sleep(0.05)
-    pyautogui.keyUp("command")
-    time.sleep(0.4)
-    human_type_visible(task["url"])
-    time.sleep(0.1)
-    pyautogui.press("return")
-    time.sleep(3.5)
+    navigate_to_url(task["url"])
 
     set_progress(1, 4, f"Navigate to {task['url']}")
 
