@@ -136,7 +136,6 @@ state = {
     "action_count":       0,         # total actions taken (for tempo acceleration)
     "scroll_count":       0,         # consecutive scrolls (for tempo acceleration)
     "reading_done":       False,      # flips True when DOM reading finishes
-    "reading_start_ts":   None,       # set when DOM reading begins (for scan line)
     "cursor_state":       "default",  # "default" | "reading" | "thinking" | "clicking"
     "last_thought":       "",          # Claude's raw text (for high-stakes fallback)
     "high_stakes_warning": "",         # task-specific warning template (optional)
@@ -706,8 +705,25 @@ def orbit_mouse(cx: int, cy: int, stop_event: threading.Event, radius: int = 55,
 def dom_click_preview(sx: int, sy: int, high_stakes=False):
     """Highlight target element with a persistent border overlay until dom_remove_click_preview() is called.
     high_stakes uses red; normal uses amber. No scaling or expanding rings."""
-    color   = "255,55,45"  if high_stakes else "255,185,30"
-    border  = "3px"        if high_stakes else "2px"
+    color     = "255,55,45"  if high_stakes else "255,185,30"
+    glow_col  = "255,80,60"  if high_stakes else "255,200,50"
+    border    = "3px"        if high_stakes else "2.5px"
+
+    # Two keyframe animations: pulse (glow in/out) + shake (subtle X jitter)
+    keyframes = (
+        f"@keyframes _cr_hl_pulse{{"
+        f"0%{{box-shadow:0 0 0 3px rgba({color},0.5),0 0 14px 4px rgba({glow_col},0.35);transform:scale(1);}}"
+        f"50%{{box-shadow:0 0 0 7px rgba({color},0.15),0 0 24px 8px rgba({glow_col},0.15);transform:scale(1.018);}}"
+        f"100%{{box-shadow:0 0 0 3px rgba({color},0.5),0 0 14px 4px rgba({glow_col},0.35);transform:scale(1);}}"
+        f"}}"
+        f"@keyframes _cr_hl_shake{{"
+        f"0%,100%{{transform:translateX(0);}}"
+        f"20%{{transform:translateX(-2px);}}"
+        f"40%{{transform:translateX(2px);}}"
+        f"60%{{transform:translateX(-1.5px);}}"
+        f"80%{{transform:translateX(1px);}}"
+        f"}}"
+    )
 
     js = (
         "(function(){"
@@ -717,18 +733,18 @@ def dom_click_preview(sx: int, sy: int, high_stakes=False):
         "if(!el||el.tagName==='HTML'||el.tagName==='BODY')return;"
         "var s=document.getElementById('_cr_hl_style');"
         "if(!s){s=document.createElement('style');s.id='_cr_hl_style';document.head.appendChild(s);}"
-        f"s.textContent='@keyframes _cr_hl_pulse{{0%,100%{{box-shadow:0 0 0 2px rgba({color},0.25);}}50%{{box-shadow:0 0 0 6px rgba({color},0.0);}}}}';"
+        f"s.textContent={repr(keyframes)};"
         "var prev=document.getElementById('_cr_hl_overlay');"
         "if(prev&&prev.parentNode)prev.parentNode.removeChild(prev);"
         "var rect=el.getBoundingClientRect();"
         "var ov=document.createElement('div');"
         "ov.id='_cr_hl_overlay';"
         "ov.style.cssText='position:fixed;"
-        "left:'+(rect.left-4)+'px;top:'+(rect.top-4)+'px;"
-        "width:'+(rect.width+8)+'px;height:'+(rect.height+8)+'px;"
+        "left:'+(rect.left-5)+'px;top:'+(rect.top-5)+'px;"
+        "width:'+(rect.width+10)+'px;height:'+(rect.height+10)+'px;"
         f"border:{border} solid rgba({color},0.95);"
-        "border-radius:6px;pointer-events:none;z-index:2147483647;"
-        "animation:_cr_hl_pulse 1.1s ease-in-out infinite;';"
+        "border-radius:7px;pointer-events:none;z-index:2147483647;"
+        "animation:_cr_hl_shake 0.35s ease-in-out 1,_cr_hl_pulse 1.0s ease-in-out 0.35s infinite;';"
         "document.body.appendChild(ov);"
         "setTimeout(function(){if(ov.parentNode)ov.parentNode.removeChild(ov);},9000);"
         "})()"
@@ -1000,19 +1016,16 @@ def _execute_action_inner(action, params):
             stop_ev.set()
             orbit_t.join(timeout=5.0)
             time.sleep(1.5)  # grace period after orbit — user can intervene
-        elif label:
-            tts_future = prefetch_tts(f"I'll click '{label}'.")
+        else:
+            tts_text = f"I'll click '{label}'." if label else "I'll click here."
+            tts_future = prefetch_tts(tts_text)
             dom_click_preview(x, y)
             move_t = threading.Thread(target=human_move_to, args=(x, y), kwargs={"speed_factor": base_speed}, daemon=True)
             move_t.start()
-            play_prefetched(f"I'll click '{label}'.", tts_future)
+            play_prefetched(tts_text, tts_future)
             move_t.join(timeout=2.0)
-        else:
-            dom_click_preview(x, y)
-            time.sleep(1.0)
         dom_remove_click_preview()
         click_with_preview(x, y, speed_factor=base_speed)
-        pass  # ripple removed
 
     elif action == "double_click":
         x, y = sc(params["coordinate"])
@@ -1025,16 +1038,14 @@ def _execute_action_inner(action, params):
             dom_click_preview(x, y, high_stakes=True)
             play_prefetched(tts_text, tts_future)
             time.sleep(3.0)
-        elif label:
-            tts_future = prefetch_tts(f"I'll double-click '{label}'.")
+        else:
+            tts_text = f"I'll double-click '{label}'." if label else "I'll double-click here."
+            tts_future = prefetch_tts(tts_text)
             dom_click_preview(x, y)
             move_t = threading.Thread(target=human_move_to, args=(x, y), kwargs={"speed_factor": base_speed}, daemon=True)
             move_t.start()
-            play_prefetched(f"I'll double-click '{label}'.", tts_future)
+            play_prefetched(tts_text, tts_future)
             move_t.join(timeout=2.0)
-        else:
-            dom_click_preview(x, y)
-            time.sleep(1.0)
         dom_remove_click_preview()
         click_with_preview(x, y, double=True, speed_factor=base_speed)
         pass  # ripple removed
@@ -1359,11 +1370,13 @@ def task_loop():
         f"Display: {DISPLAY_W}×{DISPLAY_H}. Origin top-left. "
         f"Chrome is showing {task['site']}.\n"
         "Rules:\n"
-        "- ALWAYS write a short narration sentence (max 12 words) before any tool call. "
-        "Name the exact UI element: "
-        "e.g. \"I'll click the 'Full CFP' tab.\" "
-        "e.g. \"I'll scroll down to find the submission deadline.\" "
-        "Never skip this narration.\n"
+        "- ALWAYS write 1–2 short sentences before every tool call (never skip).\n"
+        "  Sentence 1 (if something changed): one phrase on what you now see or what changed. "
+        "e.g. \"The CFP page loaded.\" or \"The search results appeared.\"\n"
+        "  Sentence 2 (always): exactly what you will do next, naming the UI element. "
+        "e.g. \"I'll click the 'Author Guidelines' link.\" "
+        "e.g. \"I'll scroll down to find the deadline section.\"\n"
+        "  Keep each sentence under 12 words. Never use vague phrases like 'I will proceed' or 'I will continue'.\n"
         "- Use 'command' for macOS shortcuts.\n"
         "- Never take two screenshots in a row.\n"
         "- When scrolling, use delta_y of 5–8."
@@ -1423,7 +1436,6 @@ def task_loop():
             state["reasoning_end_ts"]   = None
             state["reasoning_text"]     = ""
             state["reading_done"]       = False
-            state["reading_start_ts"]   = now()
 
         dom_start_reading()
         threading.Thread(target=_poll_reading_done, daemon=True).start()
@@ -1574,7 +1586,6 @@ class OverlayView(NSView):
             self.draw_session_trail()
             self.draw_trail()
             self.draw_progress_bar()
-            self.draw_scan_line()
             self.draw_goal_bubble()
             self.draw_reasoning_bubble()
         except Exception as e:
@@ -1852,34 +1863,6 @@ class OverlayView(NSView):
         except Exception:
             pass
 
-    @objc.python_method
-    def draw_scan_line(self):
-        """Horizontal scan line that sweeps top→bottom while the agent is reading the page."""
-        with state_lock:
-            reading   = state["reasoning"]
-            start_ts  = state["reading_start_ts"]
-            done      = state["reading_done"]
-        if not reading or start_ts is None:
-            return
-        SCAN_DURATION = 6.0   # seconds to sweep full screen height
-        elapsed = now() - start_ts
-        progress = min(elapsed / SCAN_DURATION, 1.0)
-        if done:
-            return
-        y = int(OVERLAY_W * 0)  # x unused; line spans full width
-        scan_y = progress * SCREEN_H  # pixel y in screen coords (top-down)
-        # Convert to Cocoa coords (bottom-up)
-        cocoa_y = SCREEN_H - int(scan_y)
-
-        # Glow: three horizontal lines with decreasing opacity
-        for offset, alpha, width in [(0, 0.55, 1.5), (-3, 0.20, 6.0), (3, 0.12, 10.0)]:
-            p = NSBezierPath.bezierPath()
-            p.moveToPoint_((0, cocoa_y + offset))
-            p.lineToPoint_((OVERLAY_W, cocoa_y + offset))
-            p.setLineWidth_(width)
-            NSColor.colorWithCalibratedRed_green_blue_alpha_(0.45, 0.85, 1.0, alpha).set()
-            p.stroke()
-
     # ── Glass bubble (for goal + reasoning) ────────────────────
     @objc.python_method
     def draw_speech_bubble(self, sx, sy, text, color_fn, alpha,
@@ -2138,12 +2121,15 @@ function addMsg(role, text, ts) {
 </html>
 """
 
+MENU_BAR_H = 28   # macOS menu bar height in points
+
 def build_chat_panel():
     global _chat_webview, _chat_window
     panel_w = PANEL_W
-    panel_h = SCREEN_H
+    panel_y = MENU_BAR_H
+    panel_h = SCREEN_H - MENU_BAR_H
 
-    rect = NSMakeRect(SCREEN_W - panel_w, 0, panel_w, panel_h)
+    rect = NSMakeRect(SCREEN_W - panel_w, panel_y, panel_w, panel_h)
     win = NSWindow.alloc().initWithContentRect_styleMask_backing_defer_(
         rect, NSBorderlessWindowMask, NSBackingStoreBuffered, False,
     )
