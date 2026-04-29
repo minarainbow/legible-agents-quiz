@@ -8,6 +8,7 @@ import base64
 import os
 import io
 import re
+import concurrent.futures
 
 import mss
 import tempfile
@@ -685,22 +686,11 @@ def orbit_mouse(cx: int, cy: int, stop_event: threading.Event, radius: int = 55,
     human_move_to(cx, cy, speed_factor=3.0)
 
 
-def dom_click_preview(sx: int, sy: int, ms=1200, high_stakes=False):
-    """Before clicking: dramatic grow + warm glow + expanding radar ring.
-    high_stakes=True uses red/orange warning colors + double ring."""
-    if high_stakes:
-        el_color  = "rgba(255,70,50"    # red-orange for warning
-        ring_color = "rgba(255,70,50"
-        scale_peak = "1.35"
-        ring_border = "4px"
-        el_anim_dur = "1.4s"
-        ms = max(ms, 2500)
-    else:
-        el_color  = "rgba(255,195,60"   # amber for normal
-        ring_color = "rgba(255,195,60"
-        scale_peak = "1.25"
-        ring_border = "3px"
-        el_anim_dur = "1.1s"
+def dom_click_preview(sx: int, sy: int, high_stakes=False):
+    """Highlight target element with a persistent border overlay until dom_remove_click_preview() is called.
+    high_stakes uses red; normal uses amber. No scaling or expanding rings."""
+    color   = "255,55,45"  if high_stakes else "255,185,30"
+    border  = "3px"        if high_stakes else "2px"
 
     js = (
         "(function(){"
@@ -708,62 +698,38 @@ def dom_click_preview(sx: int, sy: int, ms=1200, high_stakes=False):
         f"ey={sy}-window.screenY-(window.outerHeight-window.innerHeight);"
         "var el=document.elementFromPoint(ex,ey);"
         "if(!el||el.tagName==='HTML'||el.tagName==='BODY')return;"
-        # Inject / update keyframes
-        "var s=document.getElementById('_cr_attn_style');"
-        "if(!s){s=document.createElement('style');s.id='_cr_attn_style';document.head.appendChild(s);}"
-        f"s.textContent='"
-        "@keyframes _cr_attn{"
-        f"0%  {{transform:scale(1);    filter:brightness(1)   drop-shadow(0 0 0px  {el_color},0));}}"
-        f"15% {{transform:scale({scale_peak}); filter:brightness(1.8) drop-shadow(0 0 24px {el_color},1.0));}}"
-        f"40% {{transform:scale(1.18); filter:brightness(1.5) drop-shadow(0 0 16px {el_color},0.8));}}"
-        f"65% {{transform:scale(1.22); filter:brightness(1.7) drop-shadow(0 0 20px {el_color},0.9));}}"
-        f"100%{{transform:scale(1);    filter:brightness(1)   drop-shadow(0 0 0px  {el_color},0));}}"
-        "}"
-        "@keyframes _cr_ring{"
-        "0%  {opacity:1.0;transform:scale(1.0);}"
-        "100%{opacity:0.0;transform:scale(1.7);}"
-        "}"
-        "@keyframes _cr_ring2{"
-        "0%  {opacity:0.8;transform:scale(1.0);}"
-        "100%{opacity:0.0;transform:scale(2.1);}"
-        "}"
-        "';"
-        # Element glow
-        "el.style.transformOrigin='center';"
-        f"el.style.animation='_cr_attn {el_anim_dur} ease-in-out';"
-        f"setTimeout(function(){{el.style.animation='';}},{ms});"
-        # Ring 1
+        "var s=document.getElementById('_cr_hl_style');"
+        "if(!s){s=document.createElement('style');s.id='_cr_hl_style';document.head.appendChild(s);}"
+        f"s.textContent='@keyframes _cr_hl_pulse{{0%,100%{{box-shadow:0 0 0 2px rgba({color},0.25);}}50%{{box-shadow:0 0 0 6px rgba({color},0.0);}}}}';"
+        "var prev=document.getElementById('_cr_hl_overlay');"
+        "if(prev&&prev.parentNode)prev.parentNode.removeChild(prev);"
         "var rect=el.getBoundingClientRect();"
-        "var ring=document.createElement('div');"
-        "ring.style.cssText='position:fixed;"
-        "left:'+(rect.left-12)+'px;top:'+(rect.top-12)+'px;"
-        "width:'+(rect.width+24)+'px;height:'+(rect.height+24)+'px;"
-        f"border:{ring_border} solid {ring_color},0.95);"
-        "border-radius:10px;pointer-events:none;z-index:2147483647;"
-        "animation:_cr_ring 1.0s ease-out forwards;';"
-        "document.body.appendChild(ring);"
-        f"setTimeout(function(){{if(ring.parentNode)ring.parentNode.removeChild(ring);}},{ms});"
+        "var ov=document.createElement('div');"
+        "ov.id='_cr_hl_overlay';"
+        "ov.style.cssText='position:fixed;"
+        "left:'+(rect.left-4)+'px;top:'+(rect.top-4)+'px;"
+        "width:'+(rect.width+8)+'px;height:'+(rect.height+8)+'px;"
+        f"border:{border} solid rgba({color},0.95);"
+        "border-radius:6px;pointer-events:none;z-index:2147483647;"
+        "animation:_cr_hl_pulse 1.1s ease-in-out infinite;';"
+        "document.body.appendChild(ov);"
+        "setTimeout(function(){if(ov.parentNode)ov.parentNode.removeChild(ov);},9000);"
+        "})()"
     )
+    _chrome_js(js)
 
-    if high_stakes:
-        # Second ring with delay — double ping for warning
-        js += (
-            "var ring2=document.createElement('div');"
-            "ring2.style.cssText='position:fixed;"
-            "left:'+(rect.left-16)+'px;top:'+(rect.top-16)+'px;"
-            "width:'+(rect.width+32)+'px;height:'+(rect.height+32)+'px;"
-            f"border:3px solid {ring_color},0.7);"
-            "border-radius:12px;pointer-events:none;z-index:2147483646;"
-            "animation:_cr_ring2 1.2s 0.5s ease-out forwards;opacity:0;';"
-            "document.body.appendChild(ring2);"
-            f"setTimeout(function(){{if(ring2.parentNode)ring2.parentNode.removeChild(ring2);}},{ms});"
-            # Red text + underline on the element itself
-            "var _origColor=el.style.color,_origDeco=el.style.textDecoration,_origWeight=el.style.fontWeight;"
-            "el.style.color='#e8002d';el.style.textDecoration='underline';el.style.fontWeight='bold';"
-            f"setTimeout(function(){{el.style.color=_origColor;el.style.textDecoration=_origDeco;el.style.fontWeight=_origWeight;}},{ms});"
-        )
 
-    js += "})()"
+def dom_remove_click_preview():
+    """Fade out and remove the click preview border overlay."""
+    js = (
+        "(function(){"
+        "var ov=document.getElementById('_cr_hl_overlay');"
+        "if(!ov||!ov.parentNode)return;"
+        "ov.style.transition='opacity 0.15s ease';"
+        "ov.style.opacity='0';"
+        "setTimeout(function(){if(ov.parentNode)ov.parentNode.removeChild(ov);},150);"
+        "})()"
+    )
     _chrome_js(js)
 
 
@@ -868,16 +834,59 @@ def speak(text: str):
             for chunk in audio:
                 f.write(chunk)
             tmp = f.name
-        subprocess.run(["afplay", tmp])
+        subprocess.run(["afplay", "-r", "1.15", tmp])
     except Exception as e:
         print(f"[TTS] error: {e}, falling back to say", file=sys.stderr)
-        subprocess.run(["say", "-v", "Samantha", "-r", "210", text])
+        subprocess.run(["say", "-v", "Samantha", "-r", "230", text])
     finally:
         if tmp:
             try: os.unlink(tmp)
             except: pass
         with state_lock:
             state["speech_done_ts"] = now()  # bubble starts fade timer
+
+_tts_executor = concurrent.futures.ThreadPoolExecutor(max_workers=1, thread_name_prefix="tts-prefetch")
+
+def _tts_fetch(text: str):
+    """Download TTS audio to a temp file in background. Returns path or None."""
+    try:
+        audio = _eleven.text_to_speech.convert(
+            text=text,
+            voice_id="XrExE9yKIg1WjnnlVkGX",
+            model_id="eleven_turbo_v2_5",
+            output_format="mp3_44100_128",
+        )
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
+            for chunk in audio:
+                f.write(chunk)
+            return f.name
+    except Exception as e:
+        print(f"[TTS] prefetch error: {e}", file=sys.stderr)
+        return None
+
+def prefetch_tts(text: str):
+    """Submit TTS download to background thread. Returns a Future[str | None]."""
+    return _tts_executor.submit(_tts_fetch, text)
+
+def play_prefetched(text: str, future: concurrent.futures.Future):
+    """Update bubble, wait for prefetched audio, and play it. Sequential — no overlap."""
+    with state_lock:
+        state["reasoning_text"] = text
+        state["reasoning_end_ts"] = now()
+        state["speech_done_ts"] = None
+        state["reasoning"] = False
+    tmp = future.result()  # blocks only for remaining download time
+    try:
+        if tmp:
+            subprocess.run(["afplay", "-r", "1.15", tmp])
+        else:
+            subprocess.run(["say", "-v", "Samantha", "-r", "230", text])
+    finally:
+        if tmp:
+            try: os.unlink(tmp)
+            except: pass
+        with state_lock:
+            state["speech_done_ts"] = now()
 
 def play_sound(name: str):
     """Non-blocking audio notification using a system sound."""
@@ -957,30 +966,30 @@ def _execute_action_inner(action, params):
                         label = kw  # use keyword as display label
                     break
         print(f"[CLICK] label={label!r} high_stakes={high_stakes}", file=sys.stderr)
-        dom_click_preview(x, y, high_stakes=high_stakes)
         if high_stakes:
+            with state_lock:
+                warning_tpl = state.get("high_stakes_warning", "")
+            warning = warning_tpl.format(label=label) if warning_tpl else f"Heads up — I'm about to click '{label}'. This may be hard to undo!"
+            tts_future = prefetch_tts(warning)
+            dom_click_preview(x, y, high_stakes=True)
             stop_ev = threading.Event()
             orbit_t = threading.Thread(target=orbit_mouse, args=(x, y, stop_ev), kwargs={"min_revolutions": 1.0}, daemon=True)
             orbit_t.start()
-            with state_lock:
-                warning_tpl = state.get("high_stakes_warning", "")
-            if warning_tpl:
-                warning = warning_tpl.format(label=label)
-            else:
-                warning = f"Heads up — I'm about to click '{label}'. This may be hard to undo!"
-            speak(warning)
+            play_prefetched(warning, tts_future)
             stop_ev.set()
             orbit_t.join(timeout=5.0)
             time.sleep(1.5)  # grace period after orbit — user can intervene
         elif label:
-            stop_ev = threading.Event()
-            orbit_t = threading.Thread(target=orbit_mouse, args=(x, y, stop_ev), daemon=True)
-            orbit_t.start()
-            speak(f"I'll click '{label}'.")
-            stop_ev.set()
-            orbit_t.join(timeout=1.5)
+            tts_future = prefetch_tts(f"I'll click '{label}'.")
+            dom_click_preview(x, y)
+            move_t = threading.Thread(target=human_move_to, args=(x, y), kwargs={"speed_factor": base_speed}, daemon=True)
+            move_t.start()
+            play_prefetched(f"I'll click '{label}'.", tts_future)
+            move_t.join(timeout=2.0)
         else:
+            dom_click_preview(x, y)
             time.sleep(1.0)
+        dom_remove_click_preview()
         click_with_preview(x, y, speed_factor=base_speed)
         pass  # ripple removed
 
@@ -989,19 +998,23 @@ def _execute_action_inner(action, params):
         activate_chrome()
         label = _get_element_label(x, y)
         high_stakes = _is_high_stakes(label) if label else False
-        dom_click_preview(x, y, high_stakes=high_stakes)
         if high_stakes:
-            speak(f"I'm about to double-click '{label}'. This may be hard to undo.")
+            tts_text = f"I'm about to double-click '{label}'. This may be hard to undo."
+            tts_future = prefetch_tts(tts_text)
+            dom_click_preview(x, y, high_stakes=True)
+            play_prefetched(tts_text, tts_future)
             time.sleep(3.0)
         elif label:
-            stop_ev = threading.Event()
-            orbit_t = threading.Thread(target=orbit_mouse, args=(x, y, stop_ev), daemon=True)
-            orbit_t.start()
-            speak(f"I'll double-click '{label}'.")
-            stop_ev.set()
-            orbit_t.join(timeout=1.5)
+            tts_future = prefetch_tts(f"I'll double-click '{label}'.")
+            dom_click_preview(x, y)
+            move_t = threading.Thread(target=human_move_to, args=(x, y), kwargs={"speed_factor": base_speed}, daemon=True)
+            move_t.start()
+            play_prefetched(f"I'll double-click '{label}'.", tts_future)
+            move_t.join(timeout=2.0)
         else:
+            dom_click_preview(x, y)
             time.sleep(1.0)
+        dom_remove_click_preview()
         click_with_preview(x, y, double=True, speed_factor=base_speed)
         pass  # ripple removed
 
@@ -1009,9 +1022,11 @@ def _execute_action_inner(action, params):
         x, y = sc(params["coordinate"])
         activate_chrome()
         label = _get_element_label(x, y)
-        if label:
-            speak(f"Right-clicking '{label}'.")
+        tts_future = prefetch_tts(f"Right-clicking '{label}'.") if label else None
         dom_click_preview(x, y)
+        if tts_future:
+            play_prefetched(f"Right-clicking '{label}'.", tts_future)
+        dom_remove_click_preview()
         time.sleep(0.55)
         human_move_to(x, y, speed_factor=base_speed)
         pyautogui.rightClick()
