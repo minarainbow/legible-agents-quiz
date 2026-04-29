@@ -325,7 +325,7 @@ def human_move_to(x, y, speed_factor=1.0):
         return
 
     steps = max(14, int(dist / 10))
-    base_time = (0.020 + (dist / 3200) ** 0.6) * random.uniform(0.85, 1.15)
+    base_time = (0.016 + (dist / 3800) ** 0.6) * random.uniform(0.85, 1.15)
     total_time = base_time / max(speed_factor, 0.2)
 
     overshoot = random.uniform(0.0, 0.06) if dist > 60 else 0.0
@@ -646,41 +646,6 @@ def _is_high_stakes(label: str) -> bool:
 
 
 # ── DOM legibility: click target preview ───────────────────────
-
-def _get_element_description(sx: int, sy: int) -> str:
-    """Get a human-readable description of the element at (sx, sy), always returns something."""
-    js = (
-        "(function(){"
-        f"var ex={sx}-window.screenX,"
-        f"ey={sy}-window.screenY-(window.outerHeight-window.innerHeight);"
-        "var el=document.elementFromPoint(ex,ey);"
-        "if(!el||el.tagName==='HTML'||el.tagName==='BODY')return 'the page';"
-        "var tag=el.tagName.toLowerCase();"
-        # Try rich label first (same as _get_element_label)
-        "var t=(el.getAttribute('aria-label')||el.getAttribute('value')||el.getAttribute('title')||el.getAttribute('alt')||'').trim();"
-        "if(!t)t=(el.innerText||el.textContent||'').trim().replace(/\\s+/g,' ');"
-        "if(!t&&el.parentElement){"
-        "  var p=el.parentElement;"
-        "  t=(p.getAttribute('aria-label')||p.innerText||p.textContent||'').trim().replace(/\\s+/g,' ');"
-        "}"
-        "if(t.length>0&&t.length<=80)return t.slice(0,60);"
-        # Fallback: describe by tag + role + placeholder
-        "var ph=el.getAttribute('placeholder')||'';"
-        "var role=el.getAttribute('role')||'';"
-        "var type=el.getAttribute('type')||'';"
-        "if(ph)return (type||tag)+' \"'+ph+'\"';"
-        "if(role)return role;"
-        "var tagMap={'input':'input field','textarea':'text area','button':'button',"
-        "  'a':'link','select':'dropdown','img':'image','svg':'icon','form':'form'};"
-        "return tagMap[tag]||tag;"
-        "})()"
-    )
-    try:
-        result = _chrome_js_sync(js, timeout=1.0)
-        return result.strip() if result else "the element"
-    except Exception:
-        return "the element"
-
 
 def _get_element_label(sx: int, sy: int) -> str:
     """Get readable label of DOM element at screen position for narration."""
@@ -1052,8 +1017,7 @@ def _execute_action_inner(action, params):
             orbit_t.join(timeout=5.0)
             time.sleep(1.5)  # grace period after orbit — user can intervene
         else:
-            desc = label if label else _get_element_description(x, y)
-            tts_text = f"I'll click '{desc}'."
+            tts_text = f"I'll click '{label}'." if label else "I'll click here."
             tts_future = prefetch_tts(tts_text)
             dom_click_preview(x, y)
             move_t = threading.Thread(target=human_move_to, args=(x, y), kwargs={"speed_factor": base_speed}, daemon=True)
@@ -1075,8 +1039,7 @@ def _execute_action_inner(action, params):
             play_prefetched(tts_text, tts_future)
             time.sleep(3.0)
         else:
-            desc = label if label else _get_element_description(x, y)
-            tts_text = f"I'll double-click '{desc}'."
+            tts_text = f"I'll double-click '{label}'." if label else "I'll double-click here."
             tts_future = prefetch_tts(tts_text)
             dom_click_preview(x, y)
             move_t = threading.Thread(target=human_move_to, args=(x, y), kwargs={"speed_factor": base_speed}, daemon=True)
@@ -1582,7 +1545,7 @@ def task_loop():
                 consec_shots = 0
 
             execute_action(action, block.input)
-            time.sleep(random.uniform(0.08, 0.18))
+            time.sleep(random.uniform(0.05, 0.12))
 
             if _is_trivial_action(action, block.input):
                 content = _trivial_confirmation(action, block.input)
