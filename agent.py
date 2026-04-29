@@ -1205,7 +1205,8 @@ function addMsg(role, text, ts) {
 
 def build_chat_panel():
     global _chat_webview, _chat_window
-    rect = NSMakeRect(SCREEN_W - PANEL_W, 0, PANEL_W, SCREEN_H)
+    MENU_BAR_H = 28
+    rect = NSMakeRect(SCREEN_W - PANEL_W, MENU_BAR_H, PANEL_W, SCREEN_H - MENU_BAR_H)
     win = NSWindow.alloc().initWithContentRect_styleMask_backing_defer_(
         rect, NSBorderlessWindowMask, NSBackingStoreBuffered, False,
     )
