@@ -27,7 +27,6 @@ from AppKit import (
     NSBezierPath,
     NSBorderlessWindowMask,
     NSColor,
-    NSEvent,
     NSFloatingWindowLevel,
     NSFont,
     NSFontAttributeName,
@@ -1415,19 +1414,7 @@ def build_chat_panel():
     return win
 
 def setup_esc_listener():
-    def on_key(event):
-        try:
-            if event.keyCode() == 53:
-                print("[overlay] ESC – stopping.", file=sys.stderr)
-                with state_lock:
-                    state["running_demo"] = False
-                NSApplication.sharedApplication().terminate_(None)
-        except Exception:
-            pass
-    try:
-        NSEvent.addGlobalMonitorForEventsMatchingMask_handler_(NSEventMaskKeyDown, on_key)
-    except Exception as e:
-        print(f"[esc] {e}", file=sys.stderr)
+    pass
 
 def main():
     app = NSApplication.sharedApplication()

@@ -57,7 +57,7 @@ FPS                = 60
 BUBBLE_FADE_IN     = 0.25
 BUBBLE_FADE_OUT    = 0.60
 BUBBLE_SLIDE_PX    = 12
-TYPE_CHAR_INTERVAL = 0.055
+TYPE_CHAR_INTERVAL = 0.02
 
 
 # ── Sound effects ─────────────────────────────────────────────
@@ -326,7 +326,7 @@ def human_move_to(x, y, speed_factor=1.0):
         return
 
     steps = max(14, int(dist / 10))
-    base_time = (0.007 + (dist / 6500) ** 0.6) * random.uniform(0.85, 1.15)
+    base_time = (0.005 + (dist / 9000) ** 0.6) * random.uniform(0.85, 1.15)
     total_time = base_time / max(speed_factor, 0.2)
 
     overshoot = random.uniform(0.0, 0.06) if dist > 60 else 0.0
@@ -534,13 +534,15 @@ def dom_start_reading():
         "if(window._crEls)window._crEls.forEach(function(el){"
         "el.style.backgroundColor='';el.style.boxShadow='';el.style.borderLeft='';el.style.transition='';"
         "});"
-        "var els=document.querySelectorAll('p,li,h1,h2,h3,h4,td,th,figcaption,blockquote,dt,dd,pre');"
+        "var root=document.querySelector('main,[role=\"main\"],article,.main-content,#main,#content')||document.body;"
+        "var els=root.querySelectorAll('p,li,h1,h2,h3,h4,td,th,figcaption,blockquote,dt,dd,pre');"
         "var vh=window.innerHeight;"
         "var visible=[];"
         "els.forEach(function(el){"
         "var r=el.getBoundingClientRect();"
+        "var skip=el.closest('header,nav,footer,aside,[role=\"navigation\"],[role=\"banner\"],[role=\"complementary\"]');"
         "if(r.top>-10&&r.top<vh&&r.height>8&&r.height<500"
-        "&&!el.getAttribute('data-cr-read'))visible.push(el);"
+        "&&!el.getAttribute('data-cr-read')&&!skip)visible.push(el);"
         "});"
         "window._crEls=visible;"
         "window._crIdx=0;"
