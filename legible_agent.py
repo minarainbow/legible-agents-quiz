@@ -1945,23 +1945,22 @@ class OverlayView(NSView):
     @objc.python_method
     def draw_reasoning_bubble(self):
         with state_lock:
-            reasoning    = state.get("reasoning", False)
-            text         = state.get("reasoning_text", "")
-            start_ts     = state.get("reasoning_start_ts")
-            end_ts       = state.get("reasoning_end_ts")
-            reading_done = state.get("reading_done", False)
-            cx, cy       = state["cursor_pos"]
+            reasoning      = state.get("reasoning", False)
+            text           = state.get("reasoning_text", "")
+            start_ts       = state.get("reasoning_start_ts")
+            end_ts         = state.get("reasoning_end_ts")
+            reading_done   = state.get("reading_done", False)
+            speech_done_ts = state.get("speech_done_ts")
+            cx, cy         = state["cursor_pos"]
 
         t = now()
-        if reasoning and start_ts:
-            age = t - start_ts
-            alpha = min(age / BUBBLE_FADE_IN, 1.0) * 0.85
-            slide = min(age / BUBBLE_FADE_IN, 1.0)
-            dots = "·" * (int(t * 3) % 4)
-            display = f"thinking{dots}" if reading_done else f"reading{dots}"
-        elif not reasoning and text and end_ts:
-            with state_lock:
-                speech_done_ts = state.get("speech_done_ts")
+
+        # Narration always wins — show it as long as it's alive (even during next reading/thinking)
+        narration_alive = (
+            text and end_ts and
+            (speech_done_ts is None or (t - speech_done_ts) < 3.0 + BUBBLE_FADE_OUT)
+        )
+        if narration_alive:
             if speech_done_ts is None:
                 alpha = 0.85
             else:
@@ -1971,15 +1970,22 @@ class OverlayView(NSView):
                         state["reasoning_text"] = ""
                     return
                 alpha = 0.85 if age < 3.0 else 0.85 * (1.0 - (age - 3.0) / BUBBLE_FADE_OUT)
-            slide = 1.0
-            display = text
-        else:
+            self.draw_speech_bubble(cx, cy, text, self.soft_blue, alpha,
+                                    max_chars=56, above=True, slide=1.0)
             return
-        if not display:
-            return
-        color_fn = self.soft_blue
-        self.draw_speech_bubble(cx, cy, display, color_fn, alpha,
-                                max_chars=56, above=True, slide=slide)
+
+        # Only show reading/thinking if there's no narration to display
+        if reasoning and start_ts:
+            age = t - start_ts
+            # Delay before showing — don't flash immediately, give narration time to linger
+            if age < 1.5:
+                return
+            alpha = min((age - 1.5) / BUBBLE_FADE_IN, 1.0) * 0.45  # dimmer than narration
+            slide = min((age - 1.5) / BUBBLE_FADE_IN, 1.0)
+            dots = "·" * (int(t * 3) % 4)
+            display = f"thinking{dots}" if reading_done else f"reading{dots}"
+            self.draw_speech_bubble(cx, cy, display, self.white, alpha,
+                                    max_chars=56, above=True, slide=slide)
 
 # ─────────────────────────────────────────────────────────────
 # Timer / Window / ESC
