@@ -325,7 +325,7 @@ def human_move_to(x, y, speed_factor=1.0):
         return
 
     steps = max(14, int(dist / 10))
-    base_time = (0.016 + (dist / 3800) ** 0.6) * random.uniform(0.85, 1.15)
+    base_time = (0.010 + (dist / 5000) ** 0.6) * random.uniform(0.85, 1.15)
     total_time = base_time / max(speed_factor, 0.2)
 
     overshoot = random.uniform(0.0, 0.06) if dist > 60 else 0.0
@@ -1090,9 +1090,9 @@ def _execute_action_inner(action, params):
 
         last = keys[-1]
         if last in ("return", "enter"):
-            time.sleep(2.5)
+            time.sleep(1.8)
         elif "space" in keys and "command" in keys:
-            time.sleep(0.8)
+            time.sleep(0.6)
         else:
             time.sleep(0.15)
 
@@ -1150,11 +1150,11 @@ def navigate_to_url(url: str):
     pyautogui.press("l")
     time.sleep(0.05)
     pyautogui.keyUp("command")
-    time.sleep(0.4)
+    time.sleep(0.3)
     human_type_visible(url)
     time.sleep(0.1)
     pyautogui.press("return")
-    time.sleep(3.5)
+    time.sleep(2.8)
 
 def task_loop():
     time.sleep(1.5)
@@ -1545,7 +1545,7 @@ def task_loop():
                 consec_shots = 0
 
             execute_action(action, block.input)
-            time.sleep(random.uniform(0.05, 0.12))
+            time.sleep(random.uniform(0.04, 0.09))
 
             if _is_trivial_action(action, block.input):
                 content = _trivial_confirmation(action, block.input)
