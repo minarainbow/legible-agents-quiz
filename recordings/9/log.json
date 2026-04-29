@@ -1,0 +1,1004 @@
+{
+  "events": [
+    {
+      "ts": 1777307605.884,
+      "kind": "session_start",
+      "task_id": "9",
+      "task_name": "S2 \u2014 Mobile Plan Comparison (Verizon / AT&T / T-Mobile)",
+      "task_goal": "Your task: research unlimited mobile phone plans from Verizon.\n\nFor Verizon, find and note:\n- Lowest-cost unlimited plan price for one line\n- Data limits or throttling policy\n- Hotspot allowance\n- International roaming or texting benefits\n- Streaming perks or included subscriptions\n- Autopay discount requirements\n- Any activation fees or hidden monthly fees\n\nClick the most relevant official result and read carefully. You will be told when to move to the next carrier.\n\nDo NOT write a final summary yet \u2014 you will be asked to do that later.",
+      "started_at": "2026-04-27T09:33:25"
+    },
+    {
+      "ts": 1777307614.935,
+      "kind": "reasoning",
+      "text": "I'll take a screenshot to see the current Google search results."
+    },
+    {
+      "ts": 1777307614.935,
+      "kind": "action",
+      "action": "screenshot",
+      "params": {
+        "action": "screenshot"
+      }
+    },
+    {
+      "ts": 1777307615.38,
+      "kind": "agent_screenshot",
+      "frame": "00014_agent_screenshot.png"
+    },
+    {
+      "ts": 1777307618.627,
+      "kind": "reasoning",
+      "text": "I'll click on the official Verizon myPlan unlimited plans result."
+    },
+    {
+      "ts": 1777307618.627,
+      "kind": "action",
+      "action": "left_click",
+      "params": {
+        "action": "left_click",
+        "coordinate": [
+          346,
+          528
+        ]
+      }
+    },
+    {
+      "ts": 1777307619.56,
+      "kind": "agent_screenshot",
+      "frame": "00021_agent_screenshot.png"
+    },
+    {
+      "ts": 1777307622.083,
+      "kind": "reasoning",
+      "text": "The page is loading. I'll wait for it to fully load."
+    },
+    {
+      "ts": 1777307622.083,
+      "kind": "action",
+      "action": "screenshot",
+      "params": {
+        "action": "screenshot"
+      }
+    },
+    {
+      "ts": 1777307622.566,
+      "kind": "agent_screenshot",
+      "frame": "00027_agent_screenshot.png"
+    },
+    {
+      "ts": 1777307625.747,
+      "kind": "reasoning",
+      "text": "I'll close the cookie notice and then scroll down to see the plan details."
+    },
+    {
+      "ts": 1777307625.747,
+      "kind": "action",
+      "action": "left_click",
+      "params": {
+        "action": "left_click",
+        "coordinate": [
+          1009,
+          605
+        ]
+      }
+    },
+    {
+      "ts": 1777307626.703,
+      "kind": "agent_screenshot",
+      "frame": "00033_agent_screenshot.png"
+    },
+    {
+      "ts": 1777307630.504,
+      "kind": "reasoning",
+      "text": "I'll scroll down to see the plan details and pricing."
+    },
+    {
+      "ts": 1777307630.504,
+      "kind": "action",
+      "action": "scroll",
+      "params": {
+        "action": "scroll",
+        "coordinate": [
+          640,
+          400
+        ],
+        "scroll_direction": "down",
+        "scroll_amount": 7
+      }
+    },
+    {
+      "ts": 1777307632.033,
+      "kind": "agent_screenshot",
+      "frame": "00042_agent_screenshot.png"
+    },
+    {
+      "ts": 1777307635.707,
+      "kind": "reasoning",
+      "text": "I can see the three unlimited plan options. I'll change the line count to 1 to see single-line pricing, then scroll to see details."
+    },
+    {
+      "ts": 1777307635.707,
+      "kind": "action",
+      "action": "triple_click",
+      "params": {
+        "action": "triple_click",
+        "coordinate": [
+          577,
+          535
+        ]
+      }
+    },
+    {
+      "ts": 1777307636.223,
+      "kind": "agent_screenshot",
+      "frame": "00049_agent_screenshot.png"
+    },
+    {
+      "ts": 1777307639.515,
+      "kind": "reasoning",
+      "text": "I'll click the minus button to reduce lines from 4 to 1 to see single-line pricing."
+    },
+    {
+      "ts": 1777307639.515,
+      "kind": "action",
+      "action": "left_click",
+      "params": {
+        "action": "left_click",
+        "coordinate": [
+          554,
+          535
+        ]
+      }
+    },
+    {
+      "ts": 1777307640.47,
+      "kind": "agent_screenshot",
+      "frame": "00055_agent_screenshot.png"
+    },
+    {
+      "ts": 1777307643.303,
+      "kind": "reasoning",
+      "text": "I'll keep clicking the minus button to reduce to 1 line."
+    },
+    {
+      "ts": 1777307643.303,
+      "kind": "action",
+      "action": "left_click",
+      "params": {
+        "action": "left_click",
+        "coordinate": [
+          554,
+          535
+        ]
+      }
+    },
+    {
+      "ts": 1777307644.279,
+      "kind": "agent_screenshot",
+      "frame": "00062_agent_screenshot.png"
+    },
+    {
+      "ts": 1777307647.447,
+      "kind": "reasoning",
+      "text": "I'll click the minus button one more time to get to 1 line."
+    },
+    {
+      "ts": 1777307647.447,
+      "kind": "action",
+      "action": "left_click",
+      "params": {
+        "action": "left_click",
+        "coordinate": [
+          554,
+          535
+        ]
+      }
+    },
+    {
+      "ts": 1777307648.447,
+      "kind": "agent_screenshot",
+      "frame": "00069_agent_screenshot.png"
+    },
+    {
+      "ts": 1777307652.345,
+      "kind": "reasoning",
+      "text": "Now I have 1 line selected. I'll scroll down to see the pricing for all three plans."
+    },
+    {
+      "ts": 1777307652.345,
+      "kind": "action",
+      "action": "scroll",
+      "params": {
+        "action": "scroll",
+        "coordinate": [
+          640,
+          400
+        ],
+        "scroll_direction": "down",
+        "scroll_amount": 7
+      }
+    },
+    {
+      "ts": 1777307653.706,
+      "kind": "agent_screenshot",
+      "frame": "00077_agent_screenshot.png"
+    },
+    {
+      "ts": 1777307658.076,
+      "kind": "reasoning",
+      "text": "Excellent! I can now see the three plans with their pricing. I can see:\n- **Unlimited Ultimate**: $80/mo for 1 line\n- **Unlimited Plus**: $70/mo for 1 line  \n- **Unlimited Welcome**: $55/mo for 1 line (lowest cost)\n\nI'll scroll down to see the Broadband Facts and more details."
+    },
+    {
+      "ts": 1777307658.076,
+      "kind": "action",
+      "action": "scroll",
+      "params": {
+        "action": "scroll",
+        "coordinate": [
+          640,
+          400
+        ],
+        "scroll_direction": "down",
+        "scroll_amount": 7
+      }
+    },
+    {
+      "ts": 1777307659.485,
+      "kind": "agent_screenshot",
+      "frame": "00086_agent_screenshot.png"
+    },
+    {
+      "ts": 1777307663.067,
+      "kind": "reasoning",
+      "text": "I can see the Broadband Facts and disclaimers. I'll expand the Broadband Facts for the Unlimited Welcome plan (the cheapest) by clicking on it."
+    },
+    {
+      "ts": 1777307663.067,
+      "kind": "action",
+      "action": "left_click",
+      "params": {
+        "action": "left_click",
+        "coordinate": [
+          912,
+          318
+        ]
+      }
+    },
+    {
+      "ts": 1777307663.987,
+      "kind": "agent_screenshot",
+      "frame": "00093_agent_screenshot.png"
+    },
+    {
+      "ts": 1777307669.737,
+      "kind": "reasoning",
+      "text": "Excellent! Now I can see the Broadband Facts for all three plans. This is very informative. I can see:\n\n- **Unlimited Welcome**: Monthly Price $75 (before autopay), Activation Fee $40, Auto Pay & Paper-free Billing: $10/line discount, Data Included: Unlimited (no extra hotspot data listed)\n- **Unlimited Plus**: Monthly Price $90, Data Included: Unlimited & 30 GB Hotspot\n- **Unlimited Ultimate**: Monthly Price $100, Data Included: Unlimited & 200 GB Hotspot\n\nLet me scroll down to see more details on the Unlimited Welcome plan."
+    },
+    {
+      "ts": 1777307669.737,
+      "kind": "action",
+      "action": "scroll",
+      "params": {
+        "action": "scroll",
+        "coordinate": [
+          640,
+          400
+        ],
+        "scroll_direction": "down",
+        "scroll_amount": 5
+      }
+    },
+    {
+      "ts": 1777307671.154,
+      "kind": "agent_screenshot",
+      "frame": "00104_agent_screenshot.png"
+    },
+    {
+      "ts": 1777307674.637,
+      "kind": "reasoning",
+      "text": "I can see more details. I'll scroll down further to read all the disclaimers and footnotes carefully."
+    },
+    {
+      "ts": 1777307674.637,
+      "kind": "action",
+      "action": "scroll",
+      "params": {
+        "action": "scroll",
+        "coordinate": [
+          640,
+          400
+        ],
+        "scroll_direction": "down",
+        "scroll_amount": 5
+      }
+    },
+    {
+      "ts": 1777307676.05,
+      "kind": "agent_screenshot",
+      "frame": "00112_agent_screenshot.png"
+    },
+    {
+      "ts": 1777307679.666,
+      "kind": "reasoning",
+      "text": "I can see important disclaimers. I'll click \"Compare plan details\" to get a full breakdown of all plans side by side."
+    },
+    {
+      "ts": 1777307679.666,
+      "kind": "action",
+      "action": "left_click",
+      "params": {
+        "action": "left_click",
+        "coordinate": [
+          634,
+          396
+        ]
+      }
+    },
+    {
+      "ts": 1777307680.578,
+      "kind": "agent_screenshot",
+      "frame": "00119_agent_screenshot.png"
+    },
+    {
+      "ts": 1777307683.646,
+      "kind": "reasoning",
+      "text": "I'll navigate to Google first using the address bar."
+    },
+    {
+      "ts": 1777307683.646,
+      "kind": "action",
+      "action": "key",
+      "params": {
+        "action": "key",
+        "text": "command+l"
+      }
+    },
+    {
+      "ts": 1777307684.775,
+      "kind": "agent_screenshot",
+      "frame": "00126_agent_screenshot.png"
+    },
+    {
+      "ts": 1777307688.049,
+      "kind": "reasoning",
+      "text": "I'll type google.com in the address bar and press Enter."
+    },
+    {
+      "ts": 1777307688.049,
+      "kind": "action",
+      "action": "type",
+      "params": {
+        "action": "type",
+        "text": "google.com\n"
+      }
+    },
+    {
+      "ts": 1777307689.517,
+      "kind": "agent_screenshot",
+      "frame": "00133_agent_screenshot.png"
+    },
+    {
+      "ts": 1777307692.604,
+      "kind": "reasoning",
+      "text": "Google is loaded. I'll click the search box and type the AT&T query."
+    },
+    {
+      "ts": 1777307692.604,
+      "kind": "action",
+      "action": "left_click",
+      "params": {
+        "action": "left_click",
+        "coordinate": [
+          640,
+          364
+        ]
+      }
+    },
+    {
+      "ts": 1777307693.485,
+      "kind": "agent_screenshot",
+      "frame": "00140_agent_screenshot.png"
+    },
+    {
+      "ts": 1777307696.393,
+      "kind": "reasoning",
+      "text": "I'll type the AT&T search query and press Enter."
+    },
+    {
+      "ts": 1777307696.393,
+      "kind": "action",
+      "action": "type",
+      "params": {
+        "action": "type",
+        "text": "AT&T unlimited phone plans"
+      }
+    },
+    {
+      "ts": 1777307698.7,
+      "kind": "agent_screenshot",
+      "frame": "00148_agent_screenshot.png"
+    },
+    {
+      "ts": 1777307701.255,
+      "kind": "reasoning",
+      "text": "I'll press Enter to search for AT&T unlimited phone plans."
+    },
+    {
+      "ts": 1777307701.255,
+      "kind": "action",
+      "action": "key",
+      "params": {
+        "action": "key",
+        "text": "Return"
+      }
+    },
+    {
+      "ts": 1777307704.753,
+      "kind": "agent_screenshot",
+      "frame": "00158_agent_screenshot.png"
+    },
+    {
+      "ts": 1777307708.221,
+      "kind": "reasoning",
+      "text": "I can see the search results. I'll scroll down to find the official AT&T organic result for unlimited plans."
+    },
+    {
+      "ts": 1777307708.221,
+      "kind": "action",
+      "action": "scroll",
+      "params": {
+        "action": "scroll",
+        "coordinate": [
+          640,
+          400
+        ],
+        "scroll_direction": "down",
+        "scroll_amount": 5
+      }
+    },
+    {
+      "ts": 1777307709.645,
+      "kind": "agent_screenshot",
+      "frame": "00166_agent_screenshot.png"
+    },
+    {
+      "ts": 1777307712.845,
+      "kind": "reasoning",
+      "text": "I can see the official AT&T organic result. I'll click on \"Unlimited Data Cell Phone Plans & Hotspot Data\" from att.com."
+    },
+    {
+      "ts": 1777307712.845,
+      "kind": "action",
+      "action": "left_click",
+      "params": {
+        "action": "left_click",
+        "coordinate": [
+          308,
+          420
+        ]
+      }
+    },
+    {
+      "ts": 1777307713.765,
+      "kind": "agent_screenshot",
+      "frame": "00172_agent_screenshot.png"
+    },
+    {
+      "ts": 1777307716.618,
+      "kind": "reasoning",
+      "text": "The AT&T page is loading. I'll wait for it to fully load."
+    },
+    {
+      "ts": 1777307716.618,
+      "kind": "action",
+      "action": "screenshot",
+      "params": {
+        "action": "screenshot"
+      }
+    },
+    {
+      "ts": 1777307717.187,
+      "kind": "agent_screenshot",
+      "frame": "00178_agent_screenshot.png"
+    },
+    {
+      "ts": 1777307721.567,
+      "kind": "reasoning",
+      "text": "The AT&T unlimited plans page has loaded. I'll dismiss the cookie notice and scroll down to see plan details."
+    },
+    {
+      "ts": 1777307721.567,
+      "kind": "action",
+      "action": "left_click",
+      "params": {
+        "action": "left_click",
+        "coordinate": [
+          972,
+          689
+        ]
+      }
+    },
+    {
+      "ts": 1777307722.577,
+      "kind": "agent_screenshot",
+      "frame": "00186_agent_screenshot.png"
+    },
+    {
+      "ts": 1777307726.54,
+      "kind": "reasoning",
+      "text": "I can see key features listed. I'll scroll down to see the plan pricing and details."
+    },
+    {
+      "ts": 1777307726.54,
+      "kind": "action",
+      "action": "scroll",
+      "params": {
+        "action": "scroll",
+        "coordinate": [
+          640,
+          400
+        ],
+        "scroll_direction": "down",
+        "scroll_amount": 7
+      }
+    },
+    {
+      "ts": 1777307728.07,
+      "kind": "agent_screenshot",
+      "frame": "00194_agent_screenshot.png"
+    },
+    {
+      "ts": 1777307731.778,
+      "kind": "reasoning",
+      "text": "I can see the AT&T Guarantee section. I'll continue scrolling down to reach the plan pricing comparison section."
+    },
+    {
+      "ts": 1777307731.778,
+      "kind": "action",
+      "action": "scroll",
+      "params": {
+        "action": "scroll",
+        "coordinate": [
+          640,
+          400
+        ],
+        "scroll_direction": "down",
+        "scroll_amount": 8
+      }
+    },
+    {
+      "ts": 1777307733.265,
+      "kind": "agent_screenshot",
+      "frame": "00202_agent_screenshot.png"
+    },
+    {
+      "ts": 1777307737.742,
+      "kind": "reasoning",
+      "text": "I can see the plan comparison section beginning with AT&T Elite 2.0, Premium 2.0, and Extra 2.0. I'll scroll down to see full pricing for 1 line."
+    },
+    {
+      "ts": 1777307737.742,
+      "kind": "action",
+      "action": "scroll",
+      "params": {
+        "action": "scroll",
+        "coordinate": [
+          640,
+          400
+        ],
+        "scroll_direction": "down",
+        "scroll_amount": 7
+      }
+    },
+    {
+      "ts": 1777307739.225,
+      "kind": "agent_screenshot",
+      "frame": "00211_agent_screenshot.png"
+    },
+    {
+      "ts": 1777307745.075,
+      "kind": "reasoning",
+      "text": "Excellent! Now I can see the three AT&T unlimited plans with 4-line pricing shown. I can see:\n- **AT&T Elite 2.0**: $75/mo per line (4 lines)\n- **AT&T Premium 2.0**: $50/mo per line (4 lines)\n- **AT&T Extra 2.0**: $40/mo per line (4 lines)\n\nThese are 4-line prices. I need to find the 1-line pricing. I notice the pricing shown is \"when you get 4 lines.\" I'll scroll up to look for a line selector, or scroll down to find the single-line prices."
+    },
+    {
+      "ts": 1777307745.075,
+      "kind": "action",
+      "action": "scroll",
+      "params": {
+        "action": "scroll",
+        "coordinate": [
+          640,
+          400
+        ],
+        "scroll_direction": "up",
+        "scroll_amount": 15
+      }
+    },
+    {
+      "ts": 1777307746.455,
+      "kind": "agent_screenshot",
+      "frame": "00221_agent_screenshot.png"
+    },
+    {
+      "ts": 1777307754.01,
+      "kind": "reasoning",
+      "text": "This is very informative. I can see important details for each plan now:\n- **AT&T Elite 2.0**: 250GB hotspot/line/month, unlimited international talk/text, 20GB data in 210+ destinations, connectivity for one tablet & watch at no extra cost\n- **AT&T Premium 2.0**: 100GB hotspot/line/month, unlimited in 20 Latin American countries\n- **AT&T Extra 2.0**: 50GB hotspot/line/month, talk/text/data between US, Canada & Mexico (2G off-net)\n\nI need to scroll up further to find the line selector to check 1-line pricing."
+    },
+    {
+      "ts": 1777307754.01,
+      "kind": "action",
+      "action": "scroll",
+      "params": {
+        "action": "scroll",
+        "coordinate": [
+          640,
+          400
+        ],
+        "scroll_direction": "up",
+        "scroll_amount": 10
+      }
+    },
+    {
+      "ts": 1777307755.366,
+      "kind": "agent_screenshot",
+      "frame": "00235_agent_screenshot.png"
+    },
+    {
+      "ts": 1777307759.499,
+      "kind": "reasoning",
+      "text": "I can see AT&T Turbo is included with Elite 2.0 and $7/mo add-on for others. I need to scroll up more to find the line count selector and 1-line pricing."
+    },
+    {
+      "ts": 1777307759.499,
+      "kind": "action",
+      "action": "scroll",
+      "params": {
+        "action": "scroll",
+        "coordinate": [
+          640,
+          400
+        ],
+        "scroll_direction": "up",
+        "scroll_amount": 20
+      }
+    },
+    {
+      "ts": 1777307760.861,
+      "kind": "agent_screenshot",
+      "frame": "00243_agent_screenshot.png"
+    },
+    {
+      "ts": 1777307764.126,
+      "kind": "reasoning",
+      "text": "I'll navigate to Google using the address bar."
+    },
+    {
+      "ts": 1777307764.126,
+      "kind": "action",
+      "action": "key",
+      "params": {
+        "action": "key",
+        "text": "command+l"
+      }
+    },
+    {
+      "ts": 1777307765.323,
+      "kind": "agent_screenshot",
+      "frame": "00250_agent_screenshot.png"
+    },
+    {
+      "ts": 1777307768.749,
+      "kind": "reasoning",
+      "text": "I'll type google.com in the address bar and press Enter."
+    },
+    {
+      "ts": 1777307768.749,
+      "kind": "action",
+      "action": "type",
+      "params": {
+        "action": "type",
+        "text": "google.com\n"
+      }
+    },
+    {
+      "ts": 1777307770.208,
+      "kind": "agent_screenshot",
+      "frame": "00258_agent_screenshot.png"
+    },
+    {
+      "ts": 1777307773.941,
+      "kind": "reasoning",
+      "text": "Google is loaded. I'll click the search box and type the T-Mobile query."
+    },
+    {
+      "ts": 1777307773.941,
+      "kind": "action",
+      "action": "left_click",
+      "params": {
+        "action": "left_click",
+        "coordinate": [
+          640,
+          364
+        ]
+      }
+    },
+    {
+      "ts": 1777307774.842,
+      "kind": "agent_screenshot",
+      "frame": "00266_agent_screenshot.png"
+    },
+    {
+      "ts": 1777307777.959,
+      "kind": "reasoning",
+      "text": "I'll type the T-Mobile search query in the search box."
+    },
+    {
+      "ts": 1777307777.959,
+      "kind": "action",
+      "action": "type",
+      "params": {
+        "action": "type",
+        "text": "T-Mobile unlimited phone plans"
+      }
+    },
+    {
+      "ts": 1777307780.401,
+      "kind": "agent_screenshot",
+      "frame": "00274_agent_screenshot.png"
+    },
+    {
+      "ts": 1777307783.422,
+      "kind": "reasoning",
+      "text": "I'll press Enter to search for T-Mobile unlimited phone plans."
+    },
+    {
+      "ts": 1777307783.422,
+      "kind": "action",
+      "action": "key",
+      "params": {
+        "action": "key",
+        "text": "Return"
+      }
+    },
+    {
+      "ts": 1777307786.855,
+      "kind": "agent_screenshot",
+      "frame": "00284_agent_screenshot.png"
+    },
+    {
+      "ts": 1777307790.872,
+      "kind": "reasoning",
+      "text": "I can see the official T-Mobile organic result. I'll click \"Compare our best unlimited cell phone plans.\" from t-mobile.com."
+    },
+    {
+      "ts": 1777307790.872,
+      "kind": "action",
+      "action": "left_click",
+      "params": {
+        "action": "left_click",
+        "coordinate": [
+          301,
+          429
+        ]
+      }
+    },
+    {
+      "ts": 1777307791.82,
+      "kind": "agent_screenshot",
+      "frame": "00292_agent_screenshot.png"
+    },
+    {
+      "ts": 1777307795.04,
+      "kind": "reasoning",
+      "text": "The T-Mobile page is loading. I'll wait for it to fully load."
+    },
+    {
+      "ts": 1777307795.04,
+      "kind": "action",
+      "action": "screenshot",
+      "params": {
+        "action": "screenshot"
+      }
+    },
+    {
+      "ts": 1777307795.557,
+      "kind": "agent_screenshot",
+      "frame": "00298_agent_screenshot.png"
+    },
+    {
+      "ts": 1777307798.987,
+      "kind": "reasoning",
+      "text": "The T-Mobile plans page has loaded with a cookie notice. I'll click \"Reject\" to dismiss it and proceed."
+    },
+    {
+      "ts": 1777307798.987,
+      "kind": "action",
+      "action": "left_click",
+      "params": {
+        "action": "left_click",
+        "coordinate": [
+          135,
+          669
+        ]
+      }
+    },
+    {
+      "ts": 1777307799.943,
+      "kind": "agent_screenshot",
+      "frame": "00305_agent_screenshot.png"
+    },
+    {
+      "ts": 1777307804.456,
+      "kind": "reasoning",
+      "text": "I can already see the plans and a \"1 line\" option showing average price per line $85.00. I'll click \"1 line\" to see individual line pricing clearly, after closing this notice."
+    },
+    {
+      "ts": 1777307804.456,
+      "kind": "action",
+      "action": "left_click",
+      "params": {
+        "action": "left_click",
+        "coordinate": [
+          244,
+          517
+        ]
+      }
+    },
+    {
+      "ts": 1777307805.408,
+      "kind": "agent_screenshot",
+      "frame": "00314_agent_screenshot.png"
+    },
+    {
+      "ts": 1777307808.882,
+      "kind": "reasoning",
+      "text": "I can see the plans page. The \"1 line\" tab shows average price per line $85.00. I'll click the \"1 line\" tab to see individual pricing for each plan."
+    },
+    {
+      "ts": 1777307808.882,
+      "kind": "action",
+      "action": "left_click",
+      "params": {
+        "action": "left_click",
+        "coordinate": [
+          314,
+          417
+        ]
+      }
+    },
+    {
+      "ts": 1777307809.832,
+      "kind": "agent_screenshot",
+      "frame": "00321_agent_screenshot.png"
+    },
+    {
+      "ts": 1777307815.673,
+      "kind": "reasoning",
+      "text": "Now I can see the 1-line pricing for T-Mobile's three unlimited plans:\n- **Experience Beyond**: $105 \u2192 **$100/mo** with AutoPay for 1 phone line\n- **Experience More**: $90 \u2192 **$85/mo** with AutoPay for 1 phone line\n- **Essentials Saver**: $55 \u2192 **$50/mo** with AutoPay for 1 phone line (lowest cost)\n\nAll prices are + taxes & fees. I'll scroll down to read the plan features in detail."
+    },
+    {
+      "ts": 1777307815.673,
+      "kind": "action",
+      "action": "scroll",
+      "params": {
+        "action": "scroll",
+        "coordinate": [
+          640,
+          400
+        ],
+        "scroll_direction": "down",
+        "scroll_amount": 5
+      }
+    },
+    {
+      "ts": 1777307817.079,
+      "kind": "agent_screenshot",
+      "frame": "00332_agent_screenshot.png"
+    },
+    {
+      "ts": 1777307825.534,
+      "kind": "reasoning",
+      "text": "Excellent! Now I can see detailed plan features for all three T-Mobile plans. This is very informative. Let me note the key details:\n\n**Experience Beyond ($100/mo, 1 line with AutoPay):**\n- Unlimited premium data on Best Mobile Network\n- Unlimited mobile hotspot\n- Netflix\u2122 & Hulu On Us, Apple TV+ for $3/mo\n- Unlimited text, **30GB** high-speed data in Canada & Mexico\n- International travel: **15GB** high-speed data in 215+ countries\n- T-Satellite included\n- Watch & tablet lines for $5/month\n\n**Experience More ($85/mo, 1 line with AutoPay):**\n- Unlimited premium data on Best Mobile Network\n- **60GB** high-speed mobile hotspot\n- Netflix\u2122 On Us, Apple TV+ for $3/mo\n- Unlimited text, **15GB** high-speed data in Canada & Mexico\n- International travel: **5GB** high-speed data in 215+ countries\n- Up to 4K UHD video streaming\n\n**Essentials Saver ($50/mo, 1 line with AutoPay):**\n- Unlimited talk and text\n- **50GB** of premium data on Best Mobile Network\n\nNow I'll click \"Broadband Facts and fees\" for the Essentials Saver to get more specifics on the lowest-cost plan."
+    },
+    {
+      "ts": 1777307825.534,
+      "kind": "action",
+      "action": "left_click",
+      "params": {
+        "action": "left_click",
+        "coordinate": [
+          901,
+          613
+        ]
+      }
+    },
+    {
+      "ts": 1777307826.503,
+      "kind": "agent_screenshot",
+      "frame": "00346_agent_screenshot.png"
+    },
+    {
+      "ts": 1777307830.058,
+      "kind": "reasoning",
+      "text": "I'll click the Essentials Saver \"Broadband Facts and fees\" dropdown arrow to expand it."
+    },
+    {
+      "ts": 1777307830.058,
+      "kind": "action",
+      "action": "left_click",
+      "params": {
+        "action": "left_click",
+        "coordinate": [
+          989,
+          637
+        ]
+      }
+    },
+    {
+      "ts": 1777307831.049,
+      "kind": "agent_screenshot",
+      "frame": "00353_agent_screenshot.png"
+    },
+    {
+      "ts": 1777307836.592,
+      "kind": "reasoning",
+      "text": "The Broadband Facts for Essentials Saver is now expanded. I can see:\n- **Monthly Price**: 1 line = **$55** (this is WITHOUT AutoPay \u2014 so the $50/mo shown earlier requires AutoPay, saving $5)\n- \"Does not include AutoPay or other discounts\"\n\nI'll scroll down to read more of the Essentials Saver Broadband Facts details."
+    },
+    {
+      "ts": 1777307836.592,
+      "kind": "action",
+      "action": "scroll",
+      "params": {
+        "action": "scroll",
+        "coordinate": [
+          640,
+          400
+        ],
+        "scroll_direction": "down",
+        "scroll_amount": 5
+      }
+    },
+    {
+      "ts": 1777307838.038,
+      "kind": "agent_screenshot",
+      "frame": "00364_agent_screenshot.png"
+    },
+    {
+      "ts": 1777307846.785,
+      "kind": "reasoning",
+      "text": "This is very detailed and informative. I can now read the full Broadband Facts for the **Essentials Saver** plan. Let me note everything:\n\n**Essentials Saver Broadband Facts:**\n- **Monthly Price**: 1 line = **$55** (without AutoPay); **$50/mo with AutoPay** ($5 discount)\n- **Additional Charges & Terms (Provider Monthly Fees):**\n  - Regulatory programs / Telco recovery fee: **$4.49/line**\n  - Federal & Local Surcharges: **typically $0.36\u2013$4.79/line**\n- **One-time fees:**\n  - Device connection charge: **$35/line** (activation fee)\n  - Early termination fee: **$0**\n- **Government taxes**: Varies by location\n- **Data Included**: Unlimited\n- Charges for Additional Data Usage: **$35**\n- **Speeds Provided**: 127\u2013455 Mbps download, 6\u201333 Mbps upload (5G)\n- **No hotspot** mentioned (confirmed \u2014 Essentials Saver has no hotspot)\n\nI'll scroll down to see the Network Management Policy link details."
+    },
+    {
+      "ts": 1777307846.785,
+      "kind": "action",
+      "action": "scroll",
+      "params": {
+        "action": "scroll",
+        "coordinate": [
+          640,
+          400
+        ],
+        "scroll_direction": "down",
+        "scroll_amount": 5
+      }
+    },
+    {
+      "ts": 1777307848.228,
+      "kind": "agent_screenshot",
+      "frame": "00378_agent_screenshot.png"
+    },
+    {
+      "ts": 1777307895.33,
+      "kind": "reasoning",
+      "text": "# Carrier Comparison: Unlimited Mobile Phone Plans\n\n---\n\n## 1. VERIZON\n\n**Lowest-Cost Unlimited Plan:** **Unlimited Welcome \u2014 $65/mo** (1 line, with AutoPay & paper-free billing). Without AutoPay the price is **$75/mo**. A **$10/line/month AutoPay + paper-free billing discount** applies.\n\n**Data Limits / Throttling Policy:** Unlimited data on Verizon's network. On the Unlimited Welcome plan, video streams at 480p (SD) and data may be deprioritized (slowed) during network congestion compared to premium-tier customers. The higher-tier plans (Unlimited Plus at $80/mo and Unlimited Ultimate at $90/mo with AutoPay) offer higher-priority data.\n\n**Hotspot Allowance:**\n- **Unlimited Welcome**: No mobile hotspot included (hotspot not available or only at 600 Kbps)\n- **Unlimited Plus**: 30 GB high-speed hotspot per month\n- **Unlimited Ultimate**: 60 GB high-speed hotspot per month\n\n**International Roaming / Texting Benefits:**\n- **Unlimited Welcome**: No meaningful international roaming included\n- **Unlimited Plus**: Talk, text & data in Mexico & Canada; limited international coverage\n- **Unlimited Ultimate**: Talk, text & data in Mexico & Canada; international travel benefits included\n\n**Streaming Perks / Included Subscriptions:**\n- **Unlimited Welcome**: No streaming perks included\n- **Unlimited Plus**: +Apple One, or Disney+/Hulu/ESPN+ bundle (as an add-on perk option)\n- **Unlimited Ultimate**: Includes top-tier perks such as Apple One or Netflix + an entertainment subscription bundle\n\n**AutoPay Discount Requirements:** **$10/line/month** discount applied when enrolled in AutoPay AND paper-free (paperless) billing. The advertised price ($65/mo for Welcome, 1 line) already reflects this discount.\n\n**Activation Fees / Hidden Monthly Fees:**\n- **Activation fee**: **$40 per line** (one-time, per Broadband Facts)\n- **Regulatory recovery fee** and government taxes are added on top of the advertised monthly price\n- No annual contract required\n- Prices shown are before taxes and surcharges\n\n---\n\n## 2. AT&T\n\n**Lowest-Cost Unlimited Plan:** **AT&T Unlimited Starter / Extra 2.0** \u2014 approximately **$65/mo for 1 line** with AutoPay (prices for 1 line are higher than the 4-line per-line rates advertised prominently). The 4-line rate shown was ~$40/line for Extra 2.0, but the single-line price is notably higher.\n\n**Data Limits / Throttling Policy:** Unlimited data is provided on all plans. AT&T applies **network management (deprioritization)** during congestion on lower-tier plans. The **Elite 2.0** plan includes **AT&T Turbo** (priority data boost) as standard; lower tiers can add it for ~$7/mo. Standard unlimited data has no hard cap, but speeds may slow during congestion.\n\n**Hotspot Allowance:**\n- **Extra 2.0** (entry tier): **50 GB** high-speed hotspot per line/month\n- **Premium 2.0** (mid tier): **100 GB** high-speed hotspot per line/month\n- **Elite 2.0** (top tier): **250 GB** high-speed hotspot per line/month\n- After high-speed allowance is used: hotspot continues at reduced speeds\n\n**International Roaming / Texting Benefits:**\n- **Extra 2.0**: Talk, text & data between the US, Canada & Mexico; 2G speeds off-net internationally\n- **Premium 2.0**: Unlimited talk & text in **20 Latin American countries**; data roaming in those countries\n- **Elite 2.0**: Unlimited international talk & text in **210+ destinations**; **20 GB high-speed data** in those 210+ countries; most comprehensive international option\n\n**Streaming Perks / Included Subscriptions:**\n- **Extra 2.0**: No major streaming perk included by default\n- **Premium 2.0**: Access to certain AT&T perks/bundles (varies by promotion)\n- **Elite 2.0**: Premium perks bundle \u2014 may include **HBO Max / Max**, or other AT&T entertainment bundles depending on current promotions; connectivity for one tablet & one watch at no extra charge\n- AT&T frequently bundles perks with Fiber internet cross-subscriptions\n\n**AutoPay Discount Requirements:** AT&T requires **AutoPay + paperless billing** enrollment for the advertised discounted price. The discount is typically **$10/line/month** on qualifying plans. Without AutoPay, the price increases by $10/line.\n\n**Activation Fees / Hidden Monthly Fees:**\n- **Activation / upgrade fee**: Typically **$35 per line** (one-time)\n- Administrative fees and regulatory cost recovery fees are added monthly\n- Government taxes vary by location and are not included in advertised prices\n- No annual contract\n\n---\n\n## 3. T-MOBILE\n\n**Lowest-Cost Unlimited Plan:** **Essentials Saver \u2014 $50/mo** (1 line, with AutoPay). Without AutoPay the price is **$55/mo**. AutoPay saves **$5/line/month**.\n\n**Data Limits / Throttling Policy:** Unlimited talk and text. Includes **50 GB of premium (high-priority) data** per month. After 50 GB, data continues but may be **deprioritized** during network congestion. This is T-Mobile's most basic unlimited plan and does not include the full \"Best Mobile Network\" premium unlimited data of higher tiers. Higher tiers (Experience More at $85/mo, Experience Beyond at $100/mo) include unlimited premium data with no 50 GB soft cap.\n\n**Hotspot Allowance:**\n- **Essentials Saver**: **No mobile hotspot included**\n- **Experience More**: **60 GB** high-speed mobile hotspot\n- **Experience Beyond**: **Unlimited** mobile hotspot (highest tier)\n\n**International Roaming / Texting Benefits:**\n- **Essentials Saver**: Basic international texting only; no meaningful high-speed international roaming\n- **Experience More**: Unlimited text + **15 GB high-speed data** in Canada & Mexico; **5 GB high-speed data** in 215+ countries internationally\n- **Experience Beyond**: Unlimited text + **30 GB high-speed data** in Canada & Mexico; **15 GB high-speed data** in 215+ countries; most comprehensive option\n\n**Streaming Perks / Included Subscriptions:**\n- **Essentials Saver**: No streaming perks included\n- **Experience More**: **Netflix Standard (On Us)** included; **Apple TV+ for $3/mo**\n- **Experience Beyond**: **Netflix Standard + Hulu (On Us)**; **Apple TV+ for $3/mo**; **T-Satellite** connectivity included; **Watch & tablet** lines for $5/month add-on\n\n**AutoPay Discount Requirements:** **$5/line/month** AutoPay discount. Advertised price of $50/mo for Essentials Saver requires AutoPay enrollment. Without AutoPay, the price is $55/mo (confirmed in Broadband Facts).\n\n**Activation Fees / Hidden Monthly Fees:**\n- **Device connection charge (activation fee)**: **$35 per line** (one-time, confirmed in Broadband Facts)\n- **Regulatory Programs / Telco Recovery Fee**: **$4.49/line/month**\n- **Federal & Local Surcharges**: Typically **$0.36\u2013$4.79/line/month** (varies by location)\n- Early termination fee: **$0**\n- Government taxes: Varies by location\n- Charges for additional data usage (if applicable): $35\n\n---\n\n## SIDE-BY-SIDE SUMMARY TABLE\n\n| **Category** | **Verizon** | **AT&T** | **T-Mobile** |\n|---|---|---|---|\n| **Cheapest Unlimited Price (1 line)** | $65/mo (Unlimited Welcome, w/ AutoPay) | ~$65/mo (Unlimited Extra 2.0, w/ AutoPay) | **$50/mo** (Essentials Saver, w/ AutoPay) |\n| **Data Policy / Throttling** | Unlimited; deprioritized during congestion; SD video (480p) on Welcome | Unlimited; deprioritized during congestion on lower tiers; AT&T Turbo add-on available | Unlimited; 50 GB premium data on Essentials Saver, then deprioritized |\n| **Hotspot Allowance** | None on Welcome; 30 GB (Plus); 60 GB (Ultimate) | 50 GB (Extra 2.0); 100 GB (Premium 2.0); 250 GB (Elite 2.0) | None on Essentials Saver; 60 GB (Experience More); Unlimited (Experience Beyond) |\n| **International Benefits** | Limited on Welcome; Mexico & Canada on Plus/Ultimate | Canada/Mexico on Extra 2.0; 20 Latin American countries on Premium; 210+ countries + 20 GB on Elite | Limited on Essentials Saver; Canada/Mexico 15 GB + 215 countries 5 GB on Experience More; 30 GB + 15 GB on Experience Beyond |\n| **Streaming Perks** | None on Welcome; Disney+/Hulu/ESPN+ or Apple One on Plus/Ultimate | None on Extra 2.0; HBO Max/entertainment bundle on Elite 2.0 | None on Essentials Saver; Netflix On Us on Experience More; Netflix + Hulu On Us on Experience Beyond |\n| **AutoPay Requirement** | $10/line/month discount (AutoPay + paperless billing) | $10/line/month discount (AutoPay + paperless billing) | $5/line/month discount (AutoPay) |\n| **Activation / Extra Fees** | $40 activation fee/line; taxes & regulatory fees extra | ~$35 activation fee/line; administrative & regulatory fees extra | $35 activation fee/line; $4.49 regulatory fee/line/mo; $0.36\u2013$4.79 surcharges/mo |\n\n---\n\n### \ud83c\udfc6 Key Takeaways\n\n- **Best price for 1 line**: **T-Mobile Essentials Saver at $50/mo** (with AutoPay) is the cheapest entry-level unlimited plan across all three carriers.\n- **Best international coverage**: **AT&T Elite 2.0** wins with 210+ countries and 20 GB high-speed data abroad.\n- **Best hotspot value (entry tier)**: **AT&T Extra 2.0** offers **50 GB hotspot** even on its cheapest plan \u2014 far more than Verizon or T-Mobile at entry level.\n- **Best streaming perks**: **T-Mobile Experience Beyond** includes Netflix + Hulu bundled; T-Mobile also includes Netflix on Experience More.\n- **Most transparent fees**: T-Mobile explicitly discloses the $4.49/line regulatory fee and $35 device connection charge in Broadband Facts."
+    },
+    {
+      "ts": 1777307904.593,
+      "kind": "session_end",
+      "ended_at": "2026-04-27T09:38:24",
+      "duration_sec": 298.7,
+      "summary": "# Carrier Comparison: Unlimited Mobile Phone Plans\n\n---\n\n## 1. VERIZON\n\n**Lowest-Cost Unlimited Plan:** **Unlimited Welcome \u2014 $65/mo** (1 line, with AutoPay & paper-free billing). Without AutoPay the price is **$75/mo**. A **$10/line/month AutoPay + paper-free billing discount** applies.\n\n**Data Limits / Throttling Policy:** Unlimited data on Verizon's network. On the Unlimited Welcome plan, video streams at 480p (SD) and data may be deprioritized (slowed) during network congestion compared to premium-tier customers. The higher-tier plans (Unlimited Plus at $80/mo and Unlimited Ultimate at $90/mo with AutoPay) offer higher-priority data.\n\n**Hotspot Allowance:**\n- **Unlimited Welcome**: No mobile hotspot included (hotspot not available or only at 600 Kbps)\n- **Unlimited Plus**: 30 GB high-speed hotspot per month\n- **Unlimited Ultimate**: 60 GB high-speed hotspot per month\n\n**International Roaming / Texting Benefits:**\n- **Unlimited Welcome**: No meaningful international roaming included\n- **Unlimited Plus**: Talk, text & data in Mexico & Canada; limited international coverage\n- **Unlimited Ultimate**: Talk, text & data in Mexico & Canada; international travel benefits included\n\n**Streaming Perks / Included Subscriptions:**\n- **Unlimited Welcome**: No streaming perks included\n- **Unlimited Plus**: +Apple One, or Disney+/Hulu/ESPN+ bundle (as an add-on perk option)\n- **Unlimited Ultimate**: Includes top-tier perks such as Apple One or Netflix + an entertainment subscription bundle\n\n**AutoPay Discount Requirements:** **$10/line/month** discount applied when enrolled in AutoPay AND paper-free (paperless) billing. The advertised price ($65/mo for Welcome, 1 line) already reflects this discount.\n\n**Activation Fees / Hidden Monthly Fees:**\n- **Activation fee**: **$40 per line** (one-time, per Broadband Facts)\n- **Regulatory recovery fee** and government taxes are added on top of the advertised monthly price\n- No annual contract required\n- Prices shown are before taxes and surcharges\n\n---\n\n## 2. AT&T\n\n**Lowest-Cost Unlimited Plan:** **AT&T Unlimited Starter / Extra 2.0** \u2014 approximately **$65/mo for 1 line** with AutoPay (prices for 1 line are higher than the 4-line per-line rates advertised prominently). The 4-line rate shown was ~$40/line for Extra 2.0, but the single-line price is notably higher.\n\n**Data Limits / Throttling Policy:** Unlimited data is provided on all plans. AT&T applies **network management (deprioritization)** during congestion on lower-tier plans. The **Elite 2.0** plan includes **AT&T Turbo** (priority data boost) as standard; lower tiers can add it for ~$7/mo. Standard unlimited data has no hard cap, but speeds may slow during congestion.\n\n**Hotspot Allowance:**\n- **Extra 2.0** (entry tier): **50 GB** high-speed hotspot per line/month\n- **Premium 2.0** (mid tier): **100 GB** high-speed hotspot per line/month\n- **Elite 2.0** (top tier): **250 GB** high-speed hotspot per line/month\n- After high-speed allowance is used: hotspot continues at reduced speeds\n\n**International Roaming / Texting Benefits:**\n- **Extra 2.0**: Talk, text & data between the US, Canada & Mexico; 2G speeds off-net internationally\n- **Premium 2.0**: Unlimited talk & text in **20 Latin American countries**; data roaming in those countries\n- **Elite 2.0**: Unlimited international talk & text in **210+ destinations**; **20 GB high-speed data** in those 210+ countries; most comprehensive international option\n\n**Streaming Perks / Included Subscriptions:**\n- **Extra 2.0**: No major streaming perk included by default\n- **Premium 2.0**: Access to certain AT&T perks/bundles (varies by promotion)\n- **Elite 2.0**: Premium perks bundle \u2014 may include **HBO Max / Max**, or other AT&T entertainment bundles depending on current promotions; connectivity for one tablet & one watch at no extra charge\n- AT&T frequently bundles perks with Fiber internet cross-subscriptions\n\n**AutoPay Discount Requirements:** AT&T requires **AutoPay + paperless billing** enrollment for the advertised discounted price. The discount is typically **$10/line/month** on qualifying plans. Without AutoPay, the price increases by $10/line.\n\n**Activation Fees / Hidden Monthly Fees:**\n- **Activation / upgrade fee**: Typically **$35 per line** (one-time)\n- Administrative fees and regulatory cost recovery fees are added monthly\n- Government taxes vary by location and are not included in advertised prices\n- No annual contract\n\n---\n\n## 3. T-MOBILE\n\n**Lowest-Cost Unlimited Plan:** **Essentials Saver \u2014 $50/mo** (1 line, with AutoPay). Without AutoPay the price is **$55/mo**. AutoPay saves **$5/line/month**.\n\n**Data Limits / Throttling Policy:** Unlimited talk and text. Includes **50 GB of premium (high-priority) data** per month. After 50 GB, data continues but may be **deprioritized** during network congestion. This is T-Mobile's most basic unlimited plan and does not include the full \"Best Mobile Network\" premium unlimited data of higher tiers. Higher tiers (Experience More at $85/mo, Experience Beyond at $100/mo) include unlimited premium data with no 50 GB soft cap.\n\n**Hotspot Allowance:**\n- **Essentials Saver**: **No mobile hotspot included**\n- **Experience More**: **60 GB** high-speed mobile hotspot\n- **Experience Beyond**: **Unlimited** mobile hotspot (highest tier)\n\n**International Roaming / Texting Benefits:**\n- **Essentials Saver**: Basic international texting only; no meaningful high-speed international roaming\n- **Experience More**: Unlimited text + **15 GB high-speed data** in Canada & Mexico; **5 GB high-speed data** in 215+ countries internationally\n- **Experience Beyond**: Unlimited text + **30 GB high-speed data** in Canada & Mexico; **15 GB high-speed data** in 215+ countries; most comprehensive option\n\n**Streaming Perks / Included Subscriptions:**\n- **Essentials Saver**: No streaming perks included\n- **Experience More**: **Netflix Standard (On Us)** included; **Apple TV+ for $3/mo**\n- **Experience Beyond**: **Netflix Standard + Hulu (On Us)**; **Apple TV+ for $3/mo**; **T-Satellite** connectivity included; **Watch & tablet** lines for $5/month add-on\n\n**AutoPay Discount Requirements:** **$5/line/month** AutoPay discount. Advertised price of $50/mo for Essentials Saver requires AutoPay enrollment. Without AutoPay, the price is $55/mo (confirmed in Broadband Facts).\n\n**Activation Fees / Hidden Monthly Fees:**\n- **Device connection charge (activation fee)**: **$35 per line** (one-time, confirmed in Broadband Facts)\n- **Regulatory Programs / Telco Recovery Fee**: **$4.49/line/month**\n- **Federal & Local Surcharges**: Typically **$0.36\u2013$4.79/line/month** (varies by location)\n- Early termination fee: **$0**\n- Government taxes: Varies by location\n- Charges for additional data usage (if applicable): $35\n\n---\n\n## SIDE-BY-SIDE SUMMARY TABLE\n\n| **Category** | **Verizon** | **AT&T** | **T-Mobile** |\n|---|---|---|---|\n| **Cheapest Unlimited Price (1 line)** | $65/mo (Unlimited Welcome, w/ AutoPay) | ~$65/mo (Unlimited Extra 2.0, w/ AutoPay) | **$50/mo** (Essentials Saver, w/ AutoPay) |\n| **Data Policy / Throttling** | Unlimited; deprioritized during congestion; SD video (480p) on Welcome | Unlimited; deprioritized during congestion on lower tiers; AT&T Turbo add-on available | Unlimited; 50 GB premium data on Essentials Saver, then deprioritized |\n| **Hotspot Allowance** | None on Welcome; 30 GB (Plus); 60 GB (Ultimate) | 50 GB (Extra 2.0); 100 GB (Premium 2.0); 250 GB (Elite 2.0) | None on Essentials Saver; 60 GB (Experience More); Unlimited (Experience Beyond) |\n| **International Benefits** | Limited on Welcome; Mexico & Canada on Plus/Ultimate | Canada/Mexico on Extra 2.0; 20 Latin American countries on Premium; 210+ countries + 20 GB on Elite | Limited on Essentials Saver; Canada/Mexico 15 GB + 215 countries 5 GB on Experience More; 30 GB + 15 GB on Experience Beyond |\n| **Streaming Perks** | None on Welcome; Disney+/Hulu/ESPN+ or Apple One on Plus/Ultimate | None on Extra 2.0; HBO Max/entertainment bundle on Elite 2.0 | None on Essentials Saver; Netflix On Us on Experience More; Netflix + Hulu On Us on Experience Beyond |\n| **AutoPay Requirement** | $10/line/month discount (AutoPay + paperless billing) | $10/line/month discount (AutoPay + paperless billing) | $5/line/month discount (AutoPay) |\n| **Activation / Extra Fees** | $40 activation fee/line; taxes & regulatory fees extra | ~$35 activation fee/line; administrative & regulatory fees extra | $35 activation fee/line; $4.49 regulatory fee/line/mo; $0.36\u2013$4.79 surcharges/mo |\n\n---\n\n### \ud83c\udfc6 Key Takeaways\n\n- **Best price for 1 line**: **T-Mobile Essentials Saver at $50/mo** (with AutoPay) is the cheapest entry-level unlimited plan across all three carriers.\n- **Best international coverage**: **AT&T Elite 2.0** wins with 210+ countries and 20 GB high-speed data abroad.\n- **Best hotspot value (entry tier)**: **AT&T Extra 2.0** offers **50 GB hotspot** even on its cheapest plan \u2014 far more than Verizon or T-Mobile at entry level.\n- **Best streaming perks**: **T-Mobile Experience Beyond** includes Netflix + Hulu bundled; T-Mobile also includes Netflix on Experience More.\n- **Most transparent fees**: T-Mobile explicitly discloses the $4.49/line regulatory fee and $35 device connection charge in Broadband Facts."
+    }
+  ]
+}

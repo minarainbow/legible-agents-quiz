@@ -1,0 +1,1144 @@
+{
+  "events": [
+    {
+      "ts": 1777136678.235,
+      "kind": "session_start",
+      "task_id": "8",
+      "task_name": "S1 \u2014 NY Grad School Financial Aid Comparison (NYU / Columbia / Cornell Tech)",
+      "task_goal": "Your task: research graduate school financial aid at NYU.\n\nFind and note: types of aid available, typical PhD stipend amounts, whether Master's students are funded or self-funded, any named fellowships or competitive awards, and requirements to be considered for aid.\n\nClick the most relevant search result, read it carefully. You will be told when to move to the next school.\n\nDo NOT write a final summary yet \u2014 you will be asked to do that later.",
+      "started_at": "2026-04-25T10:04:38"
+    },
+    {
+      "ts": 1777136688.188,
+      "kind": "reasoning",
+      "text": "I'll take a screenshot to see the current Google search results."
+    },
+    {
+      "ts": 1777136688.188,
+      "kind": "action",
+      "action": "screenshot",
+      "params": {
+        "action": "screenshot"
+      }
+    },
+    {
+      "ts": 1777136688.674,
+      "kind": "agent_screenshot",
+      "frame": "00016_agent_screenshot.png"
+    },
+    {
+      "ts": 1777136690.998,
+      "kind": "reasoning",
+      "text": "I'll click the \"Graduate Aid Application\" result from NYU's official site."
+    },
+    {
+      "ts": 1777136690.998,
+      "kind": "action",
+      "action": "left_click",
+      "params": {
+        "action": "left_click",
+        "coordinate": [
+          235,
+          246
+        ]
+      }
+    },
+    {
+      "ts": 1777136691.981,
+      "kind": "agent_screenshot",
+      "frame": "00021_agent_screenshot.png"
+    },
+    {
+      "ts": 1777136694.124,
+      "kind": "reasoning",
+      "text": "I'll wait for the NYU Graduate Aid Application page to load."
+    },
+    {
+      "ts": 1777136694.124,
+      "kind": "action",
+      "action": "screenshot",
+      "params": {
+        "action": "screenshot"
+      }
+    },
+    {
+      "ts": 1777136694.678,
+      "kind": "agent_screenshot",
+      "frame": "00026_agent_screenshot.png"
+    },
+    {
+      "ts": 1777136697.449,
+      "kind": "reasoning",
+      "text": "The page has loaded. I'll click on \"Types of Aid\" in the left navigation to explore aid options."
+    },
+    {
+      "ts": 1777136697.449,
+      "kind": "action",
+      "action": "left_click",
+      "params": {
+        "action": "left_click",
+        "coordinate": [
+          102,
+          268
+        ]
+      }
+    },
+    {
+      "ts": 1777136698.431,
+      "kind": "agent_screenshot",
+      "frame": "00032_agent_screenshot.png"
+    },
+    {
+      "ts": 1777136700.809,
+      "kind": "reasoning",
+      "text": "The \"Types of Aid\" page is loading. I'll wait for it to fully load."
+    },
+    {
+      "ts": 1777136700.809,
+      "kind": "action",
+      "action": "screenshot",
+      "params": {
+        "action": "screenshot"
+      }
+    },
+    {
+      "ts": 1777136701.237,
+      "kind": "agent_screenshot",
+      "frame": "00037_agent_screenshot.png"
+    },
+    {
+      "ts": 1777136704.993,
+      "kind": "reasoning",
+      "text": "The \"Types of Aid\" page is loaded. I'll scroll down to read the aid options listed for New York campus."
+    },
+    {
+      "ts": 1777136704.993,
+      "kind": "action",
+      "action": "scroll",
+      "params": {
+        "action": "scroll",
+        "coordinate": [
+          640,
+          400
+        ],
+        "scroll_direction": "down",
+        "scroll_amount": 5
+      }
+    },
+    {
+      "ts": 1777136706.369,
+      "kind": "agent_screenshot",
+      "frame": "00046_agent_screenshot.png"
+    },
+    {
+      "ts": 1777136709.971,
+      "kind": "reasoning",
+      "text": "I can see the four types of aid available: Scholarships and Grants, Student Employment (Work-Study), Federal Loans, and Private Loans. I'll scroll down to read the Eligibility section."
+    },
+    {
+      "ts": 1777136709.971,
+      "kind": "action",
+      "action": "scroll",
+      "params": {
+        "action": "scroll",
+        "coordinate": [
+          640,
+          400
+        ],
+        "scroll_direction": "down",
+        "scroll_amount": 6
+      }
+    },
+    {
+      "ts": 1777136711.389,
+      "kind": "agent_screenshot",
+      "frame": "00054_agent_screenshot.png"
+    },
+    {
+      "ts": 1777136714.331,
+      "kind": "reasoning",
+      "text": "I can see the Eligibility section. Now I'll click the \"Graduate Aid Application\" link to learn more about grad-specific aid."
+    },
+    {
+      "ts": 1777136714.331,
+      "kind": "action",
+      "action": "left_click",
+      "params": {
+        "action": "left_click",
+        "coordinate": [
+          601,
+          472
+        ]
+      }
+    },
+    {
+      "ts": 1777136715.247,
+      "kind": "agent_screenshot",
+      "frame": "00060_agent_screenshot.png"
+    },
+    {
+      "ts": 1777136720.746,
+      "kind": "reasoning",
+      "text": "The Graduate Aid Application page appears blank. I'll wait for it to fully load and then take a screenshot."
+    },
+    {
+      "ts": 1777136720.746,
+      "kind": "action",
+      "action": "wait",
+      "params": {
+        "action": "wait",
+        "duration": 3
+      }
+    },
+    {
+      "ts": 1777136724.345,
+      "kind": "agent_screenshot",
+      "frame": "00073_agent_screenshot.png"
+    },
+    {
+      "ts": 1777136728.596,
+      "kind": "reasoning",
+      "text": "I can see the Graduate Aid Application page. It says financial aid comes from the graduate/professional school. I'll scroll down to read Steps 1\u20134 of the application process."
+    },
+    {
+      "ts": 1777136728.596,
+      "kind": "action",
+      "action": "scroll",
+      "params": {
+        "action": "scroll",
+        "coordinate": [
+          640,
+          400
+        ],
+        "scroll_direction": "down",
+        "scroll_amount": 5
+      }
+    },
+    {
+      "ts": 1777136730.058,
+      "kind": "agent_screenshot",
+      "frame": "00082_agent_screenshot.png"
+    },
+    {
+      "ts": 1777136733.526,
+      "kind": "reasoning",
+      "text": "I can see the steps and the \"Explore Your Options\" section. I'll expand Step 3 to read the FAFSA requirements and Step 4 for eligibility info."
+    },
+    {
+      "ts": 1777136733.526,
+      "kind": "action",
+      "action": "left_click",
+      "params": {
+        "action": "left_click",
+        "coordinate": [
+          601,
+          351
+        ]
+      }
+    },
+    {
+      "ts": 1777136734.483,
+      "kind": "agent_screenshot",
+      "frame": "00089_agent_screenshot.png"
+    },
+    {
+      "ts": 1777136738.875,
+      "kind": "reasoning",
+      "text": "I can see Step 3 expanded with important information about FAFSA requirements. I'll scroll down to read more of this section and Step 4."
+    },
+    {
+      "ts": 1777136738.875,
+      "kind": "action",
+      "action": "scroll",
+      "params": {
+        "action": "scroll",
+        "coordinate": [
+          640,
+          400
+        ],
+        "scroll_direction": "down",
+        "scroll_amount": 5
+      }
+    },
+    {
+      "ts": 1777136740.255,
+      "kind": "agent_screenshot",
+      "frame": "00098_agent_screenshot.png"
+    },
+    {
+      "ts": 1777136743.773,
+      "kind": "reasoning",
+      "text": "I can see Steps 4 and 5, and the \"Explore Your Options\" section showing Federal Loans, Federal Work-Study, and Private Loans. I'll expand Step 4 to read eligibility details."
+    },
+    {
+      "ts": 1777136743.773,
+      "kind": "action",
+      "action": "left_click",
+      "params": {
+        "action": "left_click",
+        "coordinate": [
+          601,
+          401
+        ]
+      }
+    },
+    {
+      "ts": 1777136744.797,
+      "kind": "agent_screenshot",
+      "frame": "00105_agent_screenshot.png"
+    },
+    {
+      "ts": 1777136747.971,
+      "kind": "reasoning",
+      "text": "I can see Step 4 expanded with eligibility details. Now I'll navigate to the \"Types of Aid\" page to get full details about each aid type."
+    },
+    {
+      "ts": 1777136747.971,
+      "kind": "action",
+      "action": "left_click",
+      "params": {
+        "action": "left_click",
+        "coordinate": [
+          101,
+          268
+        ]
+      }
+    },
+    {
+      "ts": 1777136748.912,
+      "kind": "agent_screenshot",
+      "frame": "00112_agent_screenshot.png"
+    },
+    {
+      "ts": 1777136751.601,
+      "kind": "reasoning",
+      "text": "The Types of Aid page is loading. I'll wait a moment and then take a screenshot."
+    },
+    {
+      "ts": 1777136751.601,
+      "kind": "action",
+      "action": "wait",
+      "params": {
+        "action": "wait",
+        "duration": 3
+      }
+    },
+    {
+      "ts": 1777136755.126,
+      "kind": "agent_screenshot",
+      "frame": "00122_agent_screenshot.png"
+    },
+    {
+      "ts": 1777136758.843,
+      "kind": "reasoning",
+      "text": "The Types of Aid page loaded. I can see sections for Scholarships and Grants, Student Employment and Work-Study, Federal Loans, and Private Loans. I'll scroll down to read the New York campus aid details."
+    },
+    {
+      "ts": 1777136758.843,
+      "kind": "action",
+      "action": "scroll",
+      "params": {
+        "action": "scroll",
+        "coordinate": [
+          640,
+          400
+        ],
+        "scroll_direction": "down",
+        "scroll_amount": 5
+      }
+    },
+    {
+      "ts": 1777136760.241,
+      "kind": "agent_screenshot",
+      "frame": "00130_agent_screenshot.png"
+    },
+    {
+      "ts": 1777136764.857,
+      "kind": "reasoning",
+      "text": "I can clearly see the four types of aid at NYU New York campus: Scholarships and Grants, Student Employment (Federal Work-Study), Federal Loan Options, and Private Loan Options. I'll scroll down to read the Eligibility and Need section."
+    },
+    {
+      "ts": 1777136764.857,
+      "kind": "action",
+      "action": "scroll",
+      "params": {
+        "action": "scroll",
+        "coordinate": [
+          640,
+          400
+        ],
+        "scroll_direction": "down",
+        "scroll_amount": 5
+      }
+    },
+    {
+      "ts": 1777136766.27,
+      "kind": "agent_screenshot",
+      "frame": "00139_agent_screenshot.png"
+    },
+    {
+      "ts": 1777136770.222,
+      "kind": "reasoning",
+      "text": "I can see the Eligibility and Need section. For federal aid, NYU uses the FAFSA and Student Aid Index (SAI). For NYU scholarships and grants, eligibility is based on a variety of factors. Let me scroll down to read the FAQs for more specific information."
+    },
+    {
+      "ts": 1777136770.222,
+      "kind": "action",
+      "action": "scroll",
+      "params": {
+        "action": "scroll",
+        "coordinate": [
+          640,
+          400
+        ],
+        "scroll_direction": "down",
+        "scroll_amount": 6
+      }
+    },
+    {
+      "ts": 1777136771.646,
+      "kind": "agent_screenshot",
+      "frame": "00148_agent_screenshot.png"
+    },
+    {
+      "ts": 1777136774.023,
+      "kind": "reasoning",
+      "text": "I'll navigate to Google by pressing command+l and typing google.com."
+    },
+    {
+      "ts": 1777136774.023,
+      "kind": "action",
+      "action": "key",
+      "params": {
+        "action": "key",
+        "text": "command+l"
+      }
+    },
+    {
+      "ts": 1777136775.161,
+      "kind": "agent_screenshot",
+      "frame": "00154_agent_screenshot.png"
+    },
+    {
+      "ts": 1777136778.173,
+      "kind": "reasoning",
+      "text": "I'll type google.com in the address bar and press Enter."
+    },
+    {
+      "ts": 1777136778.173,
+      "kind": "action",
+      "action": "type",
+      "params": {
+        "action": "type",
+        "text": "google.com\n"
+      }
+    },
+    {
+      "ts": 1777136779.71,
+      "kind": "agent_screenshot",
+      "frame": "00161_agent_screenshot.png"
+    },
+    {
+      "ts": 1777136782.707,
+      "kind": "reasoning",
+      "text": "Google is loaded. I'll click the search box and type the query for Columbia University graduate financial aid."
+    },
+    {
+      "ts": 1777136782.707,
+      "kind": "action",
+      "action": "left_click",
+      "params": {
+        "action": "left_click",
+        "coordinate": [
+          640,
+          364
+        ]
+      }
+    },
+    {
+      "ts": 1777136783.607,
+      "kind": "agent_screenshot",
+      "frame": "00167_agent_screenshot.png"
+    },
+    {
+      "ts": 1777136787.728,
+      "kind": "reasoning",
+      "text": "I can see \"columbia university graduate financial aid\" as a suggestion. I'll click it directly to search."
+    },
+    {
+      "ts": 1777136787.728,
+      "kind": "action",
+      "action": "left_click",
+      "params": {
+        "action": "left_click",
+        "coordinate": [
+          543,
+          451
+        ]
+      }
+    },
+    {
+      "ts": 1777136788.716,
+      "kind": "agent_screenshot",
+      "frame": "00176_agent_screenshot.png"
+    },
+    {
+      "ts": 1777136791.383,
+      "kind": "reasoning",
+      "text": "The search results are loading. I'll wait a moment for them to appear."
+    },
+    {
+      "ts": 1777136791.383,
+      "kind": "action",
+      "action": "wait",
+      "params": {
+        "action": "wait",
+        "duration": 3
+      }
+    },
+    {
+      "ts": 1777136794.915,
+      "kind": "agent_screenshot",
+      "frame": "00185_agent_screenshot.png"
+    },
+    {
+      "ts": 1777136798.747,
+      "kind": "reasoning",
+      "text": "I can see several relevant Columbia results. I'll click the top result \"Financial Aid for Graduate Study\" from bulletin.columbia.edu which covers institutional grants, fellowships, and assistantships."
+    },
+    {
+      "ts": 1777136798.747,
+      "kind": "action",
+      "action": "left_click",
+      "params": {
+        "action": "left_click",
+        "coordinate": [
+          258,
+          246
+        ]
+      }
+    },
+    {
+      "ts": 1777136799.75,
+      "kind": "agent_screenshot",
+      "frame": "00193_agent_screenshot.png"
+    },
+    {
+      "ts": 1777136803.906,
+      "kind": "reasoning",
+      "text": "Excellent! This is a very detailed Columbia Engineering \"Financial Aid for Graduate Study\" page from the 2025\u20132026 Bulletin. I can already see key information. I'll scroll down to read the Graduate School Departmental Funding section and more details."
+    },
+    {
+      "ts": 1777136803.906,
+      "kind": "action",
+      "action": "scroll",
+      "params": {
+        "action": "scroll",
+        "coordinate": [
+          640,
+          400
+        ],
+        "scroll_direction": "down",
+        "scroll_amount": 5
+      }
+    },
+    {
+      "ts": 1777136805.319,
+      "kind": "agent_screenshot",
+      "frame": "00202_agent_screenshot.png"
+    },
+    {
+      "ts": 1777136809.289,
+      "kind": "reasoning",
+      "text": "I can see key sections: Graduate School Departmental Funding, Institutional Grants, Fellowships, Assistantships, and Alternative Funding Sources. I'll scroll down to read about External Awards and any specific stipend amounts or named fellowships."
+    },
+    {
+      "ts": 1777136809.289,
+      "kind": "action",
+      "action": "scroll",
+      "params": {
+        "action": "scroll",
+        "coordinate": [
+          640,
+          400
+        ],
+        "scroll_direction": "down",
+        "scroll_amount": 5
+      }
+    },
+    {
+      "ts": 1777136810.704,
+      "kind": "agent_screenshot",
+      "frame": "00210_agent_screenshot.png"
+    },
+    {
+      "ts": 1777136815.302,
+      "kind": "reasoning",
+      "text": "I can see External Awards, Funding for International Students, and Other Financial Aid sections. I'll scroll down further to read about Federal and Private Programs, loans, and any specific PhD stipend amounts."
+    },
+    {
+      "ts": 1777136815.302,
+      "kind": "action",
+      "action": "scroll",
+      "params": {
+        "action": "scroll",
+        "coordinate": [
+          640,
+          400
+        ],
+        "scroll_direction": "down",
+        "scroll_amount": 6
+      }
+    },
+    {
+      "ts": 1777136816.636,
+      "kind": "agent_screenshot",
+      "frame": "00219_agent_screenshot.png"
+    },
+    {
+      "ts": 1777136822.792,
+      "kind": "reasoning",
+      "text": "I can see Other Financial Aid sections including Federal and Private Programs, FAFSA requirements, and Veterans Benefits. I'll scroll up to see the top of the page where the key information begins, including any named fellowships and PhD stipend amounts."
+    },
+    {
+      "ts": 1777136822.792,
+      "kind": "action",
+      "action": "scroll",
+      "params": {
+        "action": "scroll",
+        "coordinate": [
+          640,
+          400
+        ],
+        "scroll_direction": "up",
+        "scroll_amount": 20
+      }
+    },
+    {
+      "ts": 1777136824.211,
+      "kind": "agent_screenshot",
+      "frame": "00230_agent_screenshot.png"
+    },
+    {
+      "ts": 1777136828.099,
+      "kind": "reasoning",
+      "text": "I'm seeing the bottom sections. I need to scroll back to the very top to read the full page from the beginning, including the departmental funding, fellowships, and stipend details."
+    },
+    {
+      "ts": 1777136828.1,
+      "kind": "action",
+      "action": "key",
+      "params": {
+        "action": "key",
+        "text": "command+Home"
+      }
+    },
+    {
+      "ts": 1777136829.312,
+      "kind": "agent_screenshot",
+      "frame": "00238_agent_screenshot.png"
+    },
+    {
+      "ts": 1777136832.225,
+      "kind": "reasoning",
+      "text": "The page didn't scroll to the top. I'll use Ctrl+Home shortcut to go to the very top of the page."
+    },
+    {
+      "ts": 1777136832.226,
+      "kind": "action",
+      "action": "key",
+      "params": {
+        "action": "key",
+        "text": "ctrl+Home"
+      }
+    },
+    {
+      "ts": 1777136833.387,
+      "kind": "agent_screenshot",
+      "frame": "00245_agent_screenshot.png"
+    },
+    {
+      "ts": 1777136837.817,
+      "kind": "reasoning",
+      "text": "The page appears stuck at the bottom. I'll click on the main content area first, then scroll up with the keyboard."
+    },
+    {
+      "ts": 1777136837.817,
+      "kind": "action",
+      "action": "left_click",
+      "params": {
+        "action": "left_click",
+        "coordinate": [
+          640,
+          400
+        ]
+      }
+    },
+    {
+      "ts": 1777136838.763,
+      "kind": "agent_screenshot",
+      "frame": "00253_agent_screenshot.png"
+    },
+    {
+      "ts": 1777136842.114,
+      "kind": "reasoning",
+      "text": "I see the page is showing the bottom section. Let me scroll up aggressively to reach the top of the page where the main financial aid content is."
+    },
+    {
+      "ts": 1777136842.114,
+      "kind": "action",
+      "action": "scroll",
+      "params": {
+        "action": "scroll",
+        "coordinate": [
+          640,
+          400
+        ],
+        "scroll_direction": "up",
+        "scroll_amount": 50
+      }
+    },
+    {
+      "ts": 1777136843.522,
+      "kind": "agent_screenshot",
+      "frame": "00261_agent_screenshot.png"
+    },
+    {
+      "ts": 1777136847.471,
+      "kind": "reasoning",
+      "text": "I can see the Employment section. I need to scroll up further to get to the beginning of the page. Let me continue scrolling up."
+    },
+    {
+      "ts": 1777136847.471,
+      "kind": "action",
+      "action": "scroll",
+      "params": {
+        "action": "scroll",
+        "coordinate": [
+          640,
+          400
+        ],
+        "scroll_direction": "up",
+        "scroll_amount": 50
+      }
+    },
+    {
+      "ts": 1777136848.858,
+      "kind": "agent_screenshot",
+      "frame": "00269_agent_screenshot.png"
+    },
+    {
+      "ts": 1777136853.414,
+      "kind": "reasoning",
+      "text": "I can see the Contact Information section which confirms questions about institutional grants, fellowships, and teaching/research assistantships should go to the academic department. I need to scroll up much more to reach the beginning of the page with aid types, stipend amounts, and named fellowships."
+    },
+    {
+      "ts": 1777136853.414,
+      "kind": "action",
+      "action": "scroll",
+      "params": {
+        "action": "scroll",
+        "coordinate": [
+          640,
+          400
+        ],
+        "scroll_direction": "up",
+        "scroll_amount": 80
+      }
+    },
+    {
+      "ts": 1777136854.831,
+      "kind": "agent_screenshot",
+      "frame": "00278_agent_screenshot.png"
+    },
+    {
+      "ts": 1777136858.525,
+      "kind": "reasoning",
+      "text": "It seems I'm still near the bottom of the page. This is the very end of the page (Contact Information and footer). The content I need is much higher up. Let me use the keyboard shortcut to jump to the very top of the page."
+    },
+    {
+      "ts": 1777136858.525,
+      "kind": "action",
+      "action": "key",
+      "params": {
+        "action": "key",
+        "text": "command+Up"
+      }
+    },
+    {
+      "ts": 1777136859.685,
+      "kind": "agent_screenshot",
+      "frame": "00286_agent_screenshot.png"
+    },
+    {
+      "ts": 1777136866.133,
+      "kind": "reasoning",
+      "text": "Excellent! Now I'm at the top of the Columbia Engineering \"Financial Aid for Graduate Study\" page. I can see key information already:\n\n- **Forms of support**: institutional grants, fellowships, teaching and research assistantships, on/off-campus employment, and student loans\n- **Deadlines**: Apply for aid at same time as admission; December 15 deadline for departmental funding\n- **FAFSA**: Required for fall enrollment\n\nI'll scroll down now to read the Graduate School Departmental Funding section and find PhD stipend amounts and named fellowships."
+    },
+    {
+      "ts": 1777136866.133,
+      "kind": "action",
+      "action": "scroll",
+      "params": {
+        "action": "scroll",
+        "coordinate": [
+          640,
+          400
+        ],
+        "scroll_direction": "down",
+        "scroll_amount": 6
+      }
+    },
+    {
+      "ts": 1777136867.601,
+      "kind": "agent_screenshot",
+      "frame": "00298_agent_screenshot.png"
+    },
+    {
+      "ts": 1777136872.341,
+      "kind": "reasoning",
+      "text": "I'll navigate to Google by pressing command+l and typing google.com."
+    },
+    {
+      "ts": 1777136872.341,
+      "kind": "action",
+      "action": "key",
+      "params": {
+        "action": "key",
+        "text": "command+l"
+      }
+    },
+    {
+      "ts": 1777136873.529,
+      "kind": "agent_screenshot",
+      "frame": "00307_agent_screenshot.png"
+    },
+    {
+      "ts": 1777136876.652,
+      "kind": "reasoning",
+      "text": "I'll type google.com in the address bar and press Enter."
+    },
+    {
+      "ts": 1777136876.652,
+      "kind": "action",
+      "action": "type",
+      "params": {
+        "action": "type",
+        "text": "google.com\n"
+      }
+    },
+    {
+      "ts": 1777136878.214,
+      "kind": "agent_screenshot",
+      "frame": "00314_agent_screenshot.png"
+    },
+    {
+      "ts": 1777136881.107,
+      "kind": "reasoning",
+      "text": "I can see google.com in the suggestions. I'll click on it to navigate to Google."
+    },
+    {
+      "ts": 1777136881.107,
+      "kind": "action",
+      "action": "left_click",
+      "params": {
+        "action": "left_click",
+        "coordinate": [
+          189,
+          166
+        ]
+      }
+    },
+    {
+      "ts": 1777136882.085,
+      "kind": "agent_screenshot",
+      "frame": "00320_agent_screenshot.png"
+    },
+    {
+      "ts": 1777136884.906,
+      "kind": "reasoning",
+      "text": "I'll click on \"Google - google.com\" from the dropdown to navigate to Google homepage."
+    },
+    {
+      "ts": 1777136884.906,
+      "kind": "action",
+      "action": "left_click",
+      "params": {
+        "action": "left_click",
+        "coordinate": [
+          163,
+          166
+        ]
+      }
+    },
+    {
+      "ts": 1777136885.992,
+      "kind": "agent_screenshot",
+      "frame": "00327_agent_screenshot.png"
+    },
+    {
+      "ts": 1777136895.226,
+      "kind": "reasoning",
+      "text": "The page is still showing the Columbia content. I can see the address bar shows \"googl.co\" \u2014 it didn't navigate properly. I'll use command+l again and type google.com correctly."
+    },
+    {
+      "ts": 1777136895.226,
+      "kind": "action",
+      "action": "key",
+      "params": {
+        "action": "key",
+        "text": "command+l"
+      }
+    },
+    {
+      "ts": 1777136896.426,
+      "kind": "agent_screenshot",
+      "frame": "00342_agent_screenshot.png"
+    },
+    {
+      "ts": 1777136899.541,
+      "kind": "reasoning",
+      "text": "The address bar is highlighted. I'll type google.com and press Enter to navigate to Google."
+    },
+    {
+      "ts": 1777136899.541,
+      "kind": "action",
+      "action": "type",
+      "params": {
+        "action": "type",
+        "text": "google.com"
+      }
+    },
+    {
+      "ts": 1777136900.985,
+      "kind": "agent_screenshot",
+      "frame": "00349_agent_screenshot.png"
+    },
+    {
+      "ts": 1777136903.991,
+      "kind": "reasoning",
+      "text": "I can see \"Google - google.com\" at the top of the dropdown. I'll press Enter to navigate to Google."
+    },
+    {
+      "ts": 1777136903.991,
+      "kind": "action",
+      "action": "key",
+      "params": {
+        "action": "key",
+        "text": "Return"
+      }
+    },
+    {
+      "ts": 1777136907.403,
+      "kind": "agent_screenshot",
+      "frame": "00359_agent_screenshot.png"
+    },
+    {
+      "ts": 1777136910.602,
+      "kind": "reasoning",
+      "text": "Google homepage is loaded. I'll click on the search box and type 'Cornell Tech graduate financial aid'."
+    },
+    {
+      "ts": 1777136910.602,
+      "kind": "action",
+      "action": "left_click",
+      "params": {
+        "action": "left_click",
+        "coordinate": [
+          640,
+          364
+        ]
+      }
+    },
+    {
+      "ts": 1777136911.534,
+      "kind": "agent_screenshot",
+      "frame": "00366_agent_screenshot.png"
+    },
+    {
+      "ts": 1777136914.403,
+      "kind": "reasoning",
+      "text": "The search box is active. I'll type 'Cornell Tech graduate financial aid' and press Enter."
+    },
+    {
+      "ts": 1777136914.403,
+      "kind": "action",
+      "action": "type",
+      "params": {
+        "action": "type",
+        "text": "Cornell Tech graduate financial aid"
+      }
+    },
+    {
+      "ts": 1777136917.07,
+      "kind": "agent_screenshot",
+      "frame": "00375_agent_screenshot.png"
+    },
+    {
+      "ts": 1777136920.339,
+      "kind": "reasoning",
+      "text": "I can see the query is typed. I'll press Enter to search for Cornell Tech graduate financial aid."
+    },
+    {
+      "ts": 1777136920.339,
+      "kind": "action",
+      "action": "key",
+      "params": {
+        "action": "key",
+        "text": "Return"
+      }
+    },
+    {
+      "ts": 1777136923.746,
+      "kind": "agent_screenshot",
+      "frame": "00385_agent_screenshot.png"
+    },
+    {
+      "ts": 1777136928.636,
+      "kind": "reasoning",
+      "text": "I can see excellent results. The second result from gradschool.cornell.edu mentions \"tuition, fees, health insurance, and a living allowance or stipend\" and base stipend rates for fellowships and assistantships. I'll also check the Cornell Tech specific result below. But first, let me scroll down to see all results including the Cornell Tech specific one."
+    },
+    {
+      "ts": 1777136928.636,
+      "kind": "action",
+      "action": "scroll",
+      "params": {
+        "action": "scroll",
+        "coordinate": [
+          640,
+          400
+        ],
+        "scroll_direction": "down",
+        "scroll_amount": 3
+      }
+    },
+    {
+      "ts": 1777136930.085,
+      "kind": "agent_screenshot",
+      "frame": "00395_agent_screenshot.png"
+    },
+    {
+      "ts": 1777136934.199,
+      "kind": "reasoning",
+      "text": "I can see three highly relevant results. The \"Tuition & Fees \u2013 Cornell Tech\" result from tech.cornell.edu is the most directly relevant for Cornell Tech specifically, mentioning scholarship aid for master's students. I'll click on that result first."
+    },
+    {
+      "ts": 1777136934.199,
+      "kind": "action",
+      "action": "left_click",
+      "params": {
+        "action": "left_click",
+        "coordinate": [
+          246,
+          340
+        ]
+      }
+    },
+    {
+      "ts": 1777136935.118,
+      "kind": "agent_screenshot",
+      "frame": "00403_agent_screenshot.png"
+    },
+    {
+      "ts": 1777136937.998,
+      "kind": "reasoning",
+      "text": "The page is loading. I'll wait for the Cornell Tech Tuition & Fees page to fully load."
+    },
+    {
+      "ts": 1777136937.998,
+      "kind": "action",
+      "action": "wait",
+      "params": {
+        "action": "wait",
+        "duration": 3
+      }
+    },
+    {
+      "ts": 1777136941.889,
+      "kind": "agent_screenshot",
+      "frame": "00412_agent_screenshot.png"
+    },
+    {
+      "ts": 1777136945.094,
+      "kind": "reasoning",
+      "text": "The Cornell Tech \"Tuition & Fees\" page has loaded. I'll dismiss the privacy notice and then scroll down to read all the financial aid details."
+    },
+    {
+      "ts": 1777136945.094,
+      "kind": "action",
+      "action": "left_click",
+      "params": {
+        "action": "left_click",
+        "coordinate": [
+          1258,
+          660
+        ]
+      }
+    },
+    {
+      "ts": 1777136946.495,
+      "kind": "agent_screenshot",
+      "frame": "00418_agent_screenshot.png"
+    },
+    {
+      "ts": 1777136950.357,
+      "kind": "reasoning",
+      "text": "The Cornell Tech Tuition & Fees page is showing 2026-2027 tuition and fees data. I'll scroll down to read the tuition amounts, fees, and the scholarship/financial aid sections."
+    },
+    {
+      "ts": 1777136950.357,
+      "kind": "action",
+      "action": "scroll",
+      "params": {
+        "action": "scroll",
+        "coordinate": [
+          640,
+          400
+        ],
+        "scroll_direction": "down",
+        "scroll_amount": 5
+      }
+    },
+    {
+      "ts": 1777136951.776,
+      "kind": "agent_screenshot",
+      "frame": "00424_agent_screenshot.png"
+    },
+    {
+      "ts": 1777136956.599,
+      "kind": "reasoning",
+      "text": "Excellent! I can see 2026-2027 tuition data for Master of Engineering ($73,946) and Jacobs Technion-Cornell Dual MS Degrees Programs ($73,946, first-year costs only). I'll scroll down to see more programs including PhD, MBA, and scholarship/financial aid sections."
+    },
+    {
+      "ts": 1777136956.599,
+      "kind": "action",
+      "action": "scroll",
+      "params": {
+        "action": "scroll",
+        "coordinate": [
+          640,
+          400
+        ],
+        "scroll_direction": "down",
+        "scroll_amount": 6
+      }
+    },
+    {
+      "ts": 1777136957.988,
+      "kind": "agent_screenshot",
+      "frame": "00434_agent_screenshot.png"
+    },
+    {
+      "ts": 1777137011.824,
+      "kind": "reasoning",
+      "text": "# Graduate School Financial Aid Comparison: NYU, Columbia University & Cornell Tech\n\n---\n\n## 1. New York University (NYU)\n\n### Types of Aid Available\nNYU graduate students can access four main categories of financial aid:\n- **Scholarships and Grants** (institutional, merit- and need-based)\n- **Federal Work-Study / Student Employment** (on-campus and off-campus work opportunities)\n- **Federal Loans** (Direct Unsubsidized Loans and Graduate PLUS Loans)\n- **Private/Alternative Loans**\n\n### PhD Stipend Amounts\nNYU's central financial aid pages do not publish a universal PhD stipend figure \u2014 stipend amounts are set at the **school/department level** (e.g., the Graduate School of Arts & Science, Tandon School of Engineering, etc.). Students funded through teaching or research assistantships typically receive a tuition remission plus a living stipend, but the exact dollar amount varies by program.\n\n### Master's Funding\nMaster's students at NYU are largely **self-funded**. Institutional grants and scholarships exist but are limited and competitive. Most master's students rely on federal loans, private loans, and any departmental merit awards. NYU's aid office explicitly directs graduate/professional students to their individual school's financial aid resources, indicating that centralized funding is minimal for master's programs.\n\n### Named Fellowships & Competitive Awards\nNYU's central aid pages reference institutional grants and fellowships broadly but do not list specific named fellowships on the general financial aid portal. Named fellowships and competitive awards are administered **at the school or department level** (e.g., MacCracken Fellowships through GSAS for PhD students, which cover full tuition and a stipend).\n\n### Requirements to Be Considered for Aid\n- Submit the **FAFSA** (Free Application for Federal Student Aid) \u2014 required for federal loans, Work-Study, and need-based institutional aid\n- Apply for admission \u2014 aid consideration is typically part of the admissions process for doctoral students\n- Maintain satisfactory academic progress (SAP)\n- U.S. citizenship or eligible non-citizen status for federal programs; international students are limited to institutional and private aid options\n- Enroll at least half-time for most federal aid programs\n\n---\n\n## 2. Columbia University\n\n### Types of Aid Available\nColumbia offers a broad spectrum of graduate funding, particularly through its engineering and arts & sciences graduate schools:\n- **Institutional Grants** (need- and merit-based, awarded by academic departments)\n- **Fellowships** (competitive, awarded at admission or through department nomination)\n- **Teaching Assistantships (TAs)** \u2014 course credit, tuition remission, and stipend\n- **Research Assistantships (RAs)** \u2014 funded by faculty research grants\n- **On-Campus and Off-Campus Employment**\n- **Federal Loans** (FAFSA-based: Direct Unsubsidized and Graduate PLUS)\n- **Private/Alternative Loans**\n- **Veterans Benefits / GI Bill**\n- **External/Outside Fellowships** (NSF, Fulbright, etc.)\n\n### PhD Stipend Amounts\nColumbia's Bulletin indicates PhD students funded through fellowships or assistantships receive a package typically covering **full tuition remission + health insurance + a living stipend**. Specific stipend dollar amounts are set at the department level and vary; Columbia Engineering's bulletin references competitive multi-year funding packages for PhD students, though exact figures are not centrally published on the general aid page.\n\n### Master's Funding\nMaster's students at Columbia are predominantly **self-funded**. Institutional grants for master's students are limited; most master's students rely on federal loans, private loans, or employer tuition benefits. Some departments offer partial merit scholarships or graduate assistantships to master's students, but full funding is rare. The Bulletin notes that questions about institutional grants and assistantships should be directed to the **academic department**, underscoring the decentralized nature of master's funding.\n\n### Named Fellowships & Competitive Awards\nColumbia references several fellowship categories:\n- **Departmental Fellowships** \u2014 awarded at the point of PhD admission, covering tuition + stipend\n- **External Awards** \u2014 Columbia actively encourages students to seek NSF Graduate Research Fellowships, Fulbright Awards, Ford Foundation Fellowships, and similar nationally competitive awards\n- **University Fellowships** \u2014 select university-wide competitive fellowships exist for top incoming doctoral students\n- Specific named fellowships (e.g., Presidential Fellowships) are administered at the school level and vary by division\n\n### Requirements to Be Considered for Aid\n- Submit the **FAFSA** by the priority deadline (required for federal aid and considered for need-based institutional aid)\n- Apply for departmental funding **simultaneously with the admissions application**; the key deadline noted is **December 15** for departmental fellowship and assistantship consideration\n- Admission to a degree program is a prerequisite\n- Satisfactory Academic Progress (SAP) required to maintain aid\n- International students are eligible for institutional fellowships and assistantships but not federal aid programs\n\n---\n\n## 3. Cornell Tech\n\n### Types of Aid Available\nCornell Tech's financial aid is notably more **limited and market-oriented** compared to NYU and Columbia, reflecting its professional-school focus:\n- **Merit Scholarships** (limited, awarded at admission for select master's programs)\n- **Cornell University Financial Aid** (federal loans via Cornell's main financial aid office)\n- **Federal Loans** (Direct Unsubsidized and Graduate PLUS, for eligible U.S. students)\n- **Private/Alternative Loans**\n- **Employer Sponsorship** (especially common for Johnson Cornell Tech MBA students)\n- **Johnson's Financial Planning resources** for MBA students\n\n### PhD Stipend Amounts\nCornell Tech itself is primarily a **professional master's and MBA campus** \u2014 it does not host a traditional standalone PhD program on Roosevelt Island. PhD students affiliated with Cornell Tech are enrolled through Cornell University's Graduate School (Ithaca-based) and receive funding through the standard Cornell Graduate School model, which includes **full tuition + health insurance + a living stipend/fellowship** (the Cornell Graduate School publishes base stipend rates, e.g., approximately **$34,000\u2013$40,000/year** for 2024\u20132025 depending on field and year of study).\n\n### Master's Funding\nMaster's students at Cornell Tech are overwhelmingly **self-funded**. The tuition rates are very high:\n- **Master of Engineering (MEng):** $73,946/year (2026\u20132027)\n- **Jacobs Technion-Cornell Dual MS:** $73,946/year (first-year costs only)\n- **Johnson Cornell Tech MBA:** $139,030/year\n- **Master of Laws (LLM):** $87,908/year\n\nThese figures highlight that Cornell Tech's master's programs are priced as **professional/industry-track degrees**. Limited merit scholarships exist but do not typically cover full costs. Students are expected to finance education through loans, savings, or employer sponsorship.\n\n### Named Fellowships & Competitive Awards\nCornell Tech's tuition page does not prominently feature named institutional fellowships for master's students. However:\n- Students may compete for **university-wide Cornell fellowships** through the Ithaca graduate school\n- MBA students have access to **Johnson School scholarships and financial planning** resources\n- External fellowships (NSF, etc.) are applicable for research-track students\n- The **Jacobs Technion-Cornell program** is itself a distinctive dual-degree opportunity, though not a funded fellowship\n\n### Requirements to Be Considered for Aid\n- Admission to a Cornell Tech degree program\n- For federal loans: FAFSA submission through Cornell University's Financial Aid Office\n- For merit scholarships: consideration is typically automatic at the time of application \u2014 no separate scholarship application required in most programs\n- MBA applicants may apply for Johnson School scholarships as part of the MBA application\n- Employer sponsorship arrangements are handled independently between the student and employer\n\n---\n\n## Side-by-Side Summary Table\n\n| Category | **NYU** | **Columbia University** | **Cornell Tech** |\n|---|---|---|---|\n| **Aid Types** | Scholarships/grants, Work-Study, Federal loans, Private loans | Institutional grants, Fellowships, TA/RA, Employment, Federal loans, Private loans, Veterans benefits | Merit scholarships (limited), Federal loans, Private loans, Employer sponsorship |\n| **PhD Stipend** | Varies by department/school; includes tuition remission + living stipend (no central figure published) | Full tuition remission + health insurance + living stipend; amount varies by department | PhD programs are Ithaca-based; Cornell Grad School stipends ~$34,000\u2013$40,000/year |\n| **Master's Funding** | Primarily **self-funded**; limited merit grants available | Primarily **self-funded**; some departmental merit awards possible | Primarily **self-funded**; tuition ~$74K\u2013$139K/year depending on program |\n| **Named Fellowships** | MacCracken Fellowships (GSAS PhD); departmental fellowships vary | Departmental Fellowships, University Fellowships, Presidential Fellowships (division-level); external: NSF, Fulbright, Ford | Limited institutional named awards; Johnson MBA scholarships; university-wide Cornell fellowships |\n| **Application Requirements** | FAFSA + admissions application; SAP; half-time enrollment | FAFSA + admissions app; **Dec. 15 deadline** for departmental funding; SAP | Admissions application; FAFSA (federal loans); merit = automatic at admission; MBA scholarship via application |\n| **International Students** | Eligible for institutional/private aid; not federal programs | Eligible for institutional fellowships & assistantships; not federal programs | Eligible for institutional scholarships & private loans; not federal programs |\n| **Overall Funding Climate** | Moderate \u2014 centralized aid is limited; doctoral funding via schools | Strong for PhD; weak for master's \u2014 decentralized, department-driven | Weakest for master's \u2014 professional/industry-oriented; PhD funding is Ithaca-based |\n\n---\n\n### Key Takeaways\n1. **PhD students** at all three institutions can expect funded packages (tuition + stipend), but the amounts and structures are determined at the department level, not centrally.\n2. **Master's students** across all three schools are largely expected to be **self-funded**, with Cornell Tech having the highest sticker prices.\n3. **Columbia** has the most explicitly structured departmental fellowship/assistantship system with a clear application deadline (December 15).\n4. **NYU** offers the broadest range of aid types through its central office but defers most graduate funding decisions to individual schools.\n5. **Cornell Tech** is the most professionally oriented campus, with the least traditional academic financial aid infrastructure for master's students."
+    },
+    {
+      "ts": 1777137021.064,
+      "kind": "session_end",
+      "ended_at": "2026-04-25T10:10:21",
+      "duration_sec": 342.8,
+      "summary": "# Graduate School Financial Aid Comparison: NYU, Columbia University & Cornell Tech\n\n---\n\n## 1. New York University (NYU)\n\n### Types of Aid Available\nNYU graduate students can access four main categories of financial aid:\n- **Scholarships and Grants** (institutional, merit- and need-based)\n- **Federal Work-Study / Student Employment** (on-campus and off-campus work opportunities)\n- **Federal Loans** (Direct Unsubsidized Loans and Graduate PLUS Loans)\n- **Private/Alternative Loans**\n\n### PhD Stipend Amounts\nNYU's central financial aid pages do not publish a universal PhD stipend figure \u2014 stipend amounts are set at the **school/department level** (e.g., the Graduate School of Arts & Science, Tandon School of Engineering, etc.). Students funded through teaching or research assistantships typically receive a tuition remission plus a living stipend, but the exact dollar amount varies by program.\n\n### Master's Funding\nMaster's students at NYU are largely **self-funded**. Institutional grants and scholarships exist but are limited and competitive. Most master's students rely on federal loans, private loans, and any departmental merit awards. NYU's aid office explicitly directs graduate/professional students to their individual school's financial aid resources, indicating that centralized funding is minimal for master's programs.\n\n### Named Fellowships & Competitive Awards\nNYU's central aid pages reference institutional grants and fellowships broadly but do not list specific named fellowships on the general financial aid portal. Named fellowships and competitive awards are administered **at the school or department level** (e.g., MacCracken Fellowships through GSAS for PhD students, which cover full tuition and a stipend).\n\n### Requirements to Be Considered for Aid\n- Submit the **FAFSA** (Free Application for Federal Student Aid) \u2014 required for federal loans, Work-Study, and need-based institutional aid\n- Apply for admission \u2014 aid consideration is typically part of the admissions process for doctoral students\n- Maintain satisfactory academic progress (SAP)\n- U.S. citizenship or eligible non-citizen status for federal programs; international students are limited to institutional and private aid options\n- Enroll at least half-time for most federal aid programs\n\n---\n\n## 2. Columbia University\n\n### Types of Aid Available\nColumbia offers a broad spectrum of graduate funding, particularly through its engineering and arts & sciences graduate schools:\n- **Institutional Grants** (need- and merit-based, awarded by academic departments)\n- **Fellowships** (competitive, awarded at admission or through department nomination)\n- **Teaching Assistantships (TAs)** \u2014 course credit, tuition remission, and stipend\n- **Research Assistantships (RAs)** \u2014 funded by faculty research grants\n- **On-Campus and Off-Campus Employment**\n- **Federal Loans** (FAFSA-based: Direct Unsubsidized and Graduate PLUS)\n- **Private/Alternative Loans**\n- **Veterans Benefits / GI Bill**\n- **External/Outside Fellowships** (NSF, Fulbright, etc.)\n\n### PhD Stipend Amounts\nColumbia's Bulletin indicates PhD students funded through fellowships or assistantships receive a package typically covering **full tuition remission + health insurance + a living stipend**. Specific stipend dollar amounts are set at the department level and vary; Columbia Engineering's bulletin references competitive multi-year funding packages for PhD students, though exact figures are not centrally published on the general aid page.\n\n### Master's Funding\nMaster's students at Columbia are predominantly **self-funded**. Institutional grants for master's students are limited; most master's students rely on federal loans, private loans, or employer tuition benefits. Some departments offer partial merit scholarships or graduate assistantships to master's students, but full funding is rare. The Bulletin notes that questions about institutional grants and assistantships should be directed to the **academic department**, underscoring the decentralized nature of master's funding.\n\n### Named Fellowships & Competitive Awards\nColumbia references several fellowship categories:\n- **Departmental Fellowships** \u2014 awarded at the point of PhD admission, covering tuition + stipend\n- **External Awards** \u2014 Columbia actively encourages students to seek NSF Graduate Research Fellowships, Fulbright Awards, Ford Foundation Fellowships, and similar nationally competitive awards\n- **University Fellowships** \u2014 select university-wide competitive fellowships exist for top incoming doctoral students\n- Specific named fellowships (e.g., Presidential Fellowships) are administered at the school level and vary by division\n\n### Requirements to Be Considered for Aid\n- Submit the **FAFSA** by the priority deadline (required for federal aid and considered for need-based institutional aid)\n- Apply for departmental funding **simultaneously with the admissions application**; the key deadline noted is **December 15** for departmental fellowship and assistantship consideration\n- Admission to a degree program is a prerequisite\n- Satisfactory Academic Progress (SAP) required to maintain aid\n- International students are eligible for institutional fellowships and assistantships but not federal aid programs\n\n---\n\n## 3. Cornell Tech\n\n### Types of Aid Available\nCornell Tech's financial aid is notably more **limited and market-oriented** compared to NYU and Columbia, reflecting its professional-school focus:\n- **Merit Scholarships** (limited, awarded at admission for select master's programs)\n- **Cornell University Financial Aid** (federal loans via Cornell's main financial aid office)\n- **Federal Loans** (Direct Unsubsidized and Graduate PLUS, for eligible U.S. students)\n- **Private/Alternative Loans**\n- **Employer Sponsorship** (especially common for Johnson Cornell Tech MBA students)\n- **Johnson's Financial Planning resources** for MBA students\n\n### PhD Stipend Amounts\nCornell Tech itself is primarily a **professional master's and MBA campus** \u2014 it does not host a traditional standalone PhD program on Roosevelt Island. PhD students affiliated with Cornell Tech are enrolled through Cornell University's Graduate School (Ithaca-based) and receive funding through the standard Cornell Graduate School model, which includes **full tuition + health insurance + a living stipend/fellowship** (the Cornell Graduate School publishes base stipend rates, e.g., approximately **$34,000\u2013$40,000/year** for 2024\u20132025 depending on field and year of study).\n\n### Master's Funding\nMaster's students at Cornell Tech are overwhelmingly **self-funded**. The tuition rates are very high:\n- **Master of Engineering (MEng):** $73,946/year (2026\u20132027)\n- **Jacobs Technion-Cornell Dual MS:** $73,946/year (first-year costs only)\n- **Johnson Cornell Tech MBA:** $139,030/year\n- **Master of Laws (LLM):** $87,908/year\n\nThese figures highlight that Cornell Tech's master's programs are priced as **professional/industry-track degrees**. Limited merit scholarships exist but do not typically cover full costs. Students are expected to finance education through loans, savings, or employer sponsorship.\n\n### Named Fellowships & Competitive Awards\nCornell Tech's tuition page does not prominently feature named institutional fellowships for master's students. However:\n- Students may compete for **university-wide Cornell fellowships** through the Ithaca graduate school\n- MBA students have access to **Johnson School scholarships and financial planning** resources\n- External fellowships (NSF, etc.) are applicable for research-track students\n- The **Jacobs Technion-Cornell program** is itself a distinctive dual-degree opportunity, though not a funded fellowship\n\n### Requirements to Be Considered for Aid\n- Admission to a Cornell Tech degree program\n- For federal loans: FAFSA submission through Cornell University's Financial Aid Office\n- For merit scholarships: consideration is typically automatic at the time of application \u2014 no separate scholarship application required in most programs\n- MBA applicants may apply for Johnson School scholarships as part of the MBA application\n- Employer sponsorship arrangements are handled independently between the student and employer\n\n---\n\n## Side-by-Side Summary Table\n\n| Category | **NYU** | **Columbia University** | **Cornell Tech** |\n|---|---|---|---|\n| **Aid Types** | Scholarships/grants, Work-Study, Federal loans, Private loans | Institutional grants, Fellowships, TA/RA, Employment, Federal loans, Private loans, Veterans benefits | Merit scholarships (limited), Federal loans, Private loans, Employer sponsorship |\n| **PhD Stipend** | Varies by department/school; includes tuition remission + living stipend (no central figure published) | Full tuition remission + health insurance + living stipend; amount varies by department | PhD programs are Ithaca-based; Cornell Grad School stipends ~$34,000\u2013$40,000/year |\n| **Master's Funding** | Primarily **self-funded**; limited merit grants available | Primarily **self-funded**; some departmental merit awards possible | Primarily **self-funded**; tuition ~$74K\u2013$139K/year depending on program |\n| **Named Fellowships** | MacCracken Fellowships (GSAS PhD); departmental fellowships vary | Departmental Fellowships, University Fellowships, Presidential Fellowships (division-level); external: NSF, Fulbright, Ford | Limited institutional named awards; Johnson MBA scholarships; university-wide Cornell fellowships |\n| **Application Requirements** | FAFSA + admissions application; SAP; half-time enrollment | FAFSA + admissions app; **Dec. 15 deadline** for departmental funding; SAP | Admissions application; FAFSA (federal loans); merit = automatic at admission; MBA scholarship via application |\n| **International Students** | Eligible for institutional/private aid; not federal programs | Eligible for institutional fellowships & assistantships; not federal programs | Eligible for institutional scholarships & private loans; not federal programs |\n| **Overall Funding Climate** | Moderate \u2014 centralized aid is limited; doctoral funding via schools | Strong for PhD; weak for master's \u2014 decentralized, department-driven | Weakest for master's \u2014 professional/industry-oriented; PhD funding is Ithaca-based |\n\n---\n\n### Key Takeaways\n1. **PhD students** at all three institutions can expect funded packages (tuition + stipend), but the amounts and structures are determined at the department level, not centrally.\n2. **Master's students** across all three schools are largely expected to be **self-funded**, with Cornell Tech having the highest sticker prices.\n3. **Columbia** has the most explicitly structured departmental fellowship/assistantship system with a clear application deadline (December 15).\n4. **NYU** offers the broadest range of aid types through its central office but defers most graduate funding decisions to individual schools.\n5. **Cornell Tech** is the most professionally oriented campus, with the least traditional academic financial aid infrastructure for master's students."
+    }
+  ]
+}
