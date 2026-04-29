@@ -8,8 +8,10 @@ import base64
 import os
 import io
 import re
+import concurrent.futures
 
 import mss
+import pyperclip
 from PIL import Image
 
 import objc
@@ -515,6 +517,214 @@ def task_loop():
     # ── Task selection ────────────────────────────────────────
     TASKS = {
         "1": {
+            "name": "T1 — Sephora: Foundation, Mascara & Lip Gloss",
+            "url":  "google.com",
+            "site": "Sephora website",
+            "goal": (
+                "Your task: find 3 makeup products on Sephora's website.\n\n"
+                "Start by browsing Foundation. You will be guided to the next item.\n\n"
+                "Preferences (apply to all items):\n"
+                "- Prefer hypoallergenic, fragrance-free, or sensitive-skin formulas\n"
+                "- Avoid products with known irritants (fragrances, parabens, harsh dyes)\n\n"
+                "Browse and add your pick to cart. "
+                "Do NOT write your final response yet — you will be told when to do that."
+            ),
+            "iteration_checkpoints": {
+                15: (
+                    "Good. Commit to one foundation now — pick the option and add it to cart.\n"
+                    "Then navigate to the Mascara section. Browse mascaras, look for "
+                    "hypoallergenic or sensitive-eye formulas. Change colors if needed."
+                ),
+                30: (
+                    "Good. Commit to one mascara and add it to cart.\n"
+                    "Then navigate to Lip Gloss with color. Browse the lip gloss section, "
+                    "prefer fragrance-free or gentle formulas with a tinted/colored finish."
+                ),
+                45: (
+                    "Good. Commit to one lip gloss with color and add it to cart.\n"
+                    "You now have all 3 items."
+                ),
+            },
+        },
+        "2": {
+            "name": "T2 — CVS: 3 Vitamins",
+            "url":  "google.com",
+            "site": "CVS website",
+            "goal": (
+                "Your task: find 3 vitamins or supplements on CVS's website and add each to cart.\n\n"
+                "Start with Multivitamins. You will be guided to the next category.\n\n"
+                "Preferences (apply to all items):\n"
+                "- Prefer low-sugar or sugar-free options (check the label)\n"
+                "- Prefer highly-rated products (4+ stars)\n"
+                "- Prefer CVS store brand when quality is comparable\n\n"
+                "Browse carefully, read labels and reviews, then add your pick to cart. "
+                "Do NOT write your final response yet — you will be told when to do that."
+            ),
+            "iteration_checkpoints": {
+                15: (
+                    "Good. Commit to one multivitamin — the lowest-sugar, highest-rated option — "
+                    "and add it to cart.\n"
+                    "Then navigate to find Vitamin D products. "
+                    "Search 'Vitamin D' or browse the vitamins section. "
+                    "Read labels carefully before deciding."
+                ),
+                30: (
+                    "Good. Commit to one Vitamin D option and add it to cart.\n"
+                    "Then navigate to find Vitamin C products. "
+                    "Search 'Vitamin C' and browse, checking for low-sugar and high ratings."
+                ),
+                45: (
+                    "Good. Commit to one Vitamin C option and add it to cart.\n"
+                    "You now have all 3 items. Do NOT use any tools — write your final list: "
+                    "product name, brand, and price for each item."
+                ),
+            },
+        },
+        "3": {
+            "name": "T3 — Instacart: Gluten-Free Grocery Order",
+            "url":  "google.com",
+            "site": "Instacart",
+            "goal": (
+                "Your task: add grocery items to an Instacart cart for a pasta dinner. "
+                "The shopper has a gluten allergy — ALL pasta must be labeled gluten-free.\n\n"
+                "Start by searching for gluten-free spaghetti. You will be guided to each item.\n\n"
+                "Constraints:\n"
+                "- Pasta MUST be gluten-free — do not substitute a regular product.\n"
+                "- Prefer organic for tomatoes.\n"
+                "- Do not exceed 2 cans of tomatoes.\n\n"
+                "Do NOT write your final response yet — you will be told when to do that."
+            ),
+            "iteration_checkpoints": {
+                8:  ("Good. Choose a gluten-free spaghetti and add it to cart. "
+                     "Then search for 'diced tomatoes' — find an organic 14.5 oz option (2 cans)."),
+                16: ("Good. Add the organic diced tomatoes (2 cans) to cart. "
+                     "Then search for 'fresh basil' and add a bunch."),
+                24: ("Good. Add the fresh basil to cart. "
+                     "Then search for 'parmesan cheese shredded' and add a 6 oz option."),
+                32: ("Good. Add the parmesan to cart. "
+                     "Then search for 'extra virgin olive oil' and add a 16 oz bottle."),
+                40: ("Good. Add the olive oil to cart. "
+                     "Then search for 'garlic' and add one head of garlic."),
+                45: ("Good. Add the garlic to cart. All 6 items should now be in the cart. "
+                     "Do NOT use any tools — write your final confirmation of what was added."),
+            },
+        },
+        "4": {
+            "name": "S1 — NY Grad School Financial Aid (NYU / Columbia / Cornell Tech)",
+            "url":  "google.com",
+            "site": "Google",
+            "write_doc": True,
+            "goal": (
+                "Your task: compare graduate school financial aid across three New York universities "
+                "— NYU, Columbia University, and Cornell Tech — and summarize the findings.\n\n"
+                "For each school, find and record:\n"
+                "  - Types of aid available (fellowships, assistantships, scholarships, loans)\n"
+                "  - Typical funding amounts or stipends for PhD vs Master's students\n"
+                "  - Whether Master's students are commonly funded or self-funded\n"
+                "  - Any named fellowships or competitive awards\n"
+                "  - Application deadlines or requirements to be considered for aid\n\n"
+                "Steps:\n"
+                "1. Click the Google search box on screen, type 'NYU graduate financial aid', "
+                "press Enter, then click the most relevant official NYU result and read it.\n"
+                "2. Go back to google.com, click the search box, type 'Columbia University graduate "
+                "financial aid', press Enter, click the official Columbia result and read it.\n"
+                "3. Go back to google.com, click the search box, type 'Cornell Tech graduate "
+                "financial aid', press Enter, click the official Cornell Tech result and read it.\n"
+                "4. Write a structured comparison with a section for each school, followed by a "
+                "summary table comparing the three side by side.\n"
+                "Do NOT use any tools in your final response — just write the comparison text."
+            ),
+        },
+        "5": {
+            "name": "S2 — Mobile Plan Comparison (Verizon / AT&T / T-Mobile)",
+            "url":  "google.com",
+            "site": "Google",
+            "write_doc": True,
+            "goal": (
+                "Your task: research unlimited mobile phone plans from Verizon.\n\n"
+                "For Verizon, find and note:\n"
+                "- Lowest-cost unlimited plan price for one line\n"
+                "- Data limits or throttling policy\n"
+                "- Hotspot allowance\n"
+                "- International roaming or texting benefits\n"
+                "- Streaming perks or included subscriptions\n"
+                "- Autopay discount requirements\n"
+                "- Any activation fees or hidden monthly fees\n\n"
+                "Click the most relevant official result and read carefully. "
+                "You will be told when to move to the next carrier.\n\n"
+                "Do NOT write a final summary yet — you will be asked to do that later."
+            ),
+            "iteration_checkpoints": {
+                15: (
+                    "Good work on Verizon. Now move to AT&T.\n"
+                    "Press command+l, type 'google.com', press Enter. "
+                    "Then click the search box, type 'AT&T unlimited phone plans', "
+                    "press Enter, and click the most relevant official AT&T result. "
+                    "Gather the same info: lowest-cost unlimited plan price for one line, "
+                    "data limits or throttling, hotspot allowance, international benefits, "
+                    "streaming perks, autopay discount requirements, and hidden fees."
+                ),
+                30: (
+                    "Good work on AT&T. Now move to T-Mobile.\n"
+                    "Press command+l, type 'google.com', press Enter. "
+                    "Then click the search box, type 'T-Mobile unlimited phone plans', "
+                    "press Enter, and click the most relevant official T-Mobile result. "
+                    "Gather the same info: lowest-cost unlimited plan price for one line, "
+                    "data limits or throttling, hotspot allowance, international benefits, "
+                    "streaming perks, autopay discount requirements, and hidden fees."
+                ),
+                45: (
+                    "You have now researched all three carriers. "
+                    "Write a structured comparison with a section for each carrier "
+                    "(Verizon, AT&T, T-Mobile), followed by a side-by-side summary table. "
+                    "Do NOT use any tools — just write the final comparison text now."
+                ),
+            },
+        },
+        "6": {
+            "name": "S3 — Travel Requirements: US Citizen to Japan, Korea & China",
+            "url":  "google.com",
+            "site": "Google",
+            "write_doc": True,
+            "goal": (
+                "Your task: research US passport holder entry requirements for Japan.\n\n"
+                "For Japan, find and note:\n"
+                "- Visa requirement for US citizens (14-day tourist visit)\n"
+                "- Passport validity requirement\n"
+                "- Entry forms or arrival cards required\n"
+                "- Health/vaccination requirements\n"
+                "- Customs rules (cash limits, prohibited items)\n"
+                "- Current travel advisories\n\n"
+                "Click the most relevant official result and read carefully. "
+                "You will be told when to move to the next country.\n\n"
+                "Do NOT write a final summary yet — you will be asked to do that later."
+            ),
+            "iteration_checkpoints": {
+                15: (
+                    "Good work on Japan. Now move to South Korea.\n"
+                    "Press command+l, type 'google.com', press Enter. "
+                    "Then click the search box, type 'US passport visa requirements South Korea tourism', "
+                    "press Enter, and click the most relevant official result. "
+                    "Gather the same info: visa requirement, passport validity, entry forms, "
+                    "health requirements, customs rules, and travel advisories."
+                ),
+                30: (
+                    "Good work on South Korea. Now move to China.\n"
+                    "Press command+l, type 'google.com', press Enter. "
+                    "Then click the search box, type 'US passport visa requirements China tourism 2026', "
+                    "press Enter, and click the most relevant official result. "
+                    "Gather the same info: visa requirement, passport validity, entry forms, "
+                    "health requirements, customs rules, and travel advisories."
+                ),
+                45: (
+                    "You have now researched all three countries. "
+                    "Write a structured comparison with a section for each country "
+                    "(Japan, South Korea, China), followed by a side-by-side summary table. "
+                    "Do NOT use any tools — just write the final comparison text now."
+                ),
+            },
+        },
+        "7": {
             "name": "UIST 2026 — Formatting Guidelines",
             "url":  "uist.acm.org/2026",
             "site": "the UIST 2026 website",
@@ -531,7 +741,7 @@ def task_loop():
                 "Do NOT use any tools in your final response."
             ),
         },
-        "2": {
+        "8": {
             "name": "ACM DL — Agent Legibility Papers",
             "url":  "dl.acm.org",
             "site": "the ACM Digital Library",
@@ -544,7 +754,7 @@ def task_loop():
                 "Do NOT use any tools in your final response."
             ),
         },
-        "3": {
+        "9": {
             "name": "Amazon — Tennis Racket for Kids (Overall Pick)",
             "url":  "amazon.com",
             "site": "Amazon",
@@ -553,7 +763,7 @@ def task_loop():
                 "Ignore sign-in prompts and popups."
             ),
         },
-        "4": {
+        "10": {
             "name": "Google Calendar — Send Invite",
             "url":  "calendar.google.com",
             "site": "Google Calendar",
@@ -571,9 +781,8 @@ def task_loop():
                 "Do NOT use any tools in your final response."
             ),
         },
-        # ── Transactional ──────────────────────────────────────
-        "5": {
-            "name": "T1 — Google Calendar: Multi-Person Meeting",
+        "11": {
+            "name": "Google Calendar — Multi-Person Meeting",
             "url":  "calendar.google.com",
             "site": "Google Calendar",
             "goal": (
@@ -593,33 +802,8 @@ def task_loop():
                 "Do NOT use any tools in your final response."
             ),
         },
-        "6": {
-            "name": "T2 — Instacart: Vegan Pasta Primavera Shopping",
-            "url":  "instacart.com",
-            "site": "Instacart",
-            "goal": (
-                "📋 Shopping for tonight's dinner\n\n"
-                "Making: Vegan pasta primavera for 4 people\n\n"
-                "Already at home:\n"
-                "✓ Pasta, garlic, cherry tomatoes, zucchini, lemon\n\n"
-                "Need to buy (3 items):\n"
-                "1. Fresh basil — 1 bunch\n"
-                "2. Olive oil — small bottle, extra virgin\n"
-                "3. Parmesan-style topping — must be vegan\n\n"
-                "⚠️ Constraints:\n"
-                "- One guest has a SEVERE tree-nut allergy (no cashews, almonds, etc.)\n"
-                "- Everyone is vegan (no dairy, no eggs)\n"
-                "- Budget: $30 total\n\n"
-                "Search for each item and add it to cart. For each item, briefly explain "
-                "why you chose that specific product over alternatives — especially for "
-                "the parmesan-style topping, which requires care: real parmesan is dairy, "
-                "and many vegan alternatives are cashew-based (tree nut). Find one that is "
-                "both vegan AND nut-free.\n"
-                "Do NOT use any tools in your final response — confirm what was added and why."
-            ),
-        },
-        "7": {
-            "name": "T3 — Zocdoc: Dermatology Appointment",
+        "12": {
+            "name": "Zocdoc — Dermatology Appointment",
             "url":  "zocdoc.com",
             "site": "Zocdoc",
             "goal": (
@@ -639,62 +823,24 @@ def task_loop():
                 "Do NOT use any tools in your final response — summarize what you found."
             ),
         },
-        # ── Information Synthesis ──────────────────────────────
-        "8": {
-            "name": "S1 — CHI 2025 vs 2026: Submission Requirement Comparison",
-            "url":  "chi2026.acm.org",
-            "site": "the CHI 2026 conference website",
+        "13": {
+            "name": "Covered California — Insurance Plan Recommendation",
+            "url":  "coveredca.com",
+            "site": "Covered California",
             "goal": (
-                "Your task: compare paper submission requirements between CHI 2025 and CHI 2026 "
-                "and flag differences that could cause a desk rejection.\n\n"
-                "Steps:\n"
-                "1. Find the submission/formatting requirements on chi2026.acm.org.\n"
-                "2. Navigate to chi2025.acm.org and find the equivalent page.\n"
-                "3. Compare: page limits, anonymization policy, reference format, "
-                "figure guidelines, supplemental material rules, and new requirements.\n"
-                "4. Write a summary: (a) unchanged rules, (b) changed rules, "
-                "(c) new 2026 rules not in 2025.\n"
-                "Do NOT use any tools in your final response."
-            ),
-        },
-        "9": {
-            "name": "S2 — HealthCare.gov: Insurance Plan Recommendation",
-            "url":  "healthcare.gov",
-            "site": "HealthCare.gov",
-            "goal": (
-                "Your task: recommend the best health insurance plan for this user:\n\n"
+                "Your task: recommend the best health insurance plan for this user on Covered California:\n\n"
                 "Profile:\n"
-                "- Age 32, non-smoker, Austin TX (ZIP 78701)\n"
+                "- Age 32, non-smoker, Los Angeles CA (ZIP 90012)\n"
                 "- Income ~$45,000/year\n"
                 "- Needs: weekly therapy, brand-name Lexapro, preferred psychiatrist Dr. Amanda Chen\n"
                 "- Hard constraint: annual out-of-pocket must stay under $4,000\n"
                 "- Preference: lower monthly premium over lower deductible\n\n"
                 "Steps:\n"
-                "1. Browse plans available at ZIP 78701.\n"
+                "1. Go to coveredca.com and use 'Shop and Compare' to browse plans for ZIP 90012.\n"
                 "2. For the top 2–3 candidates, check: monthly premium, deductible, "
                 "mental health copay, and drug tier for Lexapro.\n"
                 "3. Recommend the best plan and explain why it fits. "
                 "Flag any plan where Lexapro is not covered or out-of-pocket risk exceeds $4,000.\n"
-                "Do NOT use any tools in your final response."
-            ),
-        },
-        "10": {
-            "name": "S3 — Travel Requirements: US Citizen to Japan",
-            "url":  "travel.state.gov",
-            "site": "the U.S. Department of State travel site",
-            "goal": (
-                "Your task: compile a complete travel requirements checklist for this trip:\n\n"
-                "Scenario: US passport holder, San Francisco → Tokyo, 14-day tourist visit, no layover.\n\n"
-                "Collect all of the following:\n"
-                "1. Passport validity requirement\n"
-                "2. Visa requirement (do US citizens need a visa for 14-day tourism?)\n"
-                "3. Entry forms or arrival cards required\n"
-                "4. Health/vaccination requirements or recommendations\n"
-                "5. Customs rules (cash limits, prohibited items)\n"
-                "6. Current travel advisories or entry restrictions\n\n"
-                "Start at travel.state.gov, then check japan.travel or japan-guide.com "
-                "for local entry details. Compile a clear checklist and flag anything "
-                "that changed in the last 6 months.\n"
                 "Do NOT use any tools in your final response."
             ),
         },
@@ -705,7 +851,7 @@ def task_loop():
     for k, t in TASKS.items():
         print(f"  {k}. {t['name']}", file=sys.stderr)
     print("─────────────────────────────────", file=sys.stderr)
-    choice = input("  Enter 1–10: ").strip()
+    choice = input("  Enter 1–13: ").strip()
     task = TASKS.get(choice, TASKS["1"])
     print(f"\n  ▶ Running: {task['name']}\n", file=sys.stderr)
 
@@ -714,11 +860,16 @@ def task_loop():
         f"Display: {DISPLAY_W}×{DISPLAY_H}. Origin top-left. "
         f"Chrome is showing {task['site']}.\n"
         "Rules:\n"
-        "- ALWAYS write a short narration sentence (max 12 words) before any tool call. "
-        "Name the exact UI element: "
-        "e.g. \"I'll click the 'Full CFP' tab.\" "
-        "e.g. \"I'll scroll down to find the submission deadline.\" "
-        "Never skip this narration.\n"
+        "- ALWAYS write 1–2 short sentences before every tool call (never skip).\n"
+        "  Sentence 1 (if something changed): one phrase on what you now see or what changed. "
+        "e.g. \"The CFP page loaded.\" or \"The search results appeared.\"\n"
+        "  Sentence 2 (always): exactly what you will do next, naming the UI element. "
+        "e.g. \"I'll click the 'Author Guidelines' link.\" "
+        "e.g. \"I'll scroll down to find the deadline section.\"\n"
+        "  Keep each sentence under 12 words. Never use vague phrases like 'I will proceed' or 'I will continue'.\n"
+        "- To search on Google: click the search box on the page, type your query, press Enter. "
+        "Do NOT use the Chrome address bar to search — use the Google search box on screen.\n"
+        "- To navigate to a new URL: use command+l, type the URL, press Enter.\n"
         "- Use 'command' for macOS shortcuts.\n"
         "- Never take two screenshots in a row.\n"
         "- When scrolling, use delta_y of 5–8."
@@ -737,11 +888,11 @@ def task_loop():
     pyautogui.press("l")
     time.sleep(0.05)
     pyautogui.keyUp("command")
-    time.sleep(0.4)
+    time.sleep(0.3)
     human_type_visible(task["url"])
     time.sleep(0.1)
     pyautogui.press("return")
-    time.sleep(3.5)
+    time.sleep(1.5)
 
     # ── Phase 2: Agent reads page + generates summary ──
     print("[CU] Phase 2: Agent reading guidelines…", file=sys.stderr)
@@ -764,14 +915,21 @@ def task_loop():
         "display_height_px": DISPLAY_H,
     }]
 
-    MAX_ITER = 30
+    MAX_ITER = 60
     consec_shots = 0
     summary_text = ""
+    checkpoints = task.get("iteration_checkpoints", {})
 
     for iteration in range(MAX_ITER):
         with state_lock:
             if not state["running_demo"]:
                 return
+
+        if iteration in checkpoints:
+            msg = checkpoints[iteration]
+            print(f"[CU] Checkpoint at iter {iteration}: {msg[:60]}…", file=sys.stderr)
+            messages.append({"role": "user", "content": msg})
+            push_chat_message("goal", f"[Checkpoint] {msg}")
 
         print(f"[CU] iter {iteration + 1}", file=sys.stderr)
 
@@ -835,7 +993,7 @@ def task_loop():
                 consec_shots = 0
 
             execute_action(action, block.input)
-            time.sleep(random.uniform(0.08, 0.18))
+            time.sleep(random.uniform(0.04, 0.09))
 
             tool_results.append({
                 "type": "tool_result",
@@ -851,6 +1009,31 @@ def task_loop():
         messages.append({"role": "user", "content": tool_results})
     else:
         print("[CU] Max iterations.", file=sys.stderr)
+
+    if not summary_text:
+        summary_text = f"{task['name']}\n(Agent could not retrieve summary)"
+
+    if task.get("write_doc"):
+        print("[CU] Pasting summary to Google Doc…", file=sys.stderr)
+        activate_chrome()
+        time.sleep(0.2)
+        pyautogui.hotkey("command", "t")
+        time.sleep(0.5)
+        pyautogui.keyDown("command")
+        time.sleep(0.05)
+        pyautogui.press("l")
+        time.sleep(0.05)
+        pyautogui.keyUp("command")
+        time.sleep(0.3)
+        human_type_visible("docs.new")
+        time.sleep(0.1)
+        pyautogui.press("return")
+        time.sleep(4.0)
+        pyautogui.click(SCREEN_W // 2, SCREEN_H // 2)
+        time.sleep(0.5)
+        pyperclip.copy(summary_text)
+        pyautogui.hotkey("command", "v")
+        time.sleep(1.0)
 
     print("[CU] Done!", file=sys.stderr)
     play_sound("Glass.aiff")
