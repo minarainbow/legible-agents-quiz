@@ -1020,7 +1020,7 @@ def task_loop():
                     "right_click":  f"right_click{coord}",
                     "type":         f"type: {str(inp.get('text',''))[:80]}",
                     "key":          f"key: {inp.get('text','')}",
-                    "scroll":       f"scroll  delta_y={inp.get('delta_y','?')}",
+                    "scroll":       f"scroll  {inp.get('scroll_direction','?')} ×{inp.get('scroll_distance', inp.get('delta_y','?'))}",
                     "mouse_move":   f"mouse_move{coord}",
                 }.get(action, f"{action}  {inp}")
                 push_chat_message("action", _action_label)
