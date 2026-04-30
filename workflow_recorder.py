@@ -48,13 +48,40 @@ def _ts() -> float:
     return time.time()
 
 
-class WorkflowRecorder:
-    """Records an agent task session to recordings/<task_id>/."""
+def next_recording_id(base: str) -> str:
+    """Return the next available folder name under RECORDINGS_DIR.
 
-    def __init__(self, task_id: str):
-        self.task_id   = task_id
-        self.task_dir  = RECORDINGS_DIR / task_id
+    If recordings/<base> doesn't exist → return base.
+    If it does → try base_1, base_2, ... until a free slot is found.
+    """
+    if not (RECORDINGS_DIR / base).exists():
+        return base
+    i = 1
+    while (RECORDINGS_DIR / f"{base}_{i}").exists():
+        i += 1
+    return f"{base}_{i}"
+
+
+class WorkflowRecorder:
+    """Records an agent task session to recordings/<task_id>/.
+
+    Capture target (pick one, or leave both None for primary monitor):
+      monitor (int): 1 = primary, 2 = second monitor, 0 = all monitors combined.
+      region  (dict): {"top": y, "left": x, "width": w, "height": h} in screen pixels.
+                      Overrides monitor if both are given.
+    """
+
+    def __init__(
+        self,
+        task_id: str,
+        monitor: int = 1,
+        region: Optional[dict] = None,
+    ):
+        self.task_id    = task_id
+        self.task_dir   = RECORDINGS_DIR / task_id
         self.frames_dir = self.task_dir / "frames"
+        self._monitor   = monitor
+        self._region    = region   # e.g. {"top": 0, "left": 0, "width": 1280, "height": 800}
 
         self._events: list[dict] = []
         self._frame_count = 0
@@ -152,7 +179,8 @@ class WorkflowRecorder:
 
     def _capture_frame(self) -> Path:
         with mss.mss() as sct:
-            raw = sct.grab(sct.monitors[1])
+            target = self._region if self._region else sct.monitors[self._monitor]
+            raw = sct.grab(target)
         img = Image.frombytes("RGB", raw.size, raw.bgra, "raw", "BGRX")
         img = img.resize((1280, 800), Image.Resampling.LANCZOS)
 
@@ -267,8 +295,14 @@ class WorkflowRecorder:
             str(out_path),
         ]
         try:
-            subprocess.run(cmd, capture_output=True, timeout=120)
-            if out_path.exists():
+            result = subprocess.run(cmd, capture_output=True, timeout=120, text=True)
+            if result.returncode == 0 and out_path.exists():
                 print(f"[recorder] video → {out_path}", file=sys.stderr)
+            else:
+                err = (result.stderr or result.stdout or "").strip()
+                if err:
+                    print(f"[recorder] ffmpeg failed (code {result.returncode}): {err[:500]}", file=sys.stderr)
+                else:
+                    print(f"[recorder] ffmpeg failed (code {result.returncode}) — no video written", file=sys.stderr)
         except Exception as exc:
             print(f"[recorder] video compile failed: {exc}", file=sys.stderr)

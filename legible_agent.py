@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+import argparse
 import math
 import time
 import random
@@ -46,6 +49,27 @@ from Foundation import NSObject, NSMakeRect, NSTimer
 from WebKit import WKWebView, WKWebViewConfiguration
 
 load_dotenv()
+
+# ─────────────────────────────────────────────────────────────
+# Recording (optional — enabled with --record flag)
+# ─────────────────────────────────────────────────────────────
+
+from workflow_recorder import WorkflowRecorder  # noqa: E402
+
+_recorder: WorkflowRecorder | None = None
+_record_enabled: bool = False
+
+
+def _finalize_recording(summary: str) -> None:
+    """Write log.json, report.md, video (if ffmpeg). Safe to call multiple times."""
+    global _recorder
+    if _recorder is None:
+        return
+    try:
+        _recorder.stop(summary=summary)
+    except Exception as exc:
+        print(f"[recorder] finalize failed: {exc}", file=sys.stderr)
+
 
 # ─────────────────────────────────────────────────────────────
 # Config
@@ -1160,6 +1184,8 @@ def navigate_to_url(url: str):
     time.sleep(1.5)
 
 def task_loop():
+    global _recorder
+
     time.sleep(1.5)
     play_sound("Funk.aiff")
     threading.Thread(target=_init_sfx, daemon=True).start()
@@ -1168,37 +1194,36 @@ def task_loop():
 
     # ── Task selection ────────────────────────────────────────
     TASKS = {
+        # ── Transactional (T1–T3) ──────────────────────────────
         "1": {
-            "name": "T1 — Sephora: Foundation, Mascara & Lip Gloss",
+            "name": "T1 — Sephora: Foundation & Mascara",
             "url":  "google.com",
             "site": "Sephora website",
-            "display_goal": (
-                "Find 3 makeup products on Sephora — Foundation, Mascara, and Lip Gloss.\n"
-                "Prefer hypoallergenic, fragrance-free formulas. Add each to cart."
-            ),
+            "max_iterations": 85,
             "goal": (
-                "Your task: find 3 makeup products on Sephora's website.\n\n"
-                "Start by browsing Foundation. You will be guided to the next item.\n\n"
-                "Preferences (apply to all items):\n"
+                "Your task: find exactly 2 makeup products on Sephora's website and add each to cart: "
+                "**foundation** and **mascara** only.\n\n"
+                "Start by browsing Foundation. You will be guided to mascara next.\n\n"
+                "Hard rule: after foundation + mascara are in cart, **stop**. "
+                "Do **not** browse or add lip gloss, lipstick, skincare, or any third item.\n\n"
+                "Preferences (apply to both items):\n"
                 "- Prefer hypoallergenic, fragrance-free, or sensitive-skin formulas\n"
                 "- Avoid products with known irritants (fragrances, parabens, harsh dyes)\n\n"
                 "Browse and add your pick to cart. "
                 "Do NOT write your final response yet — you will be told when to do that."
             ),
             "iteration_checkpoints": {
-                15: (
+                28: (
                     "Good. Commit to one foundation now — pick the option and add it to cart.\n"
-                    "Then navigate to the Mascara section. Browse mascaras, look for "
-                    "hypoallergenic or sensitive-eye formulas. Change colors if needed."
+                    "Then navigate to the Mascara section only. Browse mascaras, look for "
+                    "hypoallergenic or sensitive-eye formulas. Change colors if needed. "
+                    "Do not open Lip Gloss or any other category."
                 ),
-                30: (
+                58: (
                     "Good. Commit to one mascara and add it to cart.\n"
-                    "Then navigate to Lip Gloss with color. Browse the lip gloss section, "
-                    "prefer fragrance-free or gentle formulas with a tinted/colored finish."
-                ),
-                45: (
-                    "Good. Commit to one lip gloss with color and add it to cart.\n"
-                    "You now have all 3 items."
+                    "You now have both required items — **do not add anything else**. "
+                    "Do NOT use any tools — write your final list: "
+                    "product name, brand, and price for each item."
                 ),
             },
         },
@@ -1206,10 +1231,6 @@ def task_loop():
             "name": "T2 — CVS: 3 Vitamins",
             "url":  "google.com",
             "site": "CVS website",
-            "display_goal": (
-                "Find 3 vitamins on CVS — Multivitamin, Vitamin D, and Vitamin C.\n"
-                "Prefer low-sugar, highly-rated options. Add each to cart."
-            ),
             "goal": (
                 "Your task: find 3 vitamins or supplements on CVS's website and add each to cart.\n\n"
                 "Start with Multivitamins. You will be guided to the next category.\n\n"
@@ -1244,11 +1265,6 @@ def task_loop():
             "name": "T3 — Instacart: Gluten-Free Grocery Order",
             "url":  "google.com",
             "site": "Instacart",
-            "display_goal": (
-                "Order pasta dinner ingredients on Instacart.\n"
-                "Shopper has a gluten allergy — all pasta must be gluten-free.\n"
-                "Items: gluten-free spaghetti, organic diced tomatoes (×2), fresh basil, parmesan, olive oil, garlic."
-            ),
             "goal": (
                 "Your task: add grocery items to an Instacart cart for a pasta dinner. "
                 "The shopper has a gluten allergy — ALL pasta must be labeled gluten-free.\n\n"
@@ -1260,29 +1276,38 @@ def task_loop():
                 "Do NOT write your final response yet — you will be told when to do that."
             ),
             "iteration_checkpoints": {
-                8:  ("Good. Choose a gluten-free spaghetti and add it to cart. "
-                     "Then search for 'diced tomatoes' — find an organic 14.5 oz option (2 cans)."),
-                16: ("Good. Add the organic diced tomatoes (2 cans) to cart. "
-                     "Then search for 'fresh basil' and add a bunch."),
-                24: ("Good. Add the fresh basil to cart. "
-                     "Then search for 'parmesan cheese shredded' and add a 6 oz option."),
-                32: ("Good. Add the parmesan to cart. "
-                     "Then search for 'extra virgin olive oil' and add a 16 oz bottle."),
-                40: ("Good. Add the olive oil to cart. "
-                     "Then search for 'garlic' and add one head of garlic."),
-                45: ("Good. Add the garlic to cart. All 6 items should now be in the cart. "
-                     "Do NOT use any tools — write your final confirmation of what was added."),
+                8: (
+                    "Good. Choose a gluten-free spaghetti and add it to cart. "
+                    "Then search for 'diced tomatoes' — find an organic 14.5 oz option (2 cans)."
+                ),
+                16: (
+                    "Good. Add the organic diced tomatoes (2 cans) to cart. "
+                    "Then search for 'parmesan cheese shredded' and add a 6 oz option."
+                ),
+                24: (
+                    "Good. Add the parmesan to cart. "
+                    "Then search for 'fresh basil' and add a bunch."
+                ),
+                32: (
+                    "Good. Add the fresh basil to cart. "
+                    "Then search for 'extra virgin olive oil' and add a 16 oz bottle."
+                ),
+                40: (
+                    "Good. Add the olive oil to cart. "
+                    "Then search for 'garlic' and add one head of garlic."
+                ),
+                45: (
+                    "Good. Add the garlic to cart. All 6 items should now be in the cart. "
+                    "Do NOT use any tools — write your final confirmation of what was added."
+                ),
             },
         },
+        # ── Information Synthesis (S1–S3) ──────────────────────
         "4": {
-            "name": "S1 — NY Grad School Financial Aid (NYU / Columbia / Cornell Tech)",
+            "name": "S1 — NY Grad School Financial Aid Comparison (NYU / Columbia / Cornell Tech)",
             "url":  "google.com",
             "site": "Google",
             "write_doc": True,
-            "display_goal": (
-                "Compare graduate financial aid at NYU, Columbia, and Cornell Tech.\n"
-                "Find aid types, funding amounts, fellowship names, and application deadlines for each."
-            ),
             "goal": (
                 "Your task: compare graduate school financial aid across three New York universities "
                 "— NYU, Columbia University, and Cornell Tech — and summarize the findings.\n\n"
@@ -1309,10 +1334,6 @@ def task_loop():
             "url":  "google.com",
             "site": "Google",
             "write_doc": True,
-            "display_goal": (
-                "Compare unlimited phone plans from Verizon, AT&T, and T-Mobile.\n"
-                "Find price, data limits, hotspot, international benefits, and perks for each carrier."
-            ),
             "goal": (
                 "Your task: research unlimited mobile phone plans from Verizon.\n\n"
                 "For Verizon, find and note:\n"
@@ -1349,7 +1370,9 @@ def task_loop():
                 45: (
                     "You have now researched all three carriers. "
                     "Write a structured comparison with a section for each carrier "
-                    "(Verizon, AT&T, T-Mobile), followed by a side-by-side summary table. "
+                    "(Verizon, AT&T, T-Mobile), followed by a side-by-side summary table "
+                    "with columns: Carrier | Cheapest Unlimited Price | Data Policy | Hotspot | "
+                    "International Benefits | Perks | Autopay Requirement | Extra Fees. "
                     "Do NOT use any tools — just write the final comparison text now."
                 ),
             },
@@ -1359,10 +1382,6 @@ def task_loop():
             "url":  "google.com",
             "site": "Google",
             "write_doc": True,
-            "display_goal": (
-                "Research US passport entry requirements for Japan, South Korea, and China.\n"
-                "Find visa rules, passport validity, entry forms, health requirements, and customs rules."
-            ),
             "goal": (
                 "Your task: research US passport holder entry requirements for Japan.\n\n"
                 "For Japan, find and note:\n"
@@ -1396,16 +1415,18 @@ def task_loop():
                 45: (
                     "You have now researched all three countries. "
                     "Write a structured comparison with a section for each country "
-                    "(Japan, South Korea, China), followed by a side-by-side summary table. "
+                    "(Japan, South Korea, China), followed by a side-by-side summary table "
+                    "with columns: Country | Visa Required | Passport Validity | Entry Forms | "
+                    "Health Requirements | Cash Limit | Travel Advisory Level. "
                     "Do NOT use any tools — just write the final comparison text now."
                 ),
             },
         },
+        # ── Optional / warm-up tasks ───────────────────────────
         "7": {
             "name": "UIST 2026 — Formatting Guidelines",
             "url":  "uist.acm.org/2026",
             "site": "the UIST 2026 website",
-            "display_goal": "Find and summarize the UIST 2026 paper submission formatting guidelines.",
             "goal": (
                 "Chrome is showing the UIST 2026 website.\n"
                 "Your task: find and read the submission formatting guidelines, "
@@ -1423,7 +1444,6 @@ def task_loop():
             "name": "ACM DL — Agent Legibility Papers",
             "url":  "dl.acm.org",
             "site": "the ACM Digital Library",
-            "display_goal": "Find 3 papers about agent legibility on ACM Digital Library and summarize each.",
             "goal": (
                 "Go to ACM Digital Library (dl.acm.org) and find 3 papers about agent legibility.\n\n"
                 "Steps:\n"
@@ -1437,7 +1457,6 @@ def task_loop():
             "name": "Amazon — Tennis Racket for Kids (Overall Pick)",
             "url":  "amazon.com",
             "site": "Amazon",
-            "display_goal": "Search Amazon for a toddler tennis racket with an 'Overall Pick' badge or discount, and add it to cart.",
             "goal": (
                 "On Amazon, search for 'tennis racket for toddler', find an item with an 'Overall Pick' badge or a sale/discount (e.g. 'Save 10%'), and add it to the cart. "
                 "Ignore sign-in prompts and popups."
@@ -1447,10 +1466,6 @@ def task_loop():
             "name": "Google Calendar — Send Invite",
             "url":  "calendar.google.com",
             "site": "Google Calendar",
-            "display_goal": (
-                "Create a Google Calendar event titled 'Quick Sync' and invite sukmin.hci@gmail.com.\n"
-                "Include the message: 'Hey! Sending you a calendar invite — let me know if this time works for you.'"
-            ),
             "goal": (
                 "Your task: create a new Google Calendar event and invite a specific person.\n\n"
                 "Person to invite: sukmin.hci@gmail.com\n"
@@ -1469,10 +1484,6 @@ def task_loop():
             "name": "Google Calendar — Multi-Person Meeting",
             "url":  "calendar.google.com",
             "site": "Google Calendar",
-            "display_goal": (
-                "Schedule a 1-hour 'Research Planning Session' this Friday at 2 PM.\n"
-                "Invite sukmin.hci@gmail.com and alice.researcher@gmail.com."
-            ),
             "goal": (
                 "Your task: schedule a 1-hour team meeting and invite two people.\n\n"
                 "Meeting details:\n"
@@ -1491,13 +1502,9 @@ def task_loop():
             ),
         },
         "12": {
-            "name": "Zocdoc — Dermatology Appointment",
+            "name": "Zocdoc — Dermatology Appointment (optional)",
             "url":  "zocdoc.com",
             "site": "Zocdoc",
-            "display_goal": (
-                "Book a dermatology appointment on Zocdoc in San Francisco, CA.\n"
-                "New patient, Aetna insurance, within 2 weeks. Note: concerned about a changing mole."
-            ),
             "goal": (
                 "Your task: find a dermatology appointment on Zocdoc under these constraints:\n\n"
                 "Requirements:\n"
@@ -1516,13 +1523,9 @@ def task_loop():
             ),
         },
         "13": {
-            "name": "Covered California — Insurance Plan Recommendation",
+            "name": "Covered California — Insurance Plan Recommendation (optional)",
             "url":  "coveredca.com",
             "site": "Covered California",
-            "display_goal": (
-                "Find the best Covered California health plan for a 32-year-old in LA (ZIP 90012), $45K income.\n"
-                "Needs weekly therapy, brand-name Lexapro. Max out-of-pocket: $4,000/year."
-            ),
             "goal": (
                 "Your task: recommend the best health insurance plan for this user on Covered California:\n\n"
                 "Profile:\n"
@@ -1551,6 +1554,10 @@ def task_loop():
     task = TASKS.get(choice, TASKS["1"])
     print(f"\n  ▶ Running: {task['name']}\n", file=sys.stderr)
 
+    if _record_enabled:
+        _recorder = WorkflowRecorder(task_id=choice)
+        _recorder.start(task_name=task["name"], task_goal=task["goal"])
+
     SYSTEM_PROMPT = (
         f"You are a macOS computer-use agent. "
         f"Display: {DISPLAY_W}×{DISPLAY_H}. Origin top-left. "
@@ -1576,8 +1583,7 @@ def task_loop():
         state["high_stakes_warning"] = task.get("high_stakes_warning", "")
 
     goal = task["goal"]
-    display_goal = task.get("display_goal", goal)
-    push_chat_message("goal", f"Task: {task['name']}\n\n{display_goal}")
+    push_chat_message("goal", f"Task: {task['name']}\n\n{goal}")
 
     # ── Phase 1: Pre-navigation ───────────────────────────────
     print(f"[CU] Phase 1: Navigating to {task['url']}…", file=sys.stderr)
@@ -1609,7 +1615,7 @@ def task_loop():
         "display_height_px": DISPLAY_H,
     }]
 
-    MAX_ITER = 60
+    MAX_ITER = int(task.get("max_iterations", 60))
     consec_shots = 0
     summary_text = ""
     checkpoints = task.get("iteration_checkpoints", {})
@@ -1617,8 +1623,9 @@ def task_loop():
     for iteration in range(MAX_ITER):
         with state_lock:
             if not state["running_demo"]:
-                return
+                break
 
+        # ── Inject checkpoint instruction at country/topic boundaries ──
         if iteration in checkpoints:
             msg = checkpoints[iteration]
             print(f"[CU] Checkpoint at iter {iteration}: {msg[:60]}…", file=sys.stderr)
@@ -1657,6 +1664,8 @@ def task_loop():
 
         if raw:
             print(f"\n[CLAUDE raw] {raw}", file=sys.stderr)
+            if _recorder is not None:
+                _recorder.log_reasoning(raw)
             push_chat_message("thought", raw)
 
         # Speak Claude's own reasoning aloud before acting.
@@ -1715,6 +1724,8 @@ def task_loop():
                 continue
             action = block.input.get("action", "")
             print(f"[ACTION] {action}  {block.input}", file=sys.stderr)
+            if _recorder is not None:
+                _recorder.log_action(action, block.input)
 
             if action not in ("screenshot",):
                 inp = block.input
@@ -1725,8 +1736,7 @@ def task_loop():
                     "right_click":  f"right_click{coord}",
                     "type":         f"type: {str(inp.get('text',''))[:80]}",
                     "key":          f"key: {inp.get('text','')}",
-                    "scroll":       (lambda d=inp.get('scroll_direction'), dy=inp.get('delta_y'), sd=inp.get('scroll_distance'):
-                                        f"scroll  {d or ('down' if (dy or 0)>0 else 'up')} ×{sd or abs(dy) if (sd or dy) is not None else '?'}")(),
+                    "scroll":       f"scroll  delta_y={inp.get('delta_y','?')}",
                     "mouse_move":   f"mouse_move{coord}",
                 }.get(action, f"{action}  {inp}")
                 push_chat_message("action", _action_label)
@@ -1747,10 +1757,15 @@ def task_loop():
 
             if _is_trivial_action(action, block.input):
                 content = _trivial_confirmation(action, block.input)
+                if _recorder is not None:
+                    _recorder.log_screenshot_b64(screenshot_base64())
             else:
+                shot = screenshot_base64()
+                if _recorder is not None:
+                    _recorder.log_screenshot_b64(shot)
                 content = [{"type": "image", "source": {
                     "type": "base64", "media_type": "image/png",
-                    "data": screenshot_base64(),
+                    "data": shot,
                 }}]
             tool_results.append({
                 "type": "tool_result",
@@ -1762,8 +1777,11 @@ def task_loop():
             break
         messages.append({"role": "user", "content": tool_results})
     else:
-        print("[CU] Max iterations.", file=sys.stderr)
+        print("[CU] Max iterations reached — saving recording.", file=sys.stderr)
+        if not summary_text:
+            summary_text = f"{task['name']}\n(Max iterations reached.)"
 
+    # ── Phase 3: Open Google Doc + paste summary (S tasks only) ──
     if not summary_text:
         summary_text = f"{task['name']}\n(Agent could not retrieve summary)"
 
@@ -1793,6 +1811,8 @@ def task_loop():
     print("[CU] Done!", file=sys.stderr)
     dom_stop_reading()
     play_sound("Glass.aiff")
+
+    _finalize_recording(summary_text)
 
 # ─────────────────────────────────────────────────────────────
 # Overlay — stripped to legibility only
@@ -2211,7 +2231,7 @@ class OverlayView(NSView):
                                     max_chars=56, above=True, slide=slide)
 
 # ─────────────────────────────────────────────────────────────
-# Timer / Window / ESC
+# Timer / Window
 # ─────────────────────────────────────────────────────────────
 
 class TimerTarget(NSObject):
@@ -2222,6 +2242,18 @@ class TimerTarget(NSObject):
 
 PANEL_W = int(SCREEN_W * 0.22)
 OVERLAY_W = SCREEN_W - PANEL_W
+
+
+def _set_panel_visibility(show_panel: bool):
+    """Resize overlay vs reasoning strip. Call before build_window / build_chat_panel."""
+    global PANEL_W, OVERLAY_W
+    if show_panel:
+        PANEL_W = int(SCREEN_W * 0.22)
+        OVERLAY_W = SCREEN_W - PANEL_W
+    else:
+        PANEL_W = 0
+        OVERLAY_W = SCREEN_W
+
 
 def build_window():
     global overlay_view
@@ -2392,22 +2424,44 @@ def setup_esc_listener():
 
 def main():
     import signal
+    global _recorder, _record_enabled
+
     def _stop(_sig=None, _frame=None):
         print("\n[overlay] stopping.", file=sys.stderr)
         dom_stop_reading()
+        _finalize_recording("(Interrupted — Ctrl+C; saving partial recording.)")
         with state_lock:
             state["running_demo"] = False
-        if _chat_window is not None:
-            _chat_window.orderOut_(None)
         NSApplication.sharedApplication().terminate_(None)
-        import os; os._exit(0)
+
     signal.signal(signal.SIGINT, _stop)
     signal.signal(signal.SIGTERM, _stop)
+
+    parser = argparse.ArgumentParser(description="Legible agent (legible_agent.py)")
+    parser.add_argument(
+        "--record", action="store_true",
+        help="Enable workflow recording. Task id is taken from the interactive task selector. "
+             "Saves frames, log.json, report.md, and video.mp4 to recordings/<task_id>/",
+    )
+    parser.add_argument(
+        "--panel",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Show the side reasoning panel (default: on). Use --no-panel to hide.",
+    )
+    args, _ = parser.parse_known_args()
+
+    if args.record:
+        _record_enabled = True
+        print("[main] recording enabled — task folder will be set after task selection", file=sys.stderr)
+
+    _set_panel_visibility(args.panel)
 
     app = NSApplication.sharedApplication()
     app.setActivationPolicy_(NSApplicationActivationPolicyAccessory)
     build_window()
-    build_chat_panel()
+    if args.panel:
+        build_chat_panel()
     setup_esc_listener()
     timer_target = TimerTarget.alloc().init()
     NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
