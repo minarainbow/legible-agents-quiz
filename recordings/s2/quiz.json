@@ -1,0 +1,157 @@
+[
+  {
+    "id": "P1",
+    "type": "next_action_prediction",
+    "pause_time_sec": 31,
+    "timestamp_label": "0:31",
+    "anchor": "The agent has just clicked the minus button to reduce the line count to 1.",
+    "question": "What will the agent do next after reducing the line count to 1?",
+    "reference_answer": "The agent will scroll down to see the pricing for all three plans.",
+    "accepted_answers": [
+      "Scroll down to see the pricing for all three plans.",
+      "Scroll down to view plan pricing."
+    ],
+    "partial_answers": [
+      "Scroll down.",
+      "View pricing."
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "Look at the plans.",
+        "Continue with the task."
+      ],
+      "too_low_level": [
+        "Move the cursor.",
+        "Click something."
+      ],
+      "wrong": [
+        "Switch to a different carrier.",
+        "Search for something else."
+      ]
+    }
+  },
+  {
+    "id": "G1",
+    "type": "goal_legibility",
+    "pause_time_sec": 46,
+    "timestamp_label": "0:46",
+    "anchor": "The agent is about to expand the Broadband Facts for the Unlimited Welcome plan.",
+    "question": "What is the agent's immediate goal in expanding the Broadband Facts?",
+    "reference_answer": "To view detailed information about the Unlimited Welcome plan.",
+    "accepted_answers": [
+      "View detailed information about the Unlimited Welcome plan.",
+      "See more details about the Unlimited Welcome plan."
+    ],
+    "partial_answers": [
+      "Get more information.",
+      "Expand the Broadband Facts."
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "Learn about the plan.",
+        "Gather information."
+      ],
+      "too_low_level": [
+        "Click the arrow.",
+        "Expand a section."
+      ],
+      "wrong": [
+        "Compare all plans.",
+        "Switch to AT&T."
+      ]
+    }
+  },
+  {
+    "id": "P2",
+    "type": "next_action_prediction",
+    "pause_time_sec": 56,
+    "timestamp_label": "0:56",
+    "anchor": "The agent has just scrolled down to read more disclaimers and footnotes.",
+    "question": "What will the agent do next after reading the disclaimers and footnotes?",
+    "reference_answer": "The agent will click 'Compare plan details' to get a full breakdown of all plans side by side.",
+    "accepted_answers": [
+      "Click 'Compare plan details' to get a full breakdown.",
+      "Compare plan details."
+    ],
+    "partial_answers": [
+      "Click 'Compare plan details'.",
+      "Compare plans."
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "Look for more information.",
+        "Continue with the task."
+      ],
+      "too_low_level": [
+        "Move the cursor.",
+        "Click something."
+      ],
+      "wrong": [
+        "Switch to AT&T.",
+        "Go back to Google."
+      ]
+    }
+  },
+  {
+    "id": "G2",
+    "type": "goal_legibility",
+    "pause_time_sec": 97,
+    "timestamp_label": "1:37",
+    "anchor": "The agent is scrolling down to see the plan pricing and details on the AT&T page.",
+    "question": "What is the agent's immediate goal in scrolling down on the AT&T page?",
+    "reference_answer": "To find the plan pricing and details for AT&T's unlimited plans.",
+    "accepted_answers": [
+      "Find the plan pricing and details for AT&T's unlimited plans.",
+      "See pricing and details for AT&T plans."
+    ],
+    "partial_answers": [
+      "Find plan pricing.",
+      "See plan details."
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "Learn about AT&T plans.",
+        "Gather information."
+      ],
+      "too_low_level": [
+        "Scroll down.",
+        "View the page."
+      ],
+      "wrong": [
+        "Switch to T-Mobile.",
+        "Compare with Verizon."
+      ]
+    }
+  },
+  {
+    "id": "P3",
+    "type": "next_action_prediction",
+    "pause_time_sec": 173,
+    "timestamp_label": "2:53",
+    "anchor": "The agent is noting key details of T-Mobile's Experience Beyond plan.",
+    "question": "What will the agent do next after noting the details of T-Mobile's Experience Beyond plan?",
+    "reference_answer": "The agent will click 'Broadband Facts and fees' for the Essentials Saver to get more specifics on the lowest-cost plan.",
+    "accepted_answers": [
+      "Click 'Broadband Facts and fees' for the Essentials Saver.",
+      "Get more specifics on the Essentials Saver plan."
+    ],
+    "partial_answers": [
+      "Click 'Broadband Facts and fees'.",
+      "Look at Essentials Saver details."
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "Continue with the task.",
+        "Look for more information."
+      ],
+      "too_low_level": [
+        "Move the cursor.",
+        "Click something."
+      ],
+      "wrong": [
+        "Switch to Verizon.",
+        "Search for a new carrier."
+      ]
+    }
+  }
+]

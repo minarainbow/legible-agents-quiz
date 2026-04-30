@@ -2,3 +2,6 @@ __pycache__/
 *.pyc
 .DS_Store
 .env
+recordings/*/frames/
+recordings/*/scores/
+recordings/*/report.md

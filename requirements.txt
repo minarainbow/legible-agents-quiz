@@ -1,8 +1,4 @@
+flask
+gunicorn
+openai
 anthropic
-elevenlabs
-pyautogui
-pyobjc
-mss
-pillow
-pyperclip
-python-dotenv

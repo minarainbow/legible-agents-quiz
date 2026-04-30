@@ -12,7 +12,10 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import sys
 import time
+import urllib.parse
+import urllib.request
 from pathlib import Path
 
 from flask import Flask, Response, abort, jsonify, request, send_file
@@ -20,6 +23,8 @@ from flask import Flask, Response, abort, jsonify, request, send_file
 RECORDINGS_DIR = Path(__file__).parent / "recordings"
 FRAME_INTERVAL = 0.5   # seconds per frame (must match workflow_recorder.py)
 QUIZ_TASK_IDS = ["s1", "s2", "s3", "t1", "t2", "t3"]
+FIREBASE_DB_URL = os.environ.get("FIREBASE_DB_URL", "https://legible-agents-default-rtdb.firebaseio.com").rstrip("/")
+FIREBASE_DB_SECRET = os.environ.get("FIREBASE_DB_SECRET", "").strip()
 
 app = Flask(__name__)
 
@@ -127,6 +132,150 @@ def _events(task_id: str):
     return json.loads(p.read_text()).get("events", [])
 
 
+def _safe_key(s: str) -> str:
+    # Firebase keys cannot contain: . $ # [ ] /
+    return "".join("_" if c in ".#$[]/" else c for c in s)
+
+
+def _firebase_put(path: str, payload: dict) -> tuple[bool, str]:
+    """PUT payload to Firebase RTDB path. Returns (ok, detail)."""
+    try:
+        url = f"{FIREBASE_DB_URL}/{path}.json"
+        if FIREBASE_DB_SECRET:
+            q = urllib.parse.urlencode({"auth": FIREBASE_DB_SECRET})
+            url = f"{url}?{q}"
+        req = urllib.request.Request(
+            url=url,
+            method="PUT",
+            data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            _ = resp.read()
+        return True, path
+    except Exception as exc:
+        return False, str(exc)
+
+
+def _load_quiz_items(task_id: str) -> list[dict]:
+    p = RECORDINGS_DIR / task_id / "quiz.json"
+    if not p.exists():
+        return []
+    return json.loads(p.read_text())
+
+
+def _fallback_action_quiz_from_log(task_id: str, target_n: int = 6) -> list[dict]:
+    evs = _events(task_id)
+    start_ev = next((e for e in evs if e.get("kind") == "session_start"), {})
+    end_ev = next((e for e in evs if e.get("kind") == "session_end"), {})
+    duration = float(end_ev.get("duration_sec", 0) or 0)
+    candidates = []
+
+    # Build candidates from reasoning/action trace.
+    for i, ev in enumerate(evs):
+        kind = ev.get("kind")
+        if kind not in ("reasoning", "action"):
+            continue
+        # Find nearest reasoning text and next action after this point.
+        reasoning = ev.get("text", "") if kind == "reasoning" else ""
+        next_action = None
+        for nxt in evs[i + 1:]:
+            if nxt.get("kind") == "action":
+                next_action = nxt.get("action")
+                break
+        if not reasoning:
+            # Try prior reasoning
+            for prv in reversed(evs[:i]):
+                if prv.get("kind") == "reasoning" and prv.get("text"):
+                    reasoning = prv.get("text")
+                    break
+        if reasoning or next_action:
+            rel_sec = 0
+            if start_ev.get("ts") and ev.get("ts"):
+                rel_sec = max(0, round(float(ev["ts"]) - float(start_ev["ts"])))
+            candidates.append({
+                "anchor": (reasoning or f"Agent is interacting with the interface around action: {next_action}.")[:240],
+                "reference": f"The agent will likely {next_action.replace('_', ' ')} next." if next_action else "The agent will take the next meaningful UI step.",
+                "pause_time_sec": rel_sec,
+            })
+
+    if not candidates:
+        # Generic fallback if logs are minimal.
+        step = max(5, int(duration / max(target_n, 1))) if duration else 10
+        candidates = [{
+            "anchor": "The agent is progressing through the task flow.",
+            "reference": "The agent will take the next meaningful UI action.",
+            "pause_time_sec": (i + 1) * step,
+        } for i in range(target_n)]
+
+    out = []
+    idx = 0
+    while len(out) < target_n:
+        c = candidates[idx % len(candidates)]
+        sec = int(c.get("pause_time_sec", 0))
+        out.append({
+            "id": f"P{len(out) + 1}",
+            "type": "next_action_prediction",
+            "pause_time_sec": sec,
+            "timestamp_label": f"{sec // 60}:{str(sec % 60).zfill(2)}",
+            "anchor": c["anchor"],
+            "question": "What is the agent's next meaningful action at this moment?",
+            "reference_answer": c["reference"],
+            "accepted_answers": [c["reference"]],
+            "partial_answers": ["The agent will continue by taking the next UI step."],
+            "reject_examples": {
+                "too_broad": ["The agent will keep going."],
+                "too_low_level": ["The cursor will move."],
+                "wrong": ["The agent will stop and finish right now."],
+            },
+        })
+        idx += 1
+    return out
+
+
+def _build_action_quiz_set(task_id: str, target_n: int = 6) -> list[dict]:
+    """Return action-only quiz items, expanded to target_n when possible.
+
+    Strategy:
+    1) keep existing action items
+    2) convert non-action items into action-form probes
+    3) if still short, clone action probes with a follow-up wording
+    """
+    source = _load_quiz_items(task_id)
+    action_items = []
+    converted = []
+
+    for it in source:
+        if it.get("type") == "next_action_prediction":
+            action_items.append(dict(it))
+        else:
+            c = dict(it)
+            c["type"] = "next_action_prediction"
+            c["question"] = "What is the agent's next meaningful action at this moment?"
+            converted.append(c)
+
+    out = action_items + converted
+
+    # If still short, duplicate from action-style probes with new IDs/wording.
+    i = 0
+    base = out[:] if out else action_items[:]
+    while len(out) < target_n and base:
+        src = dict(base[i % len(base)])
+        src["question"] = "Follow-up: what will the agent do next?"
+        out.append(src)
+        i += 1
+
+    # Final cleanup: cap to target_n and normalize IDs to P1..Pn in timeline order.
+    out = out[:target_n]
+    if not out:
+        return _fallback_action_quiz_from_log(task_id, target_n=target_n)
+    out.sort(key=lambda it: it.get("pause_time_sec", 0))
+    for idx, it in enumerate(out, start=1):
+        it["id"] = f"P{idx}"
+        it["type"] = "next_action_prediction"
+    return out
+
+
 @app.route("/api/info/<task_id>")
 def get_info(task_id):
     evs   = _events(task_id)
@@ -172,19 +321,16 @@ def get_log(task_id):
 
 @app.route("/api/quiz/<task_id>")
 def get_quiz(task_id):
-    p = RECORDINGS_DIR / task_id / "quiz.json"
-    if not p.exists():
-        abort(404)
-    return jsonify(json.loads(p.read_text()))
+    # Study mode: only action probes, 6 per task.
+    return jsonify(_build_action_quiz_set(task_id, target_n=6))
 
 
 @app.route("/api/tasks")
 def list_tasks():
     items = []
     for task_id in QUIZ_TASK_IDS:
-        quiz_path = RECORDINGS_DIR / task_id / "quiz.json"
         video_path = RECORDINGS_DIR / task_id / "video.mp4"
-        if not quiz_path.exists() or not video_path.exists():
+        if not video_path.exists():
             continue
         task_name = f"Task {task_id}"
         try:
@@ -247,7 +393,81 @@ def api_save_responses():
         "answers":        answers,
     }
     out_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False))
-    return jsonify({"saved": str(out_path.relative_to(Path(__file__).parent)), "filename": filename})
+    ts_key = time.strftime("%Y%m%d_%H%M%S")
+    fb_path = f"scores/{_safe_key(task_id)}/{_safe_key(participant)}/{ts_key}"
+    ok, detail = _firebase_put(fb_path, payload)
+    if not ok:
+        print(f"[firebase] save_responses failed: {detail}", file=sys.stderr)
+    return jsonify({
+        "saved": str(out_path.relative_to(Path(__file__).parent)),
+        "filename": filename,
+        "firebase_saved": ok,
+        "firebase_path": detail if ok else None,
+        "firebase_error": None if ok else detail,
+    })
+
+
+@app.route("/api/save_progress", methods=["POST"])
+def api_save_progress():
+    """Write each answered question to its own Firebase path and local file.
+
+    Firebase hierarchy:
+      participants/<name>/<task_type>/<question_id>/
+        user_response, confidence, score, score_label,
+        action_evaluation, answer_time_sec, answered_at
+    """
+    data        = request.get_json(force=True)
+    task_type   = (data.get("task_type") or data.get("task_id") or "unknown").strip()
+    participant = (data.get("participant") or "anonymous").strip().replace(" ", "_")
+    responses   = data.get("responses", [])
+
+    # ── Local flat file per save ──────────────────────────────────
+    out_dir = RECORDINGS_DIR / task_type / "scores"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    timestamp = time.strftime("%Y%m%d_%H%M%S")
+    out_path  = out_dir / f"{participant}_{timestamp}.json"
+    out_path.write_text(json.dumps(responses, indent=2, ensure_ascii=False))
+
+    # ── Firebase: one write per question  ─────────────────────────
+    # Path: participants/<participant>/<task_type>/<question_id>
+    errors = []
+    saved_paths = []
+    for row in responses:
+        # Use numeric index (1, 2, 3…) when available; fall back to raw id
+        qid = str(
+            row.get("question_index")
+            or str(row.get("question_id", "")).lstrip("Pp")
+            or row.get("question_id", "")
+        )
+        if not qid:
+            continue
+        fb_data = {
+            "user_response":     row.get("user_response"),
+            "confidence":        row.get("confidence"),
+            "score":             row.get("score"),
+            "score_label":       row.get("score_label"),
+            "action_evaluation": row.get("action_evaluation"),
+            "answer_time_sec":   row.get("answer_time_sec"),
+            "answered_at":       row.get("answered_at"),
+        }
+        fb_data = {k: v for k, v in fb_data.items() if v is not None}
+        fb_path = (
+            f"participants/{_safe_key(participant)}"
+            f"/{_safe_key(task_type)}"
+            f"/{qid}"
+        )
+        ok, detail = _firebase_put(fb_path, fb_data)
+        if ok:
+            saved_paths.append(fb_path)
+        else:
+            errors.append(f"{qid}: {detail}")
+            print(f"[firebase] {fb_path} failed: {detail}", file=sys.stderr)
+
+    return jsonify({
+        "saved_local": str(out_path.relative_to(Path(__file__).parent)),
+        "firebase_saved": len(saved_paths),
+        "firebase_errors": errors,
+    })
 
 
 @app.route("/recordings/<task_id>/video.mp4")
@@ -526,9 +746,20 @@ HTML = r"""<!DOCTYPE html>
   .q-btn.cont:hover  { background: #4338ca; }
   .q-btn.score  { background: #0ea5e9; color: #fff; border-color: #0ea5e9; }
   .q-btn.score:hover { background: #0284c7; }
-  .q-btn.reveal { border-color: #a78bfa; color: #6d28d9; }
-  .q-btn.reveal:hover { background: var(--accent-lt); }
-  .q-btn.hide-ref { border-color: #c4b5fd; color: #7c3aed; background: var(--accent-lt); }
+  .workflow-note { margin-top: 8px; font-size: 11px; color: var(--muted); }
+  .conf-wrap, .action-eval-wrap {
+    margin-top: 10px; padding: 8px 10px;
+    border: 1px solid var(--border); border-radius: 8px; background: #fafafe;
+  }
+  .action-eval-wrap.required {
+    border-color: var(--accent); background: var(--accent-lt);
+  }
+  .action-eval-wrap.pending {
+    opacity: 0.45; pointer-events: none;
+  }
+  .conf-label, .action-eval-label { font-size: 12px; font-weight: 600; margin-bottom: 6px; }
+  .conf-scale, .action-eval-options { display: flex; gap: 10px; flex-wrap: wrap; font-size: 12px; }
+  .conf-scale label, .action-eval-options label { display: inline-flex; align-items: center; gap: 4px; }
 
   /* Reference panel */
   #reference-panel { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 11px; }
@@ -626,9 +857,6 @@ HTML = r"""<!DOCTYPE html>
     <label for="participant-input">Participant:</label>
     <input id="participant-input" type="text" placeholder="name" autocomplete="off"/>
   </div>
-  <button class="hdr-btn" id="btn-next" title="Jump to next unanswered (N)">Next ⌨ N</button>
-  <button class="hdr-btn save"    id="btn-save">💾 Save All</button>
-  <button class="hdr-btn primary" id="btn-export">Export JSON</button>
   <button class="hdr-btn danger"  id="btn-reset">Reset</button>
 </header>
 
@@ -663,9 +891,6 @@ HTML = r"""<!DOCTYPE html>
         <span id="progress-summary"></span>
       </div>
       <div id="quiz-list"></div>
-      <div id="quiz-bottom-actions">
-        <button id="btn-save-bottom">Save Results</button>
-      </div>
     </div>
   </div>
 </main>
@@ -706,11 +931,14 @@ const taskSelectEl  = document.getElementById('task-select');
 const participantEl = document.getElementById('participant-input');
 const toast         = document.getElementById('toast');
 const QUIZ_TASK_IDS = ['s1', 's2', 's3', 't1', 't2', 't3'];
+let _autosaveTimer = null;
+let _autosaveDirty = false;
 
 // ── Init ────────────────────────────────────────────────────────
 async function init() {
   const params = new URLSearchParams(location.search);
   const requestedTask = params.get('task');
+  startAutosave();
   await loadTaskOptions();
   const defaultTask = (requestedTask && QUIZ_TASK_IDS.includes(requestedTask))
     ? requestedTask
@@ -743,6 +971,7 @@ function resetTaskState(taskId) {
     activeId: null,
     duration: 0,
     evaluating: new Set(),
+    answerStartAt: {},
   });
   vid.pause();
   vid.currentTime = 0;
@@ -827,17 +1056,51 @@ btnLogToggle.addEventListener('click', () => {
 document.addEventListener('keydown', e => {
   const inText = ['TEXTAREA','INPUT'].includes(document.activeElement.tagName);
   if (e.code === 'Space' && !inText) { e.preventDefault(); togglePlay(); }
-  if (e.code === 'KeyN'  && !inText) { e.preventDefault(); jumpToNextUnanswered(); }
 });
 
-document.getElementById('btn-next').addEventListener('click', jumpToNextUnanswered);
-document.getElementById('btn-export').addEventListener('click', exportAnswers);
 document.getElementById('btn-reset').addEventListener('click', resetAll);
-document.getElementById('btn-save').addEventListener('click', saveAll);
-document.getElementById('btn-save-bottom').addEventListener('click', saveAll);
 taskSelectEl.addEventListener('change', async () => {
   await loadTask(taskSelectEl.value);
+  queueAutosave();
 });
+participantEl.addEventListener('change', queueAutosave);
+
+function queueAutosave() { _autosaveDirty = true; }
+
+function syncActiveDraft() {
+  if (!S.activeId) return;
+  const ta = document.getElementById('answer-textarea');
+  if (!ta) return;
+  const txt = (ta.value || '').trim();
+  if (!S.answers[S.activeId]) S.answers[S.activeId] = {};
+  if (txt) {
+    S.answers[S.activeId].userAnswer = txt;
+    S.answers[S.activeId].answeredAt = S.answers[S.activeId].answeredAt || new Date().toISOString();
+  }
+}
+
+async function saveProgress(reason = 'autosave') {
+  syncActiveDraft();
+  if (!_autosaveDirty && reason === 'autosave') return;
+  const payload = buildExportPayload();
+  payload.participant = participantEl.value.trim() || 'anonymous';
+  payload.save_reason = reason;
+  try {
+    await fetch('/api/save_progress', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    _autosaveDirty = false;
+  } catch (_err) {
+    // Keep quiet in UI; next interval will retry.
+  }
+}
+
+function startAutosave() {
+  if (_autosaveTimer) clearInterval(_autosaveTimer);
+  _autosaveTimer = setInterval(() => { saveProgress('autosave'); }, 15000);
+}
 
 // ── Core actions ────────────────────────────────────────────────
 function togglePlay() { vid.paused ? vid.play() : vid.pause(); }
@@ -845,26 +1108,32 @@ function togglePlay() { vid.paused ? vid.play() : vid.pause(); }
 function triggerQuiz(id) {
   vid.pause();
   S.seenIds.add(id);
+  if (!S.answerStartAt[id]) {
+    S.answerStartAt[id] = new Date().toISOString();
+  }
   S.activeId = id;
   renderActiveQuiz();
   renderQuizList();
+  queueAutosave();
   document.querySelector(`[data-quiz-id="${id}"]`)
     ?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 }
 
 function continueVideo() {
-  const ta = document.getElementById('answer-textarea');
-  const txt = ta?.value.trim() || '';
-  if (txt) {
-    if (!S.answers[S.activeId]) S.answers[S.activeId] = {};
-    S.answers[S.activeId].userAnswer  = txt;
-    S.answers[S.activeId].answeredAt  = new Date().toISOString();
-  } else if (!S.answers[S.activeId]) {
-    S.answers[S.activeId] = { userAnswer: null, answeredAt: null };
+  const id = S.activeId;
+  const a = S.answers[id] || {};
+  if (a.score == null) {
+    showToast('Score this response first.', 2200);
+    return;
+  }
+  if (!a.actionEvaluation) {
+    showToast('Please rate action performance before continuing.', 2400);
+    return;
   }
   S.activeId = null;
   renderActiveQuiz();
   renderQuizList();
+  queueAutosave();
   vid.play();
 }
 
@@ -875,14 +1144,21 @@ function saveCurrentAnswer(id) {
     if (!S.answers[id]) S.answers[id] = {};
     S.answers[id].userAnswer = txt;
     S.answers[id].answeredAt = S.answers[id].answeredAt || new Date().toISOString();
+    queueAutosave();
   }
 }
 
 async function scoreAnswer(id) {
   saveCurrentAnswer(id);
-  const userAnswer = S.answers[id]?.userAnswer || '';
+  const answerObj = S.answers[id] || {};
+  const userAnswer = answerObj.userAnswer || '';
   if (!userAnswer) {
     showToast('Type an answer first before scoring.', 2000);
+    return;
+  }
+  const confidence = Number(answerObj.confidence || 0);
+  if (!confidence || confidence < 1 || confidence > 7) {
+    showToast('Select confidence 1–7 before scoring.', 2200);
     return;
   }
 
@@ -902,12 +1178,20 @@ async function scoreAnswer(id) {
     S.answers[id].score             = data.score;
     S.answers[id].score_label       = data.label;
     S.answers[id].score_explanation = data.explanation;
+    S.revealedIds.add(id);
+    S.refShownIds.add(id);
+    queueAutosave();
   } catch (err) {
     showToast(`Scoring failed: ${err.message}`, 4000);
   } finally {
     S.evaluating.delete(id);
     renderActiveQuiz();
     renderQuizList();
+    // Scroll action eval section into view so user doesn't miss it
+    setTimeout(() => {
+      document.getElementById('action-eval-section')
+        ?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 80);
   }
 }
 
@@ -936,7 +1220,7 @@ function jumpToQuiz(id) {
 function jumpToNextUnanswered() {
   const next = S.quizItems.find(q => {
     const a = S.answers[q.id];
-    return !a || a.userAnswer === null;
+    return !a || a.score == null;
   });
   if (next) jumpToQuiz(next.id);
 }
@@ -949,70 +1233,54 @@ function resetAll() {
   });
   renderActiveQuiz();
   renderQuizList();
+  queueAutosave();
 }
 
-// ── Save to file ────────────────────────────────────────────────
-async function saveAll() {
-  const participant = participantEl.value.trim();
-  if (!participant) {
-    participantEl.focus();
-    participantEl.style.borderColor = 'var(--red)';
-    setTimeout(() => { participantEl.style.borderColor = ''; }, 1500);
-    showToast('Please enter participant name first.', 2500);
-    return;
-  }
-
-  const payload = buildExportPayload();
-  payload.participant = participant;
-
-  try {
-    const res = await fetch('/api/save_responses', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    const data = await res.json();
-    if (data.error) throw new Error(data.error);
-    showToast(`Saved → ${data.saved}`, 4000);
-  } catch (err) {
-    showToast(`Save failed: ${err.message}`, 4000);
-  }
-}
-
-// ── Export (download) ────────────────────────────────────────────
-function exportAnswers() {
-  const payload = buildExportPayload();
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `quiz_answers_task${S.taskId}_${Date.now()}.json`;
-  a.click();
-}
+window.addEventListener('beforeunload', () => { saveProgress('beforeunload'); });
 
 function buildExportPayload() {
+  syncActiveDraft();
   const participant = participantEl.value.trim() || 'anonymous';
+  const rows = [];
+  for (const q of S.quizItems) {
+    const a = S.answers[q.id] || {};
+    const hasUserData = !!(
+      a.userAnswer ||
+      a.confidence != null ||
+      a.score != null ||
+      a.actionEvaluation
+    );
+    if (!hasUserData) continue;
+
+    const startIso = S.answerStartAt[q.id] || null;
+    const endIso = a.answeredAt || null;
+    let elapsed = null;
+    if (startIso && endIso) {
+      const dt = (new Date(endIso).getTime() - new Date(startIso).getTime()) / 1000;
+      if (!Number.isNaN(dt)) elapsed = Math.max(0, Math.round(dt));
+    }
+
+    rows.push({
+      participant: participant,
+      task_type: S.taskId,
+      question_id: q.id,
+      question_index: Number(String(q.id).replace(/^P/i, "")) || null,
+      user_response: a.userAnswer || null,
+      confidence: a.confidence ?? null,
+      score: a.score ?? null,
+      score_label: a.score_label || null,
+      action_evaluation: a.actionEvaluation || null,
+      answer_started_at: startIso,
+      answered_at: endIso,
+      answer_time_sec: elapsed,
+    });
+  }
   return {
     participant,
-    task_id:      S.taskId,
+    task_type:    S.taskId,
     task_name:    S.taskName,
     submitted_at: new Date().toISOString(),
-    answers: S.quizItems.map(q => {
-      const a = S.answers[q.id] || {};
-      return {
-        question_id:        q.id,
-        type:               q.type,
-        pause_time_sec:     q.pause_time_sec,
-        timestamp_label:    q.timestamp_label,
-        question:           q.question,
-        user_answer:        a.userAnswer || null,
-        score:              a.score ?? null,
-        score_label:        a.score_label || null,
-        score_explanation:  a.score_explanation || null,
-        reference_answer:   q.reference_answer,
-        revealed_reference: S.revealedIds.has(q.id),
-        answered_at:        a.answeredAt || null,
-      };
-    }),
+    responses: rows,
   };
 }
 
@@ -1031,11 +1299,12 @@ function renderActiveQuiz() {
   if (!S.activeId) {
     const done = Object.values(S.answers).filter(a => a.userAnswer).length;
     const scored = Object.values(S.answers).filter(a => a.score != null).length;
+    const evald = Object.values(S.answers).filter(a => a.actionEvaluation).length;
     const scoredNote = scored > 0 ? ` · ${scored} scored` : '';
     activeZone.innerHTML = `<div id="no-quiz-msg">
-      <span class="icon">${done === S.quizItems.length ? '✅' : '🎬'}</span>
-      ${done === S.quizItems.length
-        ? `All probes answered${scoredNote} — click <strong>Save All</strong> to save.`
+      <span class="icon">${evald === S.quizItems.length && S.quizItems.length > 0 ? '✅' : '🎬'}</span>
+      ${evald === S.quizItems.length && S.quizItems.length > 0
+        ? `All probes completed${scoredNote} — click <strong>Save Results</strong>.`
         : 'Play the video — quiz probes appear automatically.'}
     </div>`;
     return;
@@ -1044,13 +1313,16 @@ function renderActiveQuiz() {
   const q        = S.quizItems.find(q => q.id === S.activeId);
   const existing = S.answers[q.id]?.userAnswer || '';
   const isGoal   = q.type === 'goal_legibility';
-  const refShown = S.refShownIds.has(q.id);
   const scoreData = S.answers[q.id];
   const isEvaluating = S.evaluating.has(q.id);
+  const locked = scoreData?.score != null;
+  const confidence = scoreData?.confidence || '';
+  const actionEval = scoreData?.actionEvaluation || '';
+  const canContinue = locked && !!actionEval;
 
   const instruction = isGoal
-    ? '💡 Answer the <strong>immediate local subgoal</strong>, not the overall task.'
-    : '💡 Answer the <strong>next meaningful interface step</strong>, not mouse movement.';
+    ? '💡 Answer the <strong>immediate local subgoal</strong>.'
+    : '';
 
   // score display HTML
   let scoreHTML = '';
@@ -1081,26 +1353,63 @@ function renderActiveQuiz() {
       <p class="quiz-instruction">${instruction}</p>
       <div class="quiz-anchor">📍 ${esc(q.anchor)}</div>
       <p class="quiz-question">${esc(q.question)}</p>
-      <textarea id="answer-textarea" placeholder="Type your answer here…" rows="3">${esc(existing)}</textarea>
+      <textarea id="answer-textarea" placeholder="Type your answer here…" rows="3" ${locked ? 'disabled' : ''}>${esc(existing)}</textarea>
+      <div class="conf-wrap">
+        <div class="conf-label">How confident are you in your prediction? (1 = low, 7 = high)</div>
+        <div class="conf-scale">
+          ${[1,2,3,4,5,6,7].map(n => `
+            <label>
+              <input type="radio" name="confidence" value="${n}" ${String(confidence) === String(n) ? 'checked' : ''} ${locked ? 'disabled' : ''}/>
+              ${n}
+            </label>`).join('')}
+        </div>
+      </div>
       ${scoreHTML}
       <div class="quiz-actions">
-        <button class="q-btn cont"  id="btn-continue">▶ Continue video</button>
-        <button class="q-btn score" id="btn-score" ${isEvaluating ? 'disabled' : ''}>
-          ${isEvaluating ? '…' : (scoreData?.score != null ? '🔄 Re-score' : '🤖 Score')}
-        </button>
-        <button class="q-btn ${refShown ? 'hide-ref' : 'reveal'}" id="btn-ref">
-          ${refShown ? '🙈 Hide reference' : '👁 Reveal reference'}
+        <button class="q-btn score" id="btn-score" ${(isEvaluating || locked) ? 'disabled' : ''}>
+          ${isEvaluating ? '…' : (locked ? '✅ Scored' : '🤖 Score')}
         </button>
       </div>
-      <div id="reference-panel" style="display:${refShown ? 'block' : 'none'}">
-        ${buildRefHTML(q)}
+      <div id="reference-panel" style="display:${locked ? 'block' : 'none'}">
+        ${locked ? buildRefHTML(q) : ''}
+      </div>
+      <div id="action-eval-section" class="action-eval-wrap ${!locked ? 'pending' : (!actionEval ? 'required' : '')}">
+        <div class="action-eval-label">${locked ? '⭐ Required — ' : ''}Was this a good action toward the task goal?${!locked ? '<span style="font-size:10px;font-weight:400;color:var(--muted);margin-left:6px">(available after scoring)</span>' : ''}</div>
+        <div class="action-eval-options">
+          <label><input type="radio" name="action-eval" value="good" ${actionEval === 'good' ? 'checked' : ''} ${!locked ? 'disabled' : ''}/> Good action</label>
+          <label><input type="radio" name="action-eval" value="bad" ${actionEval === 'bad' ? 'checked' : ''} ${!locked ? 'disabled' : ''}/> Bad action</label>
+          <label><input type="radio" name="action-eval" value="not_sure" ${actionEval === 'not_sure' ? 'checked' : ''} ${!locked ? 'disabled' : ''}/> Not sure</label>
+        </div>
+      </div>
+      <div class="quiz-actions" style="margin-top:10px">
+        <button class="q-btn cont" id="btn-continue" ${canContinue ? '' : 'disabled'}>▶ Continue video</button>
+        ${!canContinue && locked ? `<span style="font-size:11px;color:var(--muted);align-self:center">${!actionEval ? 'Rate the action above to continue' : ''}</span>` : ''}
       </div>
     </div>`;
   activeZone.appendChild(card);
 
   document.getElementById('btn-continue').addEventListener('click', continueVideo);
   document.getElementById('btn-score').addEventListener('click', () => scoreAnswer(S.activeId));
-  document.getElementById('btn-ref').addEventListener('click', () => toggleReference(S.activeId));
+  document.getElementById('answer-textarea')?.addEventListener('input', () => {
+    syncActiveDraft();
+    queueAutosave();
+  });
+  document.querySelectorAll('input[name="confidence"]').forEach(r => {
+    r.addEventListener('change', () => {
+      if (!S.answers[S.activeId]) S.answers[S.activeId] = {};
+      S.answers[S.activeId].confidence = Number(r.value);
+      queueAutosave();
+    });
+  });
+  document.querySelectorAll('input[name="action-eval"]').forEach(r => {
+    r.addEventListener('change', () => {
+      if (!S.answers[S.activeId]) S.answers[S.activeId] = {};
+      S.answers[S.activeId].actionEvaluation = r.value;
+      queueAutosave();
+      renderQuizList();
+      renderActiveQuiz();
+    });
+  });
 
   if (!existing) document.getElementById('answer-textarea')?.focus();
 }
@@ -1214,10 +1523,9 @@ function renderQuizList() {
 
 function getStatus(id) {
   if (id === S.activeId)         return 'active';
-  if (S.refShownIds.has(id))     return 'revealed';
-  if (S.revealedIds.has(id))     return 'revealed';
   const a = S.answers[id];
   if (!a)                        return 'unseen';
+  if (a.score != null)           return 'revealed';
   if (a.userAnswer)              return 'answered';
   return 'skipped';
 }
