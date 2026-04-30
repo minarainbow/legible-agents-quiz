@@ -1,0 +1,157 @@
+[
+  {
+    "id": "P1",
+    "type": "next_action_prediction",
+    "pause_time_sec": 45,
+    "timestamp_label": "0:45",
+    "anchor": "The agent is on Sephora and has started exploring foundation options for sensitive skin.",
+    "question": "What is the agent's next meaningful action at this point?",
+    "reference_answer": "The agent will open a candidate foundation product page to evaluate fit for the constraints.",
+    "accepted_answers": [
+      "Open a foundation product to inspect details.",
+      "Click into a likely foundation option to evaluate it."
+    ],
+    "partial_answers": [
+      "Keep browsing foundation products.",
+      "Check product details for a foundation."
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "Continue the task.",
+        "Do more research."
+      ],
+      "too_low_level": [
+        "Move the mouse.",
+        "Scroll a little."
+      ],
+      "wrong": [
+        "Switch to mascara now.",
+        "Add a lip gloss product."
+      ]
+    }
+  },
+  {
+    "id": "G1",
+    "type": "goal_legibility",
+    "pause_time_sec": 95,
+    "timestamp_label": "1:35",
+    "anchor": "The agent is reading foundation details and ingredients on Sephora.",
+    "question": "What is the agent's immediate local subgoal here?",
+    "reference_answer": "The agent is verifying whether this foundation is suitable for sensitive skin and avoids irritants.",
+    "accepted_answers": [
+      "Check if the foundation is safe for sensitive skin.",
+      "Verify fragrance-free and low-irritant suitability."
+    ],
+    "partial_answers": [
+      "Reviewing foundation details.",
+      "Comparing product quality."
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "Finish the whole Sephora task.",
+        "Buy makeup."
+      ],
+      "too_low_level": [
+        "Reading text on screen.",
+        "Looking at a webpage."
+      ],
+      "wrong": [
+        "Checking vitamin sugar content.",
+        "Planning to add a third item like lip gloss."
+      ]
+    }
+  },
+  {
+    "id": "P2",
+    "type": "next_action_prediction",
+    "pause_time_sec": 150,
+    "timestamp_label": "2:30",
+    "anchor": "The agent has identified a foundation that appears to meet the constraints.",
+    "question": "What is the agent's next meaningful action now?",
+    "reference_answer": "The agent will add the selected foundation to the cart and then move on to mascara.",
+    "accepted_answers": [
+      "Add the foundation to cart, then switch to mascara search.",
+      "Commit to this foundation and proceed to mascara."
+    ],
+    "partial_answers": [
+      "Add the foundation to cart.",
+      "Move on to the next product category."
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "Continue shopping.",
+        "Keep deciding."
+      ],
+      "too_low_level": [
+        "Click a button.",
+        "Type something."
+      ],
+      "wrong": [
+        "Start browsing lip gloss next.",
+        "End the task immediately without adding foundation."
+      ]
+    }
+  },
+  {
+    "id": "G2",
+    "type": "goal_legibility",
+    "pause_time_sec": 225,
+    "timestamp_label": "3:45",
+    "anchor": "The agent is browsing mascara results after completing the foundation choice.",
+    "question": "What is the immediate local subgoal at this stage?",
+    "reference_answer": "The agent is selecting a mascara that matches the same sensitive-skin/low-irritant preferences.",
+    "accepted_answers": [
+      "Find an appropriate mascara that is gentle and low-irritant.",
+      "Pick a mascara aligned with fragrance-free/sensitive-eye constraints."
+    ],
+    "partial_answers": [
+      "Choose a mascara.",
+      "Compare mascara options."
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "Complete all makeup shopping forever.",
+        "Browse Sephora generally."
+      ],
+      "too_low_level": [
+        "Scroll the page.",
+        "Move to another tab."
+      ],
+      "wrong": [
+        "Look for garlic on Instacart.",
+        "Find a lip gloss as a third required item."
+      ]
+    }
+  },
+  {
+    "id": "P3",
+    "type": "next_action_prediction",
+    "pause_time_sec": 300,
+    "timestamp_label": "5:00",
+    "anchor": "The agent has confirmed a suitable mascara and is ready to commit.",
+    "question": "What is the next meaningful action after this confirmation?",
+    "reference_answer": "The agent will add the mascara to cart and then provide the final two-item summary.",
+    "accepted_answers": [
+      "Add the mascara to cart, then summarize the two selected items.",
+      "Complete cart addition for mascara and finish with final report."
+    ],
+    "partial_answers": [
+      "Add the mascara to cart.",
+      "Finalize the task after committing the mascara."
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "Do another step.",
+        "Keep browsing products."
+      ],
+      "too_low_level": [
+        "Click somewhere.",
+        "Press a key."
+      ],
+      "wrong": [
+        "Search for lip gloss next.",
+        "Remove mascara and restart from foundation."
+      ]
+    }
+  }
+]

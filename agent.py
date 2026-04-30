@@ -1,3 +1,4 @@
+import argparse
 import math
 import time
 import random
@@ -8,7 +9,9 @@ import base64
 import os
 import io
 import re
+import signal
 import concurrent.futures
+from typing import Optional
 
 import mss
 import pyperclip
@@ -42,6 +45,33 @@ from Foundation import NSObject, NSMakeRect, NSTimer
 from WebKit import WKWebView, WKWebViewConfiguration
 
 load_dotenv()
+
+# ─────────────────────────────────────────────────────────────
+# Recording (optional — enabled with --record flag)
+# ─────────────────────────────────────────────────────────────
+
+from workflow_recorder import WorkflowRecorder, next_recording_id  # noqa: E402
+
+_recorder: Optional[WorkflowRecorder] = None
+_record_enabled: bool = False
+
+
+def _finalize_recording(summary: str) -> None:
+    """Write log.json, report.md, video (if ffmpeg). Safe to call multiple times."""
+    global _recorder
+    if _recorder is None:
+        return
+    try:
+        _recorder.stop(summary=summary)
+    except Exception as exc:
+        print(f"[recorder] finalize failed: {exc}", file=sys.stderr)
+
+
+# Friendly recording folder names for main study tasks (others use the task number)
+_RECORDING_NAMES: dict[str, str] = {
+    "1": "t1", "2": "t2", "3": "t3",
+    "4": "s1", "5": "s2", "6": "s3",
+}
 
 # ─────────────────────────────────────────────────────────────
 # Config
@@ -80,6 +110,18 @@ SCREEN_H = int(frame.size.height)
 
 PANEL_W   = int(SCREEN_W * 0.22)
 OVERLAY_W = SCREEN_W - PANEL_W
+
+
+def _set_panel_visibility(show_panel: bool):
+    """Resize overlay vs reasoning strip. Call before build_window / build_chat_panel."""
+    global PANEL_W, OVERLAY_W
+    if show_panel:
+        PANEL_W = int(SCREEN_W * 0.22)
+        OVERLAY_W = SCREEN_W - PANEL_W
+    else:
+        PANEL_W = 0
+        OVERLAY_W = SCREEN_W
+
 
 _chat_webview = None
 _chat_window  = None
@@ -508,6 +550,8 @@ def activate_chrome():
     time.sleep(0.4)
 
 def task_loop():
+    global _recorder
+
     time.sleep(1.5)
     play_sound("Funk.aiff")
 
@@ -516,32 +560,30 @@ def task_loop():
     # ── Task selection ────────────────────────────────────────
     TASKS = {
         "1": {
-            "name": "T1 — Sephora: Foundation, Mascara & Lip Gloss",
+            "name": "T1 — Sephora: Foundation & Mascara",
             "url":  "google.com",
             "site": "Sephora website",
+            "max_iterations": 85,
             "goal": (
-                "Your task: find 3 makeup products on Sephora's website.\n\n"
-                "Start by browsing Foundation. You will be guided to the next item.\n\n"
-                "Preferences (apply to all items):\n"
+                "Your task: find exactly 2 makeup products on Sephora's website and add each to cart: "
+                "**foundation** and **mascara** only.\n\n"
+                "Start by browsing Foundation. You will be guided to mascara next.\n\n"
+                "Hard rule: after foundation + mascara are in cart, **stop**. "
+                "Preferences (apply to both items):\n"
                 "- Prefer hypoallergenic, fragrance-free, or sensitive-skin formulas\n"
                 "- Avoid products with known irritants (fragrances, parabens, harsh dyes)\n\n"
                 "Browse and add your pick to cart. "
                 "Do NOT write your final response yet — you will be told when to do that."
             ),
             "iteration_checkpoints": {
-                15: (
+                28: (
                     "Good. Commit to one foundation now — pick the option and add it to cart.\n"
-                    "Then navigate to the Mascara section. Browse mascaras, look for "
-                    "hypoallergenic or sensitive-eye formulas. Change colors if needed."
+                    "Then navigate to the Mascara section only. Browse mascaras, look for "
+                    "hypoallergenic or sensitive-eye formulas. Change colors if needed. "
                 ),
-                30: (
+                58: (
                     "Good. Commit to one mascara and add it to cart.\n"
-                    "Then navigate to Lip Gloss with color. Browse the lip gloss section, "
-                    "prefer fragrance-free or gentle formulas with a tinted/colored finish."
-                ),
-                45: (
-                    "Good. Commit to one lip gloss with color and add it to cart.\n"
-                    "You now have all 3 items."
+                    "You now have both required items — **do not add anything else**. "
                 ),
             },
         },
@@ -597,14 +639,13 @@ def task_loop():
                 8:  ("Good. Choose a gluten-free spaghetti and add it to cart. "
                      "Then search for 'diced tomatoes' — find an organic 14.5 oz option (2 cans)."),
                 16: ("Good. Add the organic diced tomatoes (2 cans) to cart. "
+                     "Then search for 'parmesan cheese shredded' and add a 7 oz option."),
+                24: ("Good. Add the parmesan to cart. "
                      "Then search for 'fresh basil' and add a bunch."),
-                24: ("Good. Add the fresh basil to cart. "
-                     "Then search for 'parmesan cheese shredded' and add a 6 oz option."),
-                32: ("Good. Add the parmesan to cart. "
-                     "Then search for 'extra virgin olive oil' and add a 16 oz bottle."),
-                40: ("Good. Add the olive oil to cart. "
-                     "Then search for 'garlic' and add one head of garlic."),
-                45: ("Good. Add the garlic to cart. All 6 items should now be in the cart. "
+                32: ("Good. Add the fresh basil to cart. "
+                     "Then search for 'extra virgin olive oil' and add a bottle."),
+                40: ("Good. Add the olive oil to cart. "),
+                45: ("Good. Add the garlic to cart. "
                      "Do NOT use any tools — write your final confirmation of what was added."),
             },
         },
@@ -854,6 +895,14 @@ def task_loop():
     task = TASKS.get(choice, TASKS["1"])
     print(f"\n  ▶ Running: {task['name']}\n", file=sys.stderr)
 
+    if _record_enabled:
+        base_id = _RECORDING_NAMES.get(choice, choice)
+        rec_id = next_recording_id(base_id)
+        if rec_id != base_id:
+            print(f"[recorder] '{base_id}' exists -> saving as '{rec_id}'", file=sys.stderr)
+        _recorder = WorkflowRecorder(task_id=rec_id)
+        _recorder.start(task_name=task["name"], task_goal=task["goal"])
+
     SYSTEM_PROMPT = (
         f"You are a macOS computer-use agent. "
         f"Display: {DISPLAY_W}×{DISPLAY_H}. Origin top-left. "
@@ -914,7 +963,7 @@ def task_loop():
         "display_height_px": DISPLAY_H,
     }]
 
-    MAX_ITER = 60
+    MAX_ITER = int(task.get("max_iterations", 60))
     consec_shots = 0
     summary_text = ""
     checkpoints = task.get("iteration_checkpoints", {})
@@ -922,7 +971,7 @@ def task_loop():
     for iteration in range(MAX_ITER):
         with state_lock:
             if not state["running_demo"]:
-                return
+                break
 
         if iteration in checkpoints:
             msg = checkpoints[iteration]
@@ -1007,7 +1056,9 @@ def task_loop():
             break
         messages.append({"role": "user", "content": tool_results})
     else:
-        print("[CU] Max iterations.", file=sys.stderr)
+        print("[CU] Max iterations reached — saving recording.", file=sys.stderr)
+        if not summary_text:
+            summary_text = f"{task['name']}\n(Max iterations reached.)"
 
     if not summary_text:
         summary_text = f"{task['name']}\n(Agent could not retrieve summary)"
@@ -1036,6 +1087,8 @@ def task_loop():
 
     print("[CU] Done!", file=sys.stderr)
     play_sound("Glass.aiff")
+
+    _finalize_recording(summary_text)
 
 # ─────────────────────────────────────────────────────────────
 # Overlay
@@ -1417,10 +1470,42 @@ def setup_esc_listener():
     pass
 
 def main():
+    global _record_enabled
+
+    parser = argparse.ArgumentParser(description="Legible agent (agent.py)")
+    parser.add_argument(
+        "--record", action="store_true",
+        help="Enable workflow recording. Task id is taken from the interactive task selector. "
+             "Saves frames, log.json, report.md, and video.mp4 to recordings/<task_id>/",
+    )
+    parser.add_argument(
+        "--panel",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Show the side reasoning panel (default: on). Use --no-panel to hide.",
+    )
+    args, _ = parser.parse_known_args()
+
+    if args.record:
+        _record_enabled = True
+        print("[main] recording enabled - task folder will be set after task selection", file=sys.stderr)
+
+    _set_panel_visibility(args.panel)
+
+    def _on_interrupt(_sig, _frame):
+        _finalize_recording("(Interrupted — Ctrl+C; saving partial recording.)")
+        with state_lock:
+            state["running_demo"] = False
+        NSApplication.sharedApplication().terminate_(None)
+
+    signal.signal(signal.SIGINT, _on_interrupt)
+    signal.signal(signal.SIGTERM, _on_interrupt)
+
     app = NSApplication.sharedApplication()
     app.setActivationPolicy_(NSApplicationActivationPolicyAccessory)
     build_window()
-    build_chat_panel()
+    if args.panel:
+        build_chat_panel()
     setup_esc_listener()
     timer_target = TimerTarget.alloc().init()
     NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(

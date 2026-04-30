@@ -19,6 +19,7 @@ from flask import Flask, Response, abort, jsonify, request, send_file
 
 RECORDINGS_DIR = Path(__file__).parent / "recordings"
 FRAME_INTERVAL = 0.5   # seconds per frame (must match workflow_recorder.py)
+QUIZ_TASK_IDS = ["s1", "s2", "s3", "t1", "t2", "t3"]
 
 app = Flask(__name__)
 
@@ -177,6 +178,25 @@ def get_quiz(task_id):
     return jsonify(json.loads(p.read_text()))
 
 
+@app.route("/api/tasks")
+def list_tasks():
+    items = []
+    for task_id in QUIZ_TASK_IDS:
+        quiz_path = RECORDINGS_DIR / task_id / "quiz.json"
+        video_path = RECORDINGS_DIR / task_id / "video.mp4"
+        if not quiz_path.exists() or not video_path.exists():
+            continue
+        task_name = f"Task {task_id}"
+        try:
+            evs = _events(task_id)
+            start = next((e for e in evs if e.get("kind") == "session_start"), {})
+            task_name = start.get("task_name", task_name)
+        except Exception:
+            pass
+        items.append({"task_id": task_id, "task_name": task_name})
+    return jsonify(items)
+
+
 @app.route("/api/evaluate", methods=["POST"])
 def api_evaluate():
     """Score a single answer with an LLM. Body: {task_id, quiz_id, user_answer}"""
@@ -206,17 +226,17 @@ def api_evaluate():
 
 @app.route("/api/save_responses", methods=["POST"])
 def api_save_responses():
-    """Save all participant answers to recordings/<task_id>/responses/."""
+    """Save all participant answers/scores to recordings/<task_id>/scores/."""
     data        = request.get_json(force=True)
     task_id     = data.get("task_id", "8")
     participant = (data.get("participant") or "anonymous").strip().replace(" ", "_")
     answers     = data.get("answers", [])
 
-    out_dir = RECORDINGS_DIR / task_id / "responses"
+    out_dir = RECORDINGS_DIR / task_id / "scores"
     out_dir.mkdir(parents=True, exist_ok=True)
 
     timestamp = time.strftime("%Y%m%d_%H%M%S")
-    filename  = f"{participant}_{timestamp}.json"
+    filename  = f"{participant}_scores_{timestamp}.json"
     out_path  = out_dir / filename
 
     payload = {
@@ -312,6 +332,16 @@ HTML = r"""<!DOCTYPE html>
   }
   header h1 { font-size: 14px; font-weight: 700; color: var(--accent); white-space: nowrap; }
   #task-name { font-size: 12px; color: var(--muted); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #task-select {
+    font-size: 12px;
+    padding: 6px 8px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: #fff;
+    color: var(--text);
+    min-width: 140px;
+  }
+  #task-select:focus { border-color: var(--accent); outline: none; }
 
   /* Participant input */
   #participant-wrap {
@@ -555,6 +585,27 @@ HTML = r"""<!DOCTYPE html>
   }
   .row-jump:hover { border-color: var(--accent); color: var(--accent); }
 
+  #quiz-bottom-actions {
+    position: sticky;
+    bottom: 0;
+    padding: 10px 14px;
+    border-top: 1px solid var(--border);
+    background: #fff;
+    display: flex;
+    justify-content: flex-end;
+  }
+  #btn-save-bottom {
+    padding: 7px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--green);
+    background: var(--green);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  #btn-save-bottom:hover { background: #15803d; }
+
   /* ── Save confirmation toast ── */
   #toast {
     position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
@@ -569,6 +620,7 @@ HTML = r"""<!DOCTYPE html>
 
 <header>
   <h1>⬡ Quiz Reviewer</h1>
+  <select id="task-select" title="Choose task"></select>
   <span id="task-name">Loading…</span>
   <div id="participant-wrap">
     <label for="participant-input">Participant:</label>
@@ -611,6 +663,9 @@ HTML = r"""<!DOCTYPE html>
         <span id="progress-summary"></span>
       </div>
       <div id="quiz-list"></div>
+      <div id="quiz-bottom-actions">
+        <button id="btn-save-bottom">Save Results</button>
+      </div>
     </div>
   </div>
 </main>
@@ -647,31 +702,78 @@ const logStrip     = document.getElementById('log-strip');
 const logItemsEl   = document.getElementById('log-items');
 const logStepHdr   = document.getElementById('log-step-hdr');
 const btnLogToggle = document.getElementById('btn-log-toggle');
+const taskSelectEl  = document.getElementById('task-select');
 const participantEl = document.getElementById('participant-input');
 const toast         = document.getElementById('toast');
+const QUIZ_TASK_IDS = ['s1', 's2', 's3', 't1', 't2', 't3'];
 
 // ── Init ────────────────────────────────────────────────────────
 async function init() {
   const params = new URLSearchParams(location.search);
-  S.taskId = params.get('task') || '8';
+  const requestedTask = params.get('task');
+  await loadTaskOptions();
+  const defaultTask = (requestedTask && QUIZ_TASK_IDS.includes(requestedTask))
+    ? requestedTask
+    : (taskSelectEl.value || 's1');
+  taskSelectEl.value = defaultTask;
+  await loadTask(defaultTask);
+}
+
+async function loadTaskOptions() {
+  const res = await fetch('/api/tasks');
+  const tasks = res.ok ? await res.json() : [];
+  const options = tasks.length
+    ? tasks
+    : QUIZ_TASK_IDS.map(task_id => ({ task_id, task_name: `Task ${task_id}` }));
+  taskSelectEl.innerHTML = options.map(
+    t => `<option value="${t.task_id}">${t.task_id.toUpperCase()} — ${t.task_name}</option>`
+  ).join('');
+}
+
+function resetTaskState(taskId) {
+  Object.assign(S, {
+    taskId,
+    taskName: '',
+    quizItems: [],
+    logEvents: [],
+    answers: {},
+    seenIds: new Set(),
+    revealedIds: new Set(),
+    refShownIds: new Set(),
+    activeId: null,
+    duration: 0,
+    evaluating: new Set(),
+  });
+  vid.pause();
+  vid.currentTime = 0;
+}
+
+async function loadTask(taskId) {
+  resetTaskState(taskId);
+  taskNameEl.textContent = `Loading task ${taskId}...`;
 
   const [infoRes, quizRes, logRes] = await Promise.all([
-    fetch(`/api/info/${S.taskId}`),
-    fetch(`/api/quiz/${S.taskId}`),
-    fetch(`/api/log/${S.taskId}`),
+    fetch(`/api/info/${taskId}`),
+    fetch(`/api/quiz/${taskId}`),
+    fetch(`/api/log/${taskId}`),
   ]);
-  if (!infoRes.ok) { taskNameEl.textContent = `Error loading task ${S.taskId}`; return; }
+  if (!infoRes.ok || !quizRes.ok || !logRes.ok) {
+    taskNameEl.textContent = `Error loading task ${taskId}`;
+    renderQuizList();
+    renderActiveQuiz();
+    return;
+  }
 
   const info = await infoRes.json();
   const quiz = await quizRes.json();
-  const log  = await logRes.json();
+  const log = await logRes.json();
 
-  S.taskName  = info.task_name;
+  S.taskName = info.task_name;
   S.quizItems = quiz.slice().sort((a, b) => a.pause_time_sec - b.pause_time_sec);
   S.logEvents = (log.events || []).filter(e => e.video_time !== null && e.video_time !== undefined);
 
-  taskNameEl.textContent = `Task ${S.taskId}: ${info.task_name}`;
-  vid.src = `/recordings/${S.taskId}/video.mp4`;
+  taskNameEl.textContent = `Task ${taskId}: ${info.task_name}`;
+  vid.src = `/recordings/${taskId}/video.mp4`;
 
   renderQuizList();
   renderActiveQuiz();
@@ -732,6 +834,10 @@ document.getElementById('btn-next').addEventListener('click', jumpToNextUnanswer
 document.getElementById('btn-export').addEventListener('click', exportAnswers);
 document.getElementById('btn-reset').addEventListener('click', resetAll);
 document.getElementById('btn-save').addEventListener('click', saveAll);
+document.getElementById('btn-save-bottom').addEventListener('click', saveAll);
+taskSelectEl.addEventListener('change', async () => {
+  await loadTask(taskSelectEl.value);
+});
 
 // ── Core actions ────────────────────────────────────────────────
 function togglePlay() { vid.paused ? vid.play() : vid.pause(); }
