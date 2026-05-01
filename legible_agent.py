@@ -1216,13 +1216,13 @@ def task_loop():
                 "Do NOT write your final response yet — you will be told when to do that."
             ),
             "iteration_checkpoints": {
-                28: (
+                40: (
                     "Good. Commit to one foundation now — pick the option and add it to cart.\n"
                     "Then navigate to the Mascara section only. Browse mascaras, look for "
                     "hypoallergenic or sensitive-eye formulas. Change colors if needed. "
                     "Do not open Lip Gloss or any other category."
                 ),
-                58: (
+                72: (
                     "Good. Commit to one mascara and add it to cart.\n"
                     "You now have both required items — **do not add anything else**. "
                     "Do NOT use any tools — write your final list: "
@@ -1583,7 +1583,9 @@ def task_loop():
         "- To navigate to a new URL: use command+l, type the URL, press Enter.\n"
         "- Use 'command' for macOS shortcuts.\n"
         "- Never take two screenshots in a row.\n"
-        "- When scrolling, use delta_y of 5–8."
+        "- When scrolling, use delta_y of 5–8.\n"
+        "- On Sephora: click the product name text directly — never click 'Quicklook' buttons.\n"
+        "- If you see existing items in the cart that are not from this task, ignore them — treat the cart as empty."
     )
 
     # Store task-specific overrides in state for use during action execution
@@ -1598,6 +1600,7 @@ def task_loop():
     activate_chrome()
     time.sleep(0.3)
     navigate_to_url(task["url"])
+    time.sleep(1.5)  # let page settle before screenshot
 
     set_progress(1, 4, f"Navigate to {task['url']}")
 
@@ -1605,6 +1608,7 @@ def task_loop():
     print("[CU] Phase 2: Agent reading guidelines…", file=sys.stderr)
     set_progress(2, 4, "Read guidelines")
 
+    # Include post-navigation screenshot so agent doesn't waste iter 1 on screenshot
     messages = [{
         "role": "user",
         "content": [
@@ -1625,6 +1629,7 @@ def task_loop():
 
     MAX_ITER = int(task.get("max_iterations", 60))
     consec_shots = 0
+    consec_waits = 0
     summary_text = ""
     checkpoints = task.get("iteration_checkpoints", {})
 
@@ -1689,12 +1694,12 @@ def task_loop():
             if first_action:
                 a = first_action_type
                 thought = {
-                    "screenshot":     "Looking at the screen.",
+                    "screenshot":     "",   # suppress
                     "scroll":         "Scrolling the page.",
                     "type":           f"Typing: {first_action.input.get('text','')[:30]}",
-                    "key":            f"Pressing {first_action.input.get('text','')}.",
-                    "mouse_move":     "Moving the mouse.",
-                    "wait":           "Waiting.",
+                    "key":            "",   # suppress
+                    "mouse_move":     "",   # suppress
+                    "wait":           "",   # suppress
                 }.get(a, f"Performing {a}.")
             print(f"[CLAUDE] fallback narration: {thought!r}", file=sys.stderr)
 
@@ -1763,6 +1768,17 @@ def task_loop():
                     consec_shots = 0
             else:
                 consec_shots = 0
+
+            if action == "wait":
+                consec_waits += 1
+                if consec_waits >= 3:
+                    messages.append({
+                        "role": "user",
+                        "content": "The page may still be loading. Try scrolling or clicking to interact — stop waiting.",
+                    })
+                    consec_waits = 0
+            else:
+                consec_waits = 0
 
             execute_action(action, block.input)
             time.sleep(random.uniform(0.04, 0.09))
