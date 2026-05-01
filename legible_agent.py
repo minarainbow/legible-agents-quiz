@@ -54,7 +54,7 @@ load_dotenv()
 # Recording (optional — enabled with --record flag)
 # ─────────────────────────────────────────────────────────────
 
-from workflow_recorder import WorkflowRecorder  # noqa: E402
+from workflow_recorder import WorkflowRecorder, next_recording_id  # noqa: E402
 
 _recorder: WorkflowRecorder | None = None
 _record_enabled: bool = False
@@ -587,12 +587,12 @@ def dom_start_reading():
         "if(idx>0){"
         "var prev=els[idx-1];"
         "prev.style.transition='background-color 0.8s ease';"
-        "prev.style.backgroundColor='rgba(255,210,60,0.08)';"
+        "prev.style.backgroundColor='rgba(255,210,60,0.18)';"
         "prev.setAttribute('data-cr-read','1');"
         "}"
         "var cur=els[idx];"
         "cur.style.transition='background-color 0.35s ease';"
-        "cur.style.backgroundColor='rgba(255,215,60,0.38)';"
+        "cur.style.backgroundColor='rgba(255,215,60,0.55)';"
         "cur.scrollIntoView({behavior:'smooth',block:'nearest'});"
         "var len=(cur.textContent||'').length;"
         "var dwell=Math.min(Math.max(700,len*7),2800);"
@@ -894,7 +894,7 @@ def speak(text: str):
             for chunk in audio:
                 f.write(chunk)
             tmp = f.name
-        subprocess.run(["afplay", "-r", "1.15", tmp])
+        subprocess.run(["afplay", "-r", "1.2", tmp])
     except Exception as e:
         print(f"[TTS] error: {e}, falling back to say", file=sys.stderr)
         subprocess.run(["say", "-v", "Samantha", "-r", "230", text])
@@ -908,8 +908,11 @@ def speak(text: str):
 _tts_executor = concurrent.futures.ThreadPoolExecutor(max_workers=1, thread_name_prefix="tts-prefetch")
 
 def speak_async(text: str):
-    """Show bubble immediately, fire TTS in background — returns at once."""
-    threading.Thread(target=speak, args=(text,), daemon=True).start()
+    """Queue TTS through the single-thread executor so narrations never overlap."""
+    with state_lock:
+        state["reasoning_text"]  = text
+        state["speech_done_ts"]  = None  # keep bubble alive until TTS finishes
+    _tts_executor.submit(speak, text)
 
 def _tts_fetch(text: str):
     """Download TTS audio to a temp file in background. Returns path or None."""
@@ -942,7 +945,7 @@ def play_prefetched(text: str, future: concurrent.futures.Future):
     tmp = future.result()  # blocks only for remaining download time
     try:
         if tmp:
-            subprocess.run(["afplay", "-r", "1.15", tmp])
+            subprocess.run(["afplay", "-r", "1.2", tmp])
         else:
             subprocess.run(["say", "-v", "Samantha", "-r", "230", text])
     finally:
@@ -1555,7 +1558,11 @@ def task_loop():
     print(f"\n  ▶ Running: {task['name']}\n", file=sys.stderr)
 
     if _record_enabled:
-        _recorder = WorkflowRecorder(task_id=choice)
+        base_id = f"legible_t{choice}"
+        rec_id = next_recording_id(base_id)
+        if rec_id != base_id:
+            print(f"[recorder] '{base_id}' exists -> saving as '{rec_id}'", file=sys.stderr)
+        _recorder = WorkflowRecorder(task_id=rec_id)
         _recorder.start(task_name=task["name"], task_goal=task["goal"])
 
     SYSTEM_PROMPT = (
@@ -1566,10 +1573,11 @@ def task_loop():
         "- ALWAYS write 1–2 short sentences before every tool call (never skip).\n"
         "  Sentence 1 (if something changed): one phrase on what you now see or what changed. "
         "e.g. \"The CFP page loaded.\" or \"The search results appeared.\"\n"
-        "  Sentence 2 (always): exactly what you will do next, naming the UI element. "
-        "e.g. \"I'll click the 'Author Guidelines' link.\" "
-        "e.g. \"I'll scroll down to find the deadline section.\"\n"
-        "  Keep each sentence under 12 words. Never use vague phrases like 'I will proceed' or 'I will continue'.\n"
+        "  Sentence 2 (always): exactly what you will do next, naming the exact UI label in quotes. "
+        "e.g. \"I'll click the 'Add to Basket' button.\" "
+        "e.g. \"I'll select the 'Fragrance Free' checkbox.\" "
+        "e.g. \"I'll click the 'Sensitive Skin' filter option.\"\n"
+        "  Keep each sentence under 12 words. Never use vague phrases like 'I will proceed', 'I will continue', or 'I will click here'.\n"
         "- To search on Google: click the search box on the page, type your query, press Enter. "
         "Do NOT use the Chrome address bar to search — use the Google search box on screen.\n"
         "- To navigate to a new URL: use command+l, type the URL, press Enter.\n"
@@ -1638,7 +1646,7 @@ def task_loop():
             state["reasoning"]          = True
             state["reasoning_start_ts"] = now()
             state["reasoning_end_ts"]   = None
-            state["reasoning_text"]     = ""
+            # reasoning_text is left intact — bubble draw code fades it via speech_done_ts
             state["reading_done"]       = False
 
         dom_start_reading()
@@ -1690,13 +1698,17 @@ def task_loop():
                 }.get(a, f"Performing {a}.")
             print(f"[CLAUDE] fallback narration: {thought!r}", file=sys.stderr)
 
-        # For click actions, skip generic thought — per-action speak uses real element label
-        # Non-click narrations fire async so the agent moves immediately after showing the bubble
-        if thought and first_action_type not in _CLICK_ACTIONS:
-            speak_async(thought)
+        # Clicks: show bubble text only (element label spoken per-action in _execute_action_inner)
+        # screenshot: skip entirely — boilerplate, always out of sync
+        # type/key/scroll: show bubble text only, don't speak (agent has already moved on)
+        _SPEAK_ACTIONS = set()  # only per-action click TTS now
+        if thought and first_action_type == "screenshot":
+            pass  # suppress narration for screenshot
+        elif thought and first_action_type not in _CLICK_ACTIONS:
+            with state_lock:
+                state["reasoning_text"] = thought
+                state["speech_done_ts"] = now()  # show bubble, no TTS
         elif thought and first_action_type in _CLICK_ACTIONS:
-            # Still update the bubble text with Claude's thought (shown visually)
-            # but don't speak it — _execute_action_inner will speak the element label
             with state_lock:
                 state["reasoning_text"] = thought
                 state["speech_done_ts"] = now()  # start fade timer immediately
@@ -2218,17 +2230,7 @@ class OverlayView(NSView):
                                     max_chars=56, above=True, slide=1.0)
             return
 
-        # Only show reading/thinking if there's no narration to display
-        if reasoning and start_ts:
-            age = t - start_ts
-            if age < 1.5:
-                return
-            alpha = min((age - 1.5) / BUBBLE_FADE_IN, 1.0) * 0.85
-            slide = min((age - 1.5) / BUBBLE_FADE_IN, 1.0)
-            dots = "·" * (int(t * 3) % 4)
-            display = f"thinking{dots}" if reading_done else f"reading{dots}"
-            self.draw_speech_bubble(cx, cy, display, self.soft_blue, alpha,
-                                    max_chars=56, above=True, slide=slide)
+        # reading/thinking indicators removed
 
 # ─────────────────────────────────────────────────────────────
 # Timer / Window
