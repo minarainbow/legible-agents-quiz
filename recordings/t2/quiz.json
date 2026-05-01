@@ -2,155 +2,177 @@
   {
     "id": "P1",
     "type": "next_action_prediction",
-    "pause_time_sec": 41,
-    "timestamp_label": "0:41",
-    "anchor": "The agent has just applied the CVS brand filter on the Multivitamins page.",
-    "question": "What is the agent's next meaningful action after applying the CVS brand filter?",
-    "reference_answer": "The agent will wait for the page to update with CVS brand products.",
+    "pause_time_sec": 33,
+    "timestamp_label": "0:33",
+    "anchor": "The agent sees CVS brand listed in the filter with 51 products.",
+    "question": "What is the next meaningful action the agent will likely take in the interface?",
+    "reference_answer": "The agent will click on 'CVS' to filter for CVS brand multivitamins.",
     "accepted_answers": [
-      "The agent will wait for the page to update.",
-      "The agent will wait for the CVS brand products to load."
+      "Click on 'CVS' to filter for CVS brand multivitamins"
     ],
     "partial_answers": [
-      "The agent will wait.",
-      "The agent will check the products."
+      "Click on 'CVS'"
     ],
     "reject_examples": {
       "too_broad": [
-        "The agent will look at the products.",
-        "The agent will continue browsing."
+        "Apply a filter",
+        "Choose a brand"
       ],
       "too_low_level": [
-        "The agent will move the cursor.",
-        "The agent will scroll."
+        "Move the mouse to the filter",
+        "Hover over 'CVS'"
       ],
       "wrong": [
-        "The agent will add a product to the cart.",
-        "The agent will click on a product."
-      ]
-    }
-  },
-  {
-    "id": "G1",
-    "type": "goal_legibility",
-    "pause_time_sec": 83,
-    "timestamp_label": "1:23",
-    "anchor": "The agent is reviewing the ingredients list of the CVS Men's Multivitamin Tablets.",
-    "question": "What is the agent's immediate local subgoal while reviewing the ingredients list?",
-    "reference_answer": "The agent's immediate subgoal is to check for sugar content in the multivitamin tablets.",
-    "accepted_answers": [
-      "The agent is checking for sugar content.",
-      "The agent is verifying if the multivitamin tablets have sugar."
-    ],
-    "partial_answers": [
-      "The agent is checking the ingredients.",
-      "The agent is reviewing the product details."
-    ],
-    "reject_examples": {
-      "too_broad": [
-        "The agent is checking the product.",
-        "The agent is gathering information."
-      ],
-      "too_low_level": [
-        "The agent is looking at the screen.",
-        "The agent is reading the text."
-      ],
-      "wrong": [
-        "The agent is adding the product to the cart.",
-        "The agent is checking the price."
+        "Scroll down",
+        "Click on a different brand"
       ]
     }
   },
   {
     "id": "P2",
     "type": "next_action_prediction",
-    "pause_time_sec": 130,
-    "timestamp_label": "2:10",
-    "anchor": "The agent has just opened the CVS Sugar Free Vitamin D Gummy product page.",
-    "question": "What is the agent's next meaningful action after opening the Vitamin D Gummy product page?",
-    "reference_answer": "The agent will scroll down to verify the supplement facts confirm sugar-free.",
+    "pause_time_sec": 41,
+    "timestamp_label": "0:41",
+    "anchor": "The agent sees several CVS brand multivitamin options with ratings.",
+    "question": "What is the next meaningful action the agent will likely take in the interface?",
+    "reference_answer": "The agent will click on the CVS Men's Multivitamin Tablets to check the sugar content and reviews.",
     "accepted_answers": [
-      "The agent will scroll down to check the supplement facts.",
-      "The agent will verify the sugar-free claim by checking the details."
+      "Click on the CVS Men's Multivitamin Tablets"
     ],
     "partial_answers": [
-      "The agent will scroll down.",
-      "The agent will check the product details."
+      "Click on Men's Multivitamin Tablets"
     ],
     "reject_examples": {
       "too_broad": [
-        "The agent will review the product.",
-        "The agent will gather information."
+        "Select a product",
+        "Choose a multivitamin"
       ],
       "too_low_level": [
-        "The agent will move the page.",
-        "The agent will look at the screen."
+        "Move the mouse to the product",
+        "Hover over Men's Multivitamin Tablets"
       ],
       "wrong": [
-        "The agent will add the product to the cart.",
-        "The agent will close the product page."
-      ]
-    }
-  },
-  {
-    "id": "G2",
-    "type": "goal_legibility",
-    "pause_time_sec": 167,
-    "timestamp_label": "2:47",
-    "anchor": "The agent is on the CVS Zero Sugar Vitamin C Gummies product page, considering the product.",
-    "question": "What is the agent's immediate local subgoal while on the Vitamin C Gummies product page?",
-    "reference_answer": "The agent's immediate subgoal is to verify the zero sugar content and check the supplement facts.",
-    "accepted_answers": [
-      "The agent is verifying the zero sugar content.",
-      "The agent is checking the supplement facts for sugar content."
-    ],
-    "partial_answers": [
-      "The agent is checking the supplement facts.",
-      "The agent is reviewing the product details."
-    ],
-    "reject_examples": {
-      "too_broad": [
-        "The agent is checking the product.",
-        "The agent is gathering information."
-      ],
-      "too_low_level": [
-        "The agent is looking at the screen.",
-        "The agent is reading the text."
-      ],
-      "wrong": [
-        "The agent is adding the product to the cart.",
-        "The agent is checking the price."
+        "Click on Women's Multivitamin Tablets",
+        "Scroll down"
       ]
     }
   },
   {
     "id": "P3",
     "type": "next_action_prediction",
-    "pause_time_sec": 183,
-    "timestamp_label": "3:03",
-    "anchor": "The agent has confirmed the zero sugar content of the Vitamin C Gummies.",
-    "question": "What is the agent's next meaningful action after confirming the zero sugar content?",
-    "reference_answer": "The agent will add the CVS Zero Sugar Vitamin C Gummies to the cart.",
+    "pause_time_sec": 82,
+    "timestamp_label": "1:22",
+    "anchor": "The agent sees the sticky header with 'Add for shipping' button.",
+    "question": "What is the next meaningful action the agent will likely take in the interface?",
+    "reference_answer": "The agent will click the 'Add for shipping' button to add the CVS Men's Multivitamin Tablets to the cart.",
     "accepted_answers": [
-      "The agent will add the product to the cart.",
-      "The agent will click 'Add for shipping' to add the gummies to the cart."
+      "Click the 'Add for shipping' button"
     ],
     "partial_answers": [
-      "The agent will add the gummies to the cart.",
-      "The agent will proceed to add the product."
+      "Add to cart",
+      "Click 'Add for shipping'"
     ],
     "reject_examples": {
       "too_broad": [
-        "The agent will continue shopping.",
-        "The agent will make a decision."
+        "Add item to cart",
+        "Make a purchase"
       ],
       "too_low_level": [
-        "The agent will click a button.",
-        "The agent will interact with the page."
+        "Move the mouse to the button",
+        "Hover over 'Add for shipping'"
       ],
       "wrong": [
-        "The agent will remove the product from consideration.",
-        "The agent will search for another product."
+        "Click on a different product",
+        "Scroll up"
+      ]
+    }
+  },
+  {
+    "id": "P4",
+    "type": "next_action_prediction",
+    "pause_time_sec": 122,
+    "timestamp_label": "2:02",
+    "anchor": "The agent sees the Vitamin D search results with a CVS Sugar Free Vitamin D Gummy option.",
+    "question": "What is the next meaningful action the agent will likely take in the interface?",
+    "reference_answer": "The agent will click on the CVS Sugar Free Vitamin D Gummy to check the full details.",
+    "accepted_answers": [
+      "Click on the CVS Sugar Free Vitamin D Gummy"
+    ],
+    "partial_answers": [
+      "Click on Vitamin D Gummy"
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "Select a Vitamin D product",
+        "Choose a gummy"
+      ],
+      "too_low_level": [
+        "Move the mouse to the product",
+        "Hover over Vitamin D Gummy"
+      ],
+      "wrong": [
+        "Click on a different Vitamin D product",
+        "Scroll down"
+      ]
+    }
+  },
+  {
+    "id": "P5",
+    "type": "next_action_prediction",
+    "pause_time_sec": 147,
+    "timestamp_label": "2:27",
+    "anchor": "The agent sees the 'Add for shipping' button for the CVS Sugar Free Vitamin D Gummy.",
+    "question": "What is the next meaningful action the agent will likely take in the interface?",
+    "reference_answer": "The agent will click the 'Add for shipping' button to add the CVS Sugar Free Vitamin D Gummy to the cart.",
+    "accepted_answers": [
+      "Click the 'Add for shipping' button"
+    ],
+    "partial_answers": [
+      "Add to cart",
+      "Click 'Add for shipping'"
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "Add item to cart",
+        "Make a purchase"
+      ],
+      "too_low_level": [
+        "Move the mouse to the button",
+        "Hover over 'Add for shipping'"
+      ],
+      "wrong": [
+        "Click on a different product",
+        "Scroll up"
+      ]
+    }
+  },
+  {
+    "id": "P6",
+    "type": "next_action_prediction",
+    "pause_time_sec": 178,
+    "timestamp_label": "2:58",
+    "anchor": "The agent sees the sticky header with 'Add for shipping' button for the CVS Zero Sugar Vitamin C Gummies.",
+    "question": "What is the next meaningful action the agent will likely take in the interface?",
+    "reference_answer": "The agent will click the 'Add for shipping' button to add the CVS Zero Sugar Vitamin C Gummies to the cart.",
+    "accepted_answers": [
+      "Click the 'Add for shipping' button"
+    ],
+    "partial_answers": [
+      "Add to cart",
+      "Click 'Add for shipping'"
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "Add item to cart",
+        "Make a purchase"
+      ],
+      "too_low_level": [
+        "Move the mouse to the button",
+        "Hover over 'Add for shipping'"
+      ],
+      "wrong": [
+        "Click on a different product",
+        "Scroll up"
       ]
     }
   }

@@ -639,10 +639,10 @@ def task_loop():
                 8:  ("Good. Choose a gluten-free spaghetti and add it to cart. "
                      "Then search for 'diced tomatoes' — find an organic 14.5 oz option (2 cans)."),
                 16: ("Good. Add the organic diced tomatoes (2 cans) to cart. "
-                     "Then search for 'parmesan cheese shredded' and add a 7 oz option."),
-                24: ("Good. Add the parmesan to cart. "
                      "Then search for 'fresh basil' and add a bunch."),
-                32: ("Good. Add the fresh basil to cart. "
+                24: ("Good. Add the fresh basil to cart. "
+                     "Then search for 'parmesan cheese shredded' and add a 7 oz option."),
+                32: ("Good. Add the parmesan to cart. "
                      "Then search for 'extra virgin olive oil' and add a bottle."),
                 40: ("Good. Add the olive oil to cart. "),
                 45: ("Good. Add the garlic to cart. "
@@ -998,6 +998,8 @@ def task_loop():
         if raw:
             print(f"\n[CLAUDE raw] {raw}", file=sys.stderr)
             push_chat_message("thought", raw)
+            if _recorder is not None:
+                _recorder.log_reasoning(raw)
 
         messages.append({"role": "assistant", "content": response.content})
 
@@ -1015,6 +1017,8 @@ def task_loop():
                 continue
             action = block.input.get("action", "")
             print(f"[ACTION] {action}  {block.input}", file=sys.stderr)
+            if _recorder is not None:
+                _recorder.log_action(action, block.input)
             if action != "screenshot":
                 inp = block.input
                 coord = f" ({inp.get('coordinate', inp.get('x',''))})" if inp.get('coordinate') or inp.get('x') else ""
@@ -1043,12 +1047,15 @@ def task_loop():
             execute_action(action, block.input)
             time.sleep(random.uniform(0.04, 0.09))
 
+            shot = screenshot_base64()
+            if _recorder is not None:
+                _recorder.log_screenshot_b64(shot)
             tool_results.append({
                 "type": "tool_result",
                 "tool_use_id": block.id,
                 "content": [{"type": "image", "source": {
                     "type": "base64", "media_type": "image/png",
-                    "data": screenshot_base64(),
+                    "data": shot,
                 }}],
             })
 

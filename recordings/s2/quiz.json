@@ -2,155 +2,186 @@
   {
     "id": "P1",
     "type": "next_action_prediction",
-    "pause_time_sec": 31,
-    "timestamp_label": "0:31",
-    "anchor": "The agent has just clicked the minus button to reduce the line count to 1.",
-    "question": "What will the agent do next after reducing the line count to 1?",
-    "reference_answer": "The agent will scroll down to see the pricing for all three plans.",
+    "pause_time_sec": 24,
+    "timestamp_label": "0:24",
+    "anchor": "The agent is about to adjust the number of lines to see single-line pricing.",
+    "question": "What is the next meaningful action the agent will likely take in the interface?",
+    "reference_answer": "Click the minus button to reduce the number of lines to 1.",
     "accepted_answers": [
-      "Scroll down to see the pricing for all three plans.",
-      "Scroll down to view plan pricing."
+      "Click the minus button to reduce lines to 1.",
+      "Reduce the number of lines to 1 by clicking the minus button."
     ],
     "partial_answers": [
-      "Scroll down.",
-      "View pricing."
+      "Click the minus button.",
+      "Reduce the number of lines."
     ],
     "reject_examples": {
       "too_broad": [
-        "Look at the plans.",
-        "Continue with the task."
+        "Change the number of lines.",
+        "Adjust the line count."
       ],
       "too_low_level": [
-        "Move the cursor.",
-        "Click something."
+        "Move the mouse to the minus button.",
+        "Hover over the minus button."
       ],
       "wrong": [
-        "Switch to a different carrier.",
-        "Search for something else."
-      ]
-    }
-  },
-  {
-    "id": "G1",
-    "type": "goal_legibility",
-    "pause_time_sec": 46,
-    "timestamp_label": "0:46",
-    "anchor": "The agent is about to expand the Broadband Facts for the Unlimited Welcome plan.",
-    "question": "What is the agent's immediate goal in expanding the Broadband Facts?",
-    "reference_answer": "To view detailed information about the Unlimited Welcome plan.",
-    "accepted_answers": [
-      "View detailed information about the Unlimited Welcome plan.",
-      "See more details about the Unlimited Welcome plan."
-    ],
-    "partial_answers": [
-      "Get more information.",
-      "Expand the Broadband Facts."
-    ],
-    "reject_examples": {
-      "too_broad": [
-        "Learn about the plan.",
-        "Gather information."
-      ],
-      "too_low_level": [
-        "Click the arrow.",
-        "Expand a section."
-      ],
-      "wrong": [
-        "Compare all plans.",
-        "Switch to AT&T."
+        "Click the plus button.",
+        "Increase the number of lines."
       ]
     }
   },
   {
     "id": "P2",
     "type": "next_action_prediction",
-    "pause_time_sec": 56,
-    "timestamp_label": "0:56",
-    "anchor": "The agent has just scrolled down to read more disclaimers and footnotes.",
-    "question": "What will the agent do next after reading the disclaimers and footnotes?",
-    "reference_answer": "The agent will click 'Compare plan details' to get a full breakdown of all plans side by side.",
+    "pause_time_sec": 42,
+    "timestamp_label": "0:42",
+    "anchor": "The agent can see the Broadband Facts and disclaimers.",
+    "question": "What is the next meaningful action the agent will likely take in the interface?",
+    "reference_answer": "Click to expand the Broadband Facts for the Unlimited Welcome plan.",
     "accepted_answers": [
-      "Click 'Compare plan details' to get a full breakdown.",
-      "Compare plan details."
+      "Click to expand the Broadband Facts for the Unlimited Welcome plan.",
+      "Expand the Broadband Facts for the Unlimited Welcome plan."
     ],
     "partial_answers": [
-      "Click 'Compare plan details'.",
-      "Compare plans."
+      "Click to expand the Broadband Facts.",
+      "Expand the Broadband Facts."
     ],
     "reject_examples": {
       "too_broad": [
-        "Look for more information.",
-        "Continue with the task."
+        "View more details.",
+        "Look at the Broadband Facts."
       ],
       "too_low_level": [
-        "Move the cursor.",
-        "Click something."
+        "Move the mouse to the Broadband Facts.",
+        "Hover over the Broadband Facts."
       ],
       "wrong": [
-        "Switch to AT&T.",
-        "Go back to Google."
-      ]
-    }
-  },
-  {
-    "id": "G2",
-    "type": "goal_legibility",
-    "pause_time_sec": 97,
-    "timestamp_label": "1:37",
-    "anchor": "The agent is scrolling down to see the plan pricing and details on the AT&T page.",
-    "question": "What is the agent's immediate goal in scrolling down on the AT&T page?",
-    "reference_answer": "To find the plan pricing and details for AT&T's unlimited plans.",
-    "accepted_answers": [
-      "Find the plan pricing and details for AT&T's unlimited plans.",
-      "See pricing and details for AT&T plans."
-    ],
-    "partial_answers": [
-      "Find plan pricing.",
-      "See plan details."
-    ],
-    "reject_examples": {
-      "too_broad": [
-        "Learn about AT&T plans.",
-        "Gather information."
-      ],
-      "too_low_level": [
-        "Scroll down.",
-        "View the page."
-      ],
-      "wrong": [
-        "Switch to T-Mobile.",
-        "Compare with Verizon."
+        "Scroll down to see more details.",
+        "Click on a different plan."
       ]
     }
   },
   {
     "id": "P3",
     "type": "next_action_prediction",
-    "pause_time_sec": 173,
-    "timestamp_label": "2:53",
-    "anchor": "The agent is noting key details of T-Mobile's Experience Beyond plan.",
-    "question": "What will the agent do next after noting the details of T-Mobile's Experience Beyond plan?",
-    "reference_answer": "The agent will click 'Broadband Facts and fees' for the Essentials Saver to get more specifics on the lowest-cost plan.",
+    "pause_time_sec": 56,
+    "timestamp_label": "0:56",
+    "anchor": "The agent can see important disclaimers and is about to compare plan details.",
+    "question": "What is the next meaningful action the agent will likely take in the interface?",
+    "reference_answer": "Click 'Compare plan details' to get a full breakdown of all plans side by side.",
     "accepted_answers": [
-      "Click 'Broadband Facts and fees' for the Essentials Saver.",
-      "Get more specifics on the Essentials Saver plan."
+      "Click 'Compare plan details'.",
+      "Select 'Compare plan details' for a full breakdown."
     ],
     "partial_answers": [
-      "Click 'Broadband Facts and fees'.",
-      "Look at Essentials Saver details."
+      "Compare plan details.",
+      "Click to compare plans."
     ],
     "reject_examples": {
       "too_broad": [
-        "Continue with the task.",
-        "Look for more information."
+        "Look at plan details.",
+        "Review the plans."
       ],
       "too_low_level": [
-        "Move the cursor.",
-        "Click something."
+        "Move the mouse to 'Compare plan details'.",
+        "Hover over 'Compare plan details'."
       ],
       "wrong": [
-        "Switch to Verizon.",
-        "Search for a new carrier."
+        "Scroll down to see more disclaimers.",
+        "Click on a different section."
+      ]
+    }
+  },
+  {
+    "id": "P4",
+    "type": "next_action_prediction",
+    "pause_time_sec": 82,
+    "timestamp_label": "1:22",
+    "anchor": "The agent has found the official AT&T organic result.",
+    "question": "What is the next meaningful action the agent will likely take in the interface?",
+    "reference_answer": "Click on 'Unlimited Data Cell Phone Plans & Hotspot Data' from att.com.",
+    "accepted_answers": [
+      "Click on 'Unlimited Data Cell Phone Plans & Hotspot Data' from att.com.",
+      "Select the AT&T unlimited plans link."
+    ],
+    "partial_answers": [
+      "Click on the AT&T link.",
+      "Select the AT&T unlimited plans."
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "Choose a search result.",
+        "Look at AT&T plans."
+      ],
+      "too_low_level": [
+        "Move the mouse to the AT&T link.",
+        "Hover over the AT&T link."
+      ],
+      "wrong": [
+        "Click on a different search result.",
+        "Select a Verizon link."
+      ]
+    }
+  },
+  {
+    "id": "P5",
+    "type": "next_action_prediction",
+    "pause_time_sec": 142,
+    "timestamp_label": "2:22",
+    "anchor": "The agent sees the official T-Mobile organic result.",
+    "question": "What is the next meaningful action the agent will likely take in the interface?",
+    "reference_answer": "Click 'Compare our best unlimited cell phone plans.' from t-mobile.com.",
+    "accepted_answers": [
+      "Click 'Compare our best unlimited cell phone plans.' from t-mobile.com.",
+      "Select the T-Mobile unlimited plans link."
+    ],
+    "partial_answers": [
+      "Click on the T-Mobile link.",
+      "Select the T-Mobile unlimited plans."
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "Choose a search result.",
+        "Look at T-Mobile plans."
+      ],
+      "too_low_level": [
+        "Move the mouse to the T-Mobile link.",
+        "Hover over the T-Mobile link."
+      ],
+      "wrong": [
+        "Click on a different search result.",
+        "Select an AT&T link."
+      ]
+    }
+  },
+  {
+    "id": "P6",
+    "type": "next_action_prediction",
+    "pause_time_sec": 172,
+    "timestamp_label": "2:52",
+    "anchor": "The agent is about to expand the Broadband Facts for the Essentials Saver plan.",
+    "question": "What is the next meaningful action the agent will likely take in the interface?",
+    "reference_answer": "Click the Essentials Saver 'Broadband Facts and fees' dropdown arrow to expand it.",
+    "accepted_answers": [
+      "Click the Essentials Saver 'Broadband Facts and fees' dropdown arrow.",
+      "Expand the Broadband Facts for the Essentials Saver plan."
+    ],
+    "partial_answers": [
+      "Expand the Broadband Facts.",
+      "Click the dropdown arrow."
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "View more details.",
+        "Look at the Broadband Facts."
+      ],
+      "too_low_level": [
+        "Move the mouse to the dropdown arrow.",
+        "Hover over the dropdown arrow."
+      ],
+      "wrong": [
+        "Scroll down to see more details.",
+        "Click on a different plan."
       ]
     }
   }

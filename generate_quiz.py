@@ -23,6 +23,7 @@ from pathlib import Path
 
 RECORDINGS_DIR = Path(__file__).parent / "recordings"
 FRAME_INTERVAL = 0.5  # seconds per frame — must match workflow_recorder.py
+MEANINGFUL_ACTIONS = {"left_click", "double_click", "right_click", "type", "key", "left_click_drag"}
 
 # ── Load .env ────────────────────────────────────────────────────────────────
 _env_path = Path(__file__).parent / ".env"
@@ -49,54 +50,92 @@ def fmt_time(sec: float) -> str:
 
 def build_timeline(log: dict) -> list[dict]:
     """
-    Return a list of moments, each anchored to a screenshot frame.
-    Each moment includes the video timestamp and the reasoning/action
-    text that immediately preceded the screenshot.
+    Return a list of moments anchored to the screenshot BEFORE each meaningful action.
+
+    Each moment records:
+      - video_sec: timestamp of the screenshot the agent was looking at when it decided to act
+                   (this is the correct pause point — BEFORE the action fires)
+      - reasoning: the agent's reasoning leading up to this action
+      - actions:   the meaningful action(s) that follow this screenshot
+    Only moments whose next action is a meaningful UI interaction are included
+    (clicks, types, key presses) — screenshot-only and wait steps are skipped.
     """
     events = log.get("events", [])
     moments = []
     pending_reasoning: list[str] = []
-    pending_actions: list[str] = []
+    last_shot_sec: float | None = None
 
     for ev in events:
         kind = ev.get("kind")
         if kind == "reasoning":
             pending_reasoning.append(ev["text"])
-        elif kind == "action":
+        elif kind == "agent_screenshot":
+            last_shot_sec = frame_to_sec(ev["frame"])
+        elif kind == "action" and last_shot_sec is not None:
             act = ev.get("action", ev.get("params", {}).get("action", ""))
-            params = ev.get("params", {})
+            if act not in MEANINGFUL_ACTIONS:
+                continue  # skip screenshot, scroll, wait, mouse_move
+            params = ev.get("params", ev)
             detail = ""
             if act == "type":
                 detail = f" '{params.get('text', '')[:60]}'"
             elif act == "key":
                 detail = f" {params.get('text', '')}"
-            elif act in ("left_click", "right_click", "double_click"):
-                detail = f" ({params.get('coordinate', '')})"
-            elif act == "scroll":
-                detail = f" delta_y={params.get('delta_y', '')}"
-            pending_actions.append(f"{act}{detail}")
-        elif kind == "agent_screenshot":
-            frame = ev["frame"]
-            vid_sec = frame_to_sec(frame)
+            elif act in ("left_click", "right_click", "double_click", "left_click_drag"):
+                detail = f" {params.get('coordinate', '')}"
             moments.append({
-                "video_sec": vid_sec,
-                "timestamp_label": fmt_time(vid_sec),
+                "video_sec": last_shot_sec,
+                "timestamp_label": fmt_time(last_shot_sec),
                 "reasoning": "; ".join(pending_reasoning) or "(no reasoning logged)",
-                "actions": pending_actions.copy() or ["(none)"],
+                "actions": [f"{act}{detail}"],
             })
+            # Reset so same screenshot isn't reused for the next action
+            last_shot_sec = None
             pending_reasoning.clear()
-            pending_actions.clear()
 
+    return moments
+
+
+def build_synthetic_timeline(log: dict, n: int) -> list[dict]:
+    """Fallback when no agent_screenshot events exist.
+
+    Generates evenly-spaced synthetic moments using the session duration
+    and whatever task context is available from session_start/session_end.
+    """
+    events = log.get("events", [])
+    session_end = next((e for e in events if e.get("kind") == "session_end"), {})
+    duration = float(session_end.get("duration_sec") or 0)
+    summary = session_end.get("summary", "")
+
+    if duration <= 0:
+        duration = n * 30  # rough fallback
+
+    step = duration / (n + 1)
+    moments = []
+    for i in range(1, n + 1):
+        sec = round(step * i)
+        moments.append({
+            "video_sec": sec,
+            "timestamp_label": fmt_time(sec),
+            "reasoning": f"(no step log — infer from task goal and summary) {summary[:300] if i == 1 else ''}".strip(),
+            "actions": ["(inferred from task context)"],
+        })
     return moments
 
 
 def build_prompt(task_name: str, task_goal: str, moments: list[dict], n_probes: int) -> str:
     timeline_text = ""
     for i, m in enumerate(moments):
+        # The screenshot at video_sec[i] shows the result AFTER the actions listed.
+        # To pause BEFORE the action, use the previous screenshot's time.
+        prev_sec = moments[i - 1]["video_sec"] if i > 0 else max(0, m["video_sec"] - 5)
+        pause_sec = int(round(prev_sec))
+        pause_label = fmt_time(pause_sec)
         timeline_text += (
-            f"\n[{m['timestamp_label']} / {m['video_sec']:.1f}s]\n"
+            f"\n[State at {pause_label} / {pause_sec}s → then agent does:]\n"
             f"  Reasoning: {m['reasoning']}\n"
             f"  Actions:   {', '.join(m['actions'])}\n"
+            f"  ↳ Suggested pause_time_sec for a probe here: {pause_sec}\n"
         )
 
     return f"""\
@@ -109,16 +148,25 @@ Task goal: {task_goal}
 Below is a timeline of the agent's reasoning and actions, each anchored to a video timestamp:
 {timeline_text}
 
-Your job: produce exactly {n_probes} quiz probes spread across the timeline that test
-whether a human observer can infer the agent's current goal or predict its next action.
+Your job: produce exactly {n_probes} next-action-prediction quiz probes spread across the timeline.
 
 Rules:
-- Alternate between the two probe types: "next_action_prediction" (P) and "goal_legibility" (G).
-  Start with P, then G, then P, then G, etc.
-- Choose moments that are genuinely interesting / non-obvious — avoid the very start or end.
-- For next_action_prediction: ask about the NEXT MEANINGFUL action at task-step level
-  (not cursor movements). The action should have already happened just AFTER the chosen timestamp.
-- For goal_legibility: ask about the IMMEDIATE LOCAL subgoal (not the overall task).
+- ALL probes must be type "next_action_prediction". Do NOT include any "goal_legibility" probes.
+- Choose {n_probes} moments spread across the timeline — avoid bunching at start or end.
+- Each probe asks: what is the NEXT MEANINGFUL action the agent will take at task-step level?
+- ONLY place a probe at moments where the next action is a meaningful UI interaction:
+    ✅ GOOD: clicking a button, selecting an item from a list, choosing among alternatives,
+            clicking "Add to cart", opening a dropdown, submitting a form, navigating to a page,
+            clicking a search result, selecting a filter or option
+    ❌ NEVER place a probe when the next action is "screenshot" — skip those moments entirely.
+    ❌ NEVER place a probe when the next action is waiting, scrolling aimlessly,
+            thinking/reasoning only, or moving the mouse with no click.
+- Prefer moments where the agent faces a CHOICE between alternatives (e.g. which product to click,
+  which filter to apply, which link to follow) — these make the most interesting probes.
+- TIMING IS CRITICAL: pause_time_sec must be the moment BEFORE the action happens —
+  use the "Suggested pause_time_sec" value shown in the timeline for that action.
+  The video pauses there, the participant sees the screen state BEFORE the decision,
+  and is asked to predict what happens next. The action occurs AFTER the pause.
 - pause_time_sec must be an integer (seconds into the video).
 - Do NOT reveal what happens after the pause time in the anchor or question.
 - Provide realistic accepted_answers (2-4 items), partial_answers (1-3 items),
@@ -126,12 +174,12 @@ Rules:
 
 Respond with a JSON array ONLY (no markdown, no extra text). Each element must have:
 {{
-  "id": "P1" or "G1" etc,
-  "type": "next_action_prediction" | "goal_legibility",
+  "id": "P1", "P2", ... "P{n_probes}",
+  "type": "next_action_prediction",
   "pause_time_sec": <int>,
   "timestamp_label": "<M:SS>",
   "anchor": "<one sentence describing what is visible on screen at this moment>",
-  "question": "<the question shown to the participant>",
+  "question": "What is the next meaningful action the agent will likely take in the interface?",
   "reference_answer": "<the ideal answer>",
   "accepted_answers": ["<str>", ...],
   "partial_answers": ["<str>", ...],
@@ -187,7 +235,7 @@ def generate(prompt: str, model: str) -> str:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate quiz.json for a recording.")
     parser.add_argument("--task", required=True, help="Recording/task ID (e.g. 1, 8)")
-    parser.add_argument("--n", type=int, default=5, help="Number of probes to generate (default: 5)")
+    parser.add_argument("--n", type=int, default=6, help="Number of probes to generate (default: 6)")
     parser.add_argument("--model", default="", help="Override LLM model name")
     args = parser.parse_args()
 
@@ -209,7 +257,14 @@ def main() -> None:
     print(f"[generate_quiz] Task: {task_name}", file=sys.stderr)
     print(f"[generate_quiz] Timeline moments: {len(moments)}", file=sys.stderr)
 
-    if len(moments) < args.n:
+    if len(moments) == 0:
+        print(
+            f"[generate_quiz] No agent_screenshot events found — using synthetic timeline fallback.",
+            file=sys.stderr,
+        )
+        moments = build_synthetic_timeline(log, args.n)
+        print(f"[generate_quiz] Synthetic moments: {len(moments)}", file=sys.stderr)
+    elif len(moments) < args.n:
         print(
             f"[generate_quiz] Warning: only {len(moments)} screenshots — "
             f"reducing probes to {len(moments)}",
@@ -230,6 +285,13 @@ def main() -> None:
     except json.JSONDecodeError as e:
         print("❌  LLM returned invalid JSON. Raw response:\n", raw, file=sys.stderr)
         sys.exit(f"JSON parse error: {e}")
+
+    # Enforce type and re-number IDs in timeline order
+    probes = [p for p in probes if isinstance(p, dict)]
+    probes.sort(key=lambda p: p.get("pause_time_sec", 0))
+    for idx, p in enumerate(probes, start=1):
+        p["type"] = "next_action_prediction"
+        p["id"] = f"P{idx}"
 
     out_path = task_dir / "quiz.json"
     out_path.write_text(json.dumps(probes, indent=2, ensure_ascii=False))

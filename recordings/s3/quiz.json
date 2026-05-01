@@ -2,155 +2,162 @@
   {
     "id": "P1",
     "type": "next_action_prediction",
-    "pause_time_sec": 44,
-    "timestamp_label": "0:44",
-    "anchor": "The agent is reading about visa-free travel and electronic customs declaration gates.",
-    "question": "What will the agent do next after reading this section?",
-    "reference_answer": "The agent will continue scrolling to read more about prohibited substances and other requirements.",
+    "pause_time_sec": 8,
+    "timestamp_label": "0:08",
+    "anchor": "The agent is on a search results page and is about to click the U.S. Embassy & Consulates in Japan result.",
+    "question": "What is the next meaningful action the agent will likely take in the interface?",
+    "reference_answer": "The agent will click on the U.S. Embassy & Consulates in Japan result.",
     "accepted_answers": [
-      "Continue scrolling to read more about prohibited substances.",
-      "Scroll down to find more entry requirements."
+      "Click on the U.S. Embassy & Consulates in Japan result"
     ],
     "partial_answers": [
-      "Scroll down.",
-      "Look for more information."
+      "Click on an official result for Japan entry requirements"
     ],
     "reject_examples": {
       "too_broad": [
-        "Find more information.",
-        "Continue the task."
+        "Click on a search result"
       ],
       "too_low_level": [
-        "Move the cursor.",
-        "Click something."
+        "Move the mouse to the search result"
       ],
       "wrong": [
-        "Go back to the top.",
-        "Switch to another website."
-      ]
-    }
-  },
-  {
-    "id": "G1",
-    "type": "goal_legibility",
-    "pause_time_sec": 59,
-    "timestamp_label": "0:59",
-    "anchor": "The agent is scrolling back to the top of the page after reading about medical assistance and natural disasters.",
-    "question": "What is the agent's immediate goal at this moment?",
-    "reference_answer": "The agent's immediate goal is to ensure they capture all required information by reviewing the page from the beginning.",
-    "accepted_answers": [
-      "Ensure all required information is captured.",
-      "Review the page from the beginning."
-    ],
-    "partial_answers": [
-      "Review the page.",
-      "Capture information."
-    ],
-    "reject_examples": {
-      "too_broad": [
-        "Gather information.",
-        "Complete the task."
-      ],
-      "too_low_level": [
-        "Scroll up.",
-        "Move to the top."
-      ],
-      "wrong": [
-        "Find new information.",
-        "Switch to another tab."
+        "Scroll down the page",
+        "Open a new tab"
       ]
     }
   },
   {
     "id": "P2",
     "type": "next_action_prediction",
-    "pause_time_sec": 98,
-    "timestamp_label": "1:38",
-    "anchor": "The agent has just typed 'google.com' in the address bar and pressed Enter.",
-    "question": "What will the agent do next after navigating to Google?",
-    "reference_answer": "The agent will click the search box and type the query for China visa requirements.",
+    "pause_time_sec": 8,
+    "timestamp_label": "0:08",
+    "anchor": "The agent is viewing the U.S. Embassy Japan page and has noted visa-free travel and e-Gates information.",
+    "question": "What is the next meaningful action the agent will likely take in the interface?",
+    "reference_answer": "The agent will continue scrolling to read more about prohibited substances and other requirements.",
     "accepted_answers": [
-      "Click the search box and type the China visa requirements query.",
-      "Start a new search for China visa requirements."
+      "Continue scrolling to read more about prohibited substances"
     ],
     "partial_answers": [
-      "Type a new query.",
-      "Search for China visa requirements."
+      "Scroll to read more about entry requirements"
     ],
     "reject_examples": {
       "too_broad": [
-        "Search for information.",
-        "Continue the task."
+        "Scroll down"
       ],
       "too_low_level": [
-        "Click the search box.",
-        "Type something."
+        "Move the mouse"
       ],
       "wrong": [
-        "Search for South Korea visa requirements.",
-        "Go back to the previous page."
-      ]
-    }
-  },
-  {
-    "id": "G2",
-    "type": "goal_legibility",
-    "pause_time_sec": 178,
-    "timestamp_label": "2:58",
-    "anchor": "The agent is reading about COVID-19 requirements and drug policies on the China travel advisory page.",
-    "question": "What is the agent's immediate goal at this moment?",
-    "reference_answer": "The agent's immediate goal is to find details about visa requirements, passport validity, and customs rules for China.",
-    "accepted_answers": [
-      "Find details about visa requirements and customs rules.",
-      "Gather information on entry requirements for China."
-    ],
-    "partial_answers": [
-      "Find visa requirements.",
-      "Learn about customs rules."
-    ],
-    "reject_examples": {
-      "too_broad": [
-        "Gather information.",
-        "Complete the task."
-      ],
-      "too_low_level": [
-        "Read the page.",
-        "Scroll down."
-      ],
-      "wrong": [
-        "Look for health requirements only.",
-        "Switch to another country."
+        "Click on a link",
+        "Open a new tab"
       ]
     }
   },
   {
     "id": "P3",
     "type": "next_action_prediction",
-    "pause_time_sec": 186,
-    "timestamp_label": "3:06",
-    "anchor": "The agent is about to click 'Scroll to review full advisory' on the China travel advisory page.",
-    "question": "What will the agent do next after attempting to scroll to the full advisory?",
-    "reference_answer": "The agent will scroll down on the main page outside the advisory panel to find detailed entry/exit requirements.",
+    "pause_time_sec": 68,
+    "timestamp_label": "1:08",
+    "anchor": "The agent has finished gathering information about Japan and is about to start researching South Korea.",
+    "question": "What is the next meaningful action the agent will likely take in the interface?",
+    "reference_answer": "The agent will navigate to Google.com using the address bar.",
     "accepted_answers": [
-      "Scroll down on the main page to find entry/exit requirements.",
-      "Look for detailed travel requirements outside the advisory panel."
+      "Navigate to Google.com using the address bar"
     ],
     "partial_answers": [
-      "Scroll down for more information.",
-      "Find entry/exit requirements."
+      "Use the address bar to go to Google"
     ],
     "reject_examples": {
       "too_broad": [
-        "Look for more information.",
-        "Continue the task."
+        "Go to a new website"
       ],
       "too_low_level": [
-        "Scroll down.",
-        "Move the cursor."
+        "Move the mouse to the address bar"
       ],
       "wrong": [
-        "Switch to another tab.",
-        "Go back to the top."
+        "Search for South Korea requirements directly",
+        "Open a new tab"
+      ]
+    }
+  },
+  {
+    "id": "P4",
+    "type": "next_action_prediction",
+    "pause_time_sec": 87,
+    "timestamp_label": "1:27",
+    "anchor": "The agent is on the Google search results page for South Korea visa requirements but notices the query was truncated.",
+    "question": "What is the next meaningful action the agent will likely take in the interface?",
+    "reference_answer": "The agent will click the search box to retype the full query for South Korea.",
+    "accepted_answers": [
+      "Click the search box to retype the full query for South Korea"
+    ],
+    "partial_answers": [
+      "Retype the full query for South Korea"
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "Fix the search query"
+      ],
+      "too_low_level": [
+        "Move the mouse to the search box"
+      ],
+      "wrong": [
+        "Scroll down the search results",
+        "Open a new tab"
+      ]
+    }
+  },
+  {
+    "id": "P5",
+    "type": "next_action_prediction",
+    "pause_time_sec": 154,
+    "timestamp_label": "2:34",
+    "anchor": "The agent is on the search results page for China visa requirements.",
+    "question": "What is the next meaningful action the agent will likely take in the interface?",
+    "reference_answer": "The agent will click on the U.S. Department of State China Travel Advisory result.",
+    "accepted_answers": [
+      "Click on the U.S. Department of State China Travel Advisory result"
+    ],
+    "partial_answers": [
+      "Click on an official result for China entry requirements"
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "Click on a search result"
+      ],
+      "too_low_level": [
+        "Move the mouse to a search result"
+      ],
+      "wrong": [
+        "Scroll down the page",
+        "Open a new tab"
+      ]
+    }
+  },
+  {
+    "id": "P6",
+    "type": "next_action_prediction",
+    "pause_time_sec": 182,
+    "timestamp_label": "3:02",
+    "anchor": "The agent is viewing the Travel.State.Gov China page and sees advisory details.",
+    "question": "What is the next meaningful action the agent will likely take in the interface?",
+    "reference_answer": "The agent will click 'Scroll to review full advisory' to access the complete detailed entry requirements page for China.",
+    "accepted_answers": [
+      "Click 'Scroll to review full advisory'"
+    ],
+    "partial_answers": [
+      "Access the full advisory details"
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "View more details"
+      ],
+      "too_low_level": [
+        "Move the mouse to the advisory link"
+      ],
+      "wrong": [
+        "Scroll down the page",
+        "Open a new tab"
       ]
     }
   }

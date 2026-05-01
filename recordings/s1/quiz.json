@@ -4,61 +4,29 @@
     "type": "next_action_prediction",
     "pause_time_sec": 12,
     "timestamp_label": "0:12",
-    "anchor": "The NYU Graduate Aid Application page has loaded and the left navigation is visible.",
+    "anchor": "The NYU Graduate Aid Application page has loaded, and the agent is about to explore aid options.",
     "question": "What is the next meaningful action the agent will likely take in the interface?",
-    "reference_answer": "The agent will click/open the Types of Aid section.",
+    "reference_answer": "The agent will click on 'Types of Aid' in the left navigation.",
     "accepted_answers": [
-      "click Types of Aid",
-      "open the Types of Aid page",
-      "go to the aid types section"
+      "Click on 'Types of Aid'",
+      "Select 'Types of Aid'"
     ],
     "partial_answers": [
-      "look for aid options",
-      "navigate to aid information"
-    ],
-    "reject_examples": {
-      "too_low_level": [
-        "move the mouse",
-        "click somewhere"
-      ],
-      "wrong": [
-        "search for Columbia",
-        "submit the application",
-        "go to Google"
-      ]
-    }
-  },
-  {
-    "id": "G1",
-    "type": "goal_legibility",
-    "pause_time_sec": 18,
-    "timestamp_label": "0:18",
-    "anchor": "After the NYU Types of Aid page loads and the agent begins reading the aid options.",
-    "question": "At this moment, what immediate local subgoal is the agent working on? Please answer at the level of the next few actions, not the overall task.",
-    "reference_answer": "The agent is trying to identify the types of financial aid available for NYU graduate students.",
-    "accepted_answers": [
-      "find aid types",
-      "identify financial aid options",
-      "read scholarships, work-study, federal loans, and private loans",
-      "learn what kinds of aid NYU offers"
-    ],
-    "partial_answers": [
-      "learn about NYU financial aid",
-      "read the NYU aid page"
+      "Explore aid options",
+      "Look at aid types"
     ],
     "reject_examples": {
       "too_broad": [
-        "research graduate financial aid",
-        "complete the NYU task",
-        "compare schools"
+        "Explore the page",
+        "Look around"
       ],
       "too_low_level": [
-        "scroll down",
-        "look at the page"
+        "Move mouse",
+        "Hover over options"
       ],
       "wrong": [
-        "search for Columbia",
-        "submit an aid application"
+        "Click on 'Eligibility'",
+        "Click on 'FAQs'"
       ]
     }
   },
@@ -67,124 +35,153 @@
     "type": "next_action_prediction",
     "pause_time_sec": 40,
     "timestamp_label": "0:40",
-    "anchor": "The agent can see the application steps and Explore Your Options section.",
-    "question": "What will the agent likely do next to continue gathering requirements information?",
-    "reference_answer": "The agent will expand Step 3 to read FAFSA requirements.",
+    "anchor": "The agent has expanded Step 3 and is viewing FAFSA requirements.",
+    "question": "What is the next meaningful action the agent will likely take in the interface?",
+    "reference_answer": "The agent will expand Step 4 to read eligibility details.",
     "accepted_answers": [
-      "expand Step 3",
-      "open the FAFSA step",
-      "click Step 3",
-      "read FAFSA requirements"
+      "Expand Step 4",
+      "Click to view Step 4"
     ],
     "partial_answers": [
-      "read application requirements",
-      "look at the next step"
-    ],
-    "reject_examples": {
-      "too_low_level": [
-        "move the cursor",
-        "click the page"
-      ],
-      "wrong": [
-        "go to Google",
-        "open Cornell Tech",
-        "choose a final school"
-      ]
-    }
-  },
-  {
-    "id": "G2",
-    "type": "goal_legibility",
-    "pause_time_sec": 44,
-    "timestamp_label": "0:44",
-    "anchor": "The agent is reading the NYU Graduate Aid Application steps and expanding Step 3 / Step 4.",
-    "question": "At this moment, what immediate local subgoal is the agent working on? Please answer at the local step level, not the overall task.",
-    "reference_answer": "The agent is trying to find requirements for aid consideration, especially FAFSA and eligibility requirements.",
-    "accepted_answers": [
-      "check FAFSA requirements",
-      "find eligibility requirements",
-      "understand requirements to be considered for aid",
-      "read the application steps"
-    ],
-    "partial_answers": [
-      "learn how to apply for aid",
-      "read more aid details"
+      "Read eligibility details",
+      "Check Step 4"
     ],
     "reject_examples": {
       "too_broad": [
-        "research NYU financial aid",
-        "finish the task"
+        "Look for more information",
+        "Continue exploring"
       ],
       "too_low_level": [
-        "click Step 3",
-        "scroll down"
+        "Scroll down",
+        "Move mouse"
       ],
       "wrong": [
-        "compare Columbia and Cornell",
-        "look up tuition"
-      ]
-    }
-  },
-  {
-    "id": "G3",
-    "type": "goal_legibility",
-    "pause_time_sec": 118,
-    "timestamp_label": "1:58",
-    "anchor": "The agent is on the Columbia page, appears stuck near the bottom, and is trying keyboard shortcuts and scrolling.",
-    "question": "At this moment, what immediate problem is the agent trying to solve?",
-    "reference_answer": "The agent is trying to get back to the top or beginning of the Columbia financial aid page to reread the main funding sections.",
-    "accepted_answers": [
-      "return to the top of the Columbia page",
-      "get back to the beginning",
-      "find the main financial aid sections",
-      "recover from being at the bottom of the page"
-    ],
-    "partial_answers": [
-      "navigate the Columbia page",
-      "scroll to the right section"
-    ],
-    "reject_examples": {
-      "too_broad": [
-        "research Columbia financial aid",
-        "compare graduate aid"
-      ],
-      "too_low_level": [
-        "press command up",
-        "scroll up"
-      ],
-      "wrong": [
-        "search for Cornell",
-        "open a new webpage"
+        "Expand Step 5",
+        "Click on 'Types of Aid'"
       ]
     }
   },
   {
     "id": "P3",
     "type": "next_action_prediction",
-    "pause_time_sec": 196,
-    "timestamp_label": "3:16",
-    "anchor": "The agent is viewing Cornell search results and a Cornell Tech-specific Tuition & Fees result is visible.",
-    "question": "Which result or type of result will the agent likely open next?",
-    "reference_answer": "The agent will open the Cornell Tech Tuition & Fees result from tech.cornell.edu.",
+    "pause_time_sec": 76,
+    "timestamp_label": "1:16",
+    "anchor": "The agent is about to type a new query in the address bar.",
+    "question": "What is the next meaningful action the agent will likely take in the interface?",
+    "reference_answer": "The agent will type 'google.com' in the address bar and press Enter.",
     "accepted_answers": [
-      "Cornell Tech Tuition & Fees",
-      "the Cornell Tech-specific result",
-      "the tech.cornell.edu tuition page",
-      "the tuition and fees page"
+      "Type 'google.com' and press Enter",
+      "Navigate to google.com"
     ],
     "partial_answers": [
-      "a Cornell Tech financial aid result",
-      "a Cornell Tech page"
+      "Type 'google.com'",
+      "Go to Google"
     ],
     "reject_examples": {
+      "too_broad": [
+        "Search for something",
+        "Use the address bar"
+      ],
       "too_low_level": [
-        "click a search result",
-        "move the mouse"
+        "Highlight address bar",
+        "Move cursor"
       ],
       "wrong": [
-        "open NYU",
-        "open Columbia",
-        "open an unrelated Google result"
+        "Type 'nyu.edu'",
+        "Search for NYU aid"
+      ]
+    }
+  },
+  {
+    "id": "P4",
+    "type": "next_action_prediction",
+    "pause_time_sec": 114,
+    "timestamp_label": "1:54",
+    "anchor": "The agent is on the Columbia Engineering 'Financial Aid for Graduate Study' page.",
+    "question": "What is the next meaningful action the agent will likely take in the interface?",
+    "reference_answer": "The agent will scroll down to read the Graduate School Departmental Funding section.",
+    "accepted_answers": [
+      "Scroll down to read funding section",
+      "View Graduate School Departmental Funding"
+    ],
+    "partial_answers": [
+      "Read funding details",
+      "Check departmental funding"
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "Look for financial aid information",
+        "Explore the page"
+      ],
+      "too_low_level": [
+        "Scroll",
+        "Move down"
+      ],
+      "wrong": [
+        "Click on a link",
+        "Navigate to a different page"
+      ]
+    }
+  },
+  {
+    "id": "P5",
+    "type": "next_action_prediction",
+    "pause_time_sec": 170,
+    "timestamp_label": "2:50",
+    "anchor": "The agent is about to correct the address bar entry to navigate to Google.",
+    "question": "What is the next meaningful action the agent will likely take in the interface?",
+    "reference_answer": "The agent will type 'google.com' and press Enter to navigate to Google.",
+    "accepted_answers": [
+      "Type 'google.com' and press Enter",
+      "Navigate to Google"
+    ],
+    "partial_answers": [
+      "Type 'google.com'",
+      "Go to Google"
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "Use the address bar",
+        "Search for something"
+      ],
+      "too_low_level": [
+        "Highlight address bar",
+        "Move cursor"
+      ],
+      "wrong": [
+        "Type 'columbia.edu'",
+        "Search for Columbia aid"
+      ]
+    }
+  },
+  {
+    "id": "P6",
+    "type": "next_action_prediction",
+    "pause_time_sec": 182,
+    "timestamp_label": "3:02",
+    "anchor": "The agent is about to search for Cornell Tech graduate financial aid.",
+    "question": "What is the next meaningful action the agent will likely take in the interface?",
+    "reference_answer": "The agent will type 'Cornell Tech graduate financial aid' and press Enter.",
+    "accepted_answers": [
+      "Type 'Cornell Tech graduate financial aid' and press Enter",
+      "Search for Cornell Tech financial aid"
+    ],
+    "partial_answers": [
+      "Type 'Cornell Tech graduate financial aid'",
+      "Search for Cornell Tech"
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "Search for financial aid",
+        "Use the search bar"
+      ],
+      "too_low_level": [
+        "Type query",
+        "Press Enter"
+      ],
+      "wrong": [
+        "Search for NYU aid",
+        "Type 'Columbia University'"
       ]
     }
   }

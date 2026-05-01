@@ -1,1 +1,188 @@
-[]
+[
+  {
+    "id": "P1",
+    "type": "next_action_prediction",
+    "pause_time_sec": 11,
+    "timestamp_label": "0:11",
+    "anchor": "The agent sees autocomplete suggestions including Sephora's foundation makeup page with fragrance-free filter.",
+    "question": "What is the next meaningful action the agent will likely take in the interface?",
+    "reference_answer": "The agent will click on the autocomplete suggestion to navigate directly to Sephora's foundation page with the fragrance-free filter applied.",
+    "accepted_answers": [
+      "Click on the autocomplete suggestion for Sephora's foundation page.",
+      "Select the autocomplete suggestion for the foundation page with fragrance-free filter."
+    ],
+    "partial_answers": [
+      "Navigate to Sephora's foundation page.",
+      "Select the foundation page suggestion."
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "Go to Sephora's website.",
+        "Use the autocomplete suggestions."
+      ],
+      "too_low_level": [
+        "Move the mouse to the suggestion.",
+        "Look at the autocomplete options."
+      ],
+      "wrong": [
+        "Type a different URL.",
+        "Search for something else."
+      ]
+    }
+  },
+  {
+    "id": "P2",
+    "type": "next_action_prediction",
+    "pause_time_sec": 56,
+    "timestamp_label": "0:56",
+    "anchor": "The agent sees the 'Ingredient Preferences' filter option in the sidebar.",
+    "question": "What is the next meaningful action the agent will likely take in the interface?",
+    "reference_answer": "The agent will click on the 'Ingredient Preferences' filter to expand it and select Fragrance-Free and Hypoallergenic options.",
+    "accepted_answers": [
+      "Click on the 'Ingredient Preferences' filter.",
+      "Expand the 'Ingredient Preferences' filter."
+    ],
+    "partial_answers": [
+      "Select a filter option.",
+      "Look for hypoallergenic options."
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "Apply a filter.",
+        "Choose a preference."
+      ],
+      "too_low_level": [
+        "Move the mouse to the filter.",
+        "Scroll to see more filters."
+      ],
+      "wrong": [
+        "Click on a product.",
+        "Navigate away from the page."
+      ]
+    }
+  },
+  {
+    "id": "P3",
+    "type": "next_action_prediction",
+    "pause_time_sec": 97,
+    "timestamp_label": "1:37",
+    "anchor": "The 'Ingredient Preferences' section is expanded showing various options including 'Fragrance Free'.",
+    "question": "What is the next meaningful action the agent will likely take in the interface?",
+    "reference_answer": "The agent will click on the 'Fragrance Free' option to apply that filter.",
+    "accepted_answers": [
+      "Click on the 'Fragrance Free' option.",
+      "Select the 'Fragrance Free' filter."
+    ],
+    "partial_answers": [
+      "Apply the fragrance-free filter.",
+      "Choose the fragrance-free option."
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "Apply a filter.",
+        "Choose an ingredient preference."
+      ],
+      "too_low_level": [
+        "Look at the options.",
+        "Consider the fragrance-free option."
+      ],
+      "wrong": [
+        "Click on a different filter.",
+        "Navigate to another page."
+      ]
+    }
+  },
+  {
+    "id": "P4",
+    "type": "next_action_prediction",
+    "pause_time_sec": 148,
+    "timestamp_label": "2:28",
+    "anchor": "The IT Cosmetics CC+ Cream product page is fully visible with the 'Add to Basket' button at the bottom.",
+    "question": "What is the next meaningful action the agent will likely take in the interface?",
+    "reference_answer": "The agent will click the 'Add to Basket' button to add the foundation to the cart.",
+    "accepted_answers": [
+      "Click the 'Add to Basket' button.",
+      "Add the foundation to the cart."
+    ],
+    "partial_answers": [
+      "Select the 'Add to Basket' option.",
+      "Add the product to the basket."
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "Add to cart.",
+        "Make a purchase."
+      ],
+      "too_low_level": [
+        "Look at the product details.",
+        "Check the price."
+      ],
+      "wrong": [
+        "Select a different product.",
+        "Navigate away from the page."
+      ]
+    }
+  },
+  {
+    "id": "P5",
+    "type": "next_action_prediction",
+    "pause_time_sec": 170,
+    "timestamp_label": "2:50",
+    "anchor": "The Makeup dropdown menu is open, showing 'Mascara' under the 'Eye' category.",
+    "question": "What is the next meaningful action the agent will likely take in the interface?",
+    "reference_answer": "The agent will click on 'Mascara' to navigate to the mascara section.",
+    "accepted_answers": [
+      "Click on 'Mascara'.",
+      "Navigate to the mascara section."
+    ],
+    "partial_answers": [
+      "Select the mascara category.",
+      "Choose 'Mascara' from the menu."
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "Navigate to a new section.",
+        "Choose a makeup category."
+      ],
+      "too_low_level": [
+        "Look at the menu options.",
+        "Consider the mascara option."
+      ],
+      "wrong": [
+        "Click on a different category.",
+        "Close the menu."
+      ]
+    }
+  },
+  {
+    "id": "P6",
+    "type": "next_action_prediction",
+    "pause_time_sec": 206,
+    "timestamp_label": "3:26",
+    "anchor": "The Fragrance Free filter is active, showing 31 results including the Kosas Soulgazer mascara.",
+    "question": "What is the next meaningful action the agent will likely take in the interface?",
+    "reference_answer": "The agent will click on the Kosas Soulgazer mascara to view its product details.",
+    "accepted_answers": [
+      "Click on the Kosas Soulgazer mascara.",
+      "Select the Kosas mascara to view details."
+    ],
+    "partial_answers": [
+      "Choose the Kosas mascara.",
+      "View the Kosas product details."
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "Select a mascara.",
+        "Choose a product."
+      ],
+      "too_low_level": [
+        "Look at the product options.",
+        "Consider the Kosas mascara."
+      ],
+      "wrong": [
+        "Click on a different mascara.",
+        "Navigate away from the page."
+      ]
+    }
+  }
+]

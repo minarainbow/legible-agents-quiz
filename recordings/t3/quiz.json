@@ -1,1 +1,194 @@
-[]
+[
+  {
+    "id": "P1",
+    "type": "next_action_prediction",
+    "pause_time_sec": 26,
+    "timestamp_label": "0:26",
+    "anchor": "Search results for 'gluten-free spaghetti' are showing with multiple options.",
+    "question": "What is the next meaningful action the agent will likely take in the interface?",
+    "reference_answer": "Click on the Rummo Spaghetti Gluten-Free Pasta to see more details.",
+    "accepted_answers": [
+      "Click on the Rummo Spaghetti Gluten-Free Pasta.",
+      "Select the Rummo Spaghetti Gluten-Free Pasta.",
+      "Choose the Rummo Spaghetti Gluten-Free Pasta."
+    ],
+    "partial_answers": [
+      "Click on a gluten-free spaghetti option.",
+      "Select a gluten-free pasta."
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "Choose a pasta option.",
+        "Select a product."
+      ],
+      "too_low_level": [
+        "Move the mouse over a product.",
+        "Scroll through the options."
+      ],
+      "wrong": [
+        "Click on a regular spaghetti option.",
+        "Search for another item."
+      ]
+    }
+  },
+  {
+    "id": "P2",
+    "type": "next_action_prediction",
+    "pause_time_sec": 72,
+    "timestamp_label": "1:12",
+    "anchor": "The diced tomatoes search results are showing with options from H-E-B and Sprouts.",
+    "question": "What is the next meaningful action the agent will likely take in the interface?",
+    "reference_answer": "Click on the H-E-B Organics Diced Tomatoes to check it's 14.5 oz organic.",
+    "accepted_answers": [
+      "Click on the H-E-B Organics Diced Tomatoes.",
+      "Select the H-E-B Organics Diced Tomatoes.",
+      "Choose the H-E-B Organics Diced Tomatoes."
+    ],
+    "partial_answers": [
+      "Click on an organic diced tomato option.",
+      "Select an organic tomato product."
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "Choose a tomato option.",
+        "Select a product."
+      ],
+      "too_low_level": [
+        "Move the mouse over a product.",
+        "Scroll through the options."
+      ],
+      "wrong": [
+        "Click on a non-organic tomato option.",
+        "Search for another item."
+      ]
+    }
+  },
+  {
+    "id": "P3",
+    "type": "next_action_prediction",
+    "pause_time_sec": 154,
+    "timestamp_label": "2:34",
+    "anchor": "The search results show parmesan cheese options, including Sartori Shredded Cheese.",
+    "question": "What is the next meaningful action the agent will likely take in the interface?",
+    "reference_answer": "Click 'Add' on the Sartori Shredded Cheese, Parmesan Classic 7 oz.",
+    "accepted_answers": [
+      "Click 'Add' on the Sartori Shredded Cheese, Parmesan Classic.",
+      "Select the Sartori Shredded Cheese, Parmesan Classic.",
+      "Choose the Sartori Shredded Cheese, Parmesan Classic."
+    ],
+    "partial_answers": [
+      "Click 'Add' on a parmesan cheese option.",
+      "Select a parmesan cheese product."
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "Choose a cheese option.",
+        "Select a product."
+      ],
+      "too_low_level": [
+        "Move the mouse over a product.",
+        "Scroll through the options."
+      ],
+      "wrong": [
+        "Click 'Add' on a different cheese option.",
+        "Search for another item."
+      ]
+    }
+  },
+  {
+    "id": "P4",
+    "type": "next_action_prediction",
+    "pause_time_sec": 174,
+    "timestamp_label": "2:54",
+    "anchor": "The search results for 'extra virgin olive oil' are showing.",
+    "question": "What is the next meaningful action the agent will likely take in the interface?",
+    "reference_answer": "Click 'Add' on the H-E-B Extra Virgin Olive Oil.",
+    "accepted_answers": [
+      "Click 'Add' on the H-E-B Extra Virgin Olive Oil.",
+      "Select the H-E-B Extra Virgin Olive Oil.",
+      "Choose the H-E-B Extra Virgin Olive Oil."
+    ],
+    "partial_answers": [
+      "Click 'Add' on an olive oil option.",
+      "Select an olive oil product."
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "Choose an olive oil option.",
+        "Select a product."
+      ],
+      "too_low_level": [
+        "Move the mouse over a product.",
+        "Scroll through the options."
+      ],
+      "wrong": [
+        "Click 'Add' on a different olive oil option.",
+        "Search for another item."
+      ]
+    }
+  },
+  {
+    "id": "P5",
+    "type": "next_action_prediction",
+    "pause_time_sec": 204,
+    "timestamp_label": "3:24",
+    "anchor": "The search bar is cleared and ready for a new search.",
+    "question": "What is the next meaningful action the agent will likely take in the interface?",
+    "reference_answer": "Type 'garlic' and press Enter to search.",
+    "accepted_answers": [
+      "Type 'garlic' and press Enter.",
+      "Search for 'garlic'.",
+      "Enter 'garlic' in the search bar."
+    ],
+    "partial_answers": [
+      "Type 'garlic'.",
+      "Search for a new item."
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "Search for something.",
+        "Enter a new search query."
+      ],
+      "too_low_level": [
+        "Move the mouse to the search bar.",
+        "Click on the search bar."
+      ],
+      "wrong": [
+        "Type a different search query.",
+        "Search for a non-garlic item."
+      ]
+    }
+  },
+  {
+    "id": "P6",
+    "type": "next_action_prediction",
+    "pause_time_sec": 212,
+    "timestamp_label": "3:32",
+    "anchor": "The garlic search results are showing with a fresh whole garlic bulb option.",
+    "question": "What is the next meaningful action the agent will likely take in the interface?",
+    "reference_answer": "Click 'Add' to add the fresh whole garlic bulb to the cart.",
+    "accepted_answers": [
+      "Click 'Add' on the fresh whole garlic bulb.",
+      "Select the fresh whole garlic bulb.",
+      "Choose the fresh whole garlic bulb."
+    ],
+    "partial_answers": [
+      "Click 'Add' on a garlic option.",
+      "Select a garlic product."
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "Choose a garlic option.",
+        "Select a product."
+      ],
+      "too_low_level": [
+        "Move the mouse over a product.",
+        "Scroll through the options."
+      ],
+      "wrong": [
+        "Click 'Add' on a different garlic option.",
+        "Search for another item."
+      ]
+    }
+  }
+]
