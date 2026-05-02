@@ -379,12 +379,12 @@ def human_move_to(x, y, speed_factor=1.0):
 
 
 def human_type_visible(text, target_pos=None):
-    """Type char-by-char: starts slow, gradually speeds up, with keyboard click sounds."""
+    """Type text char-by-char with human timing. Uses pyautogui.write per char to avoid
+    macOS treating individual keypresses as system shortcuts."""
     for i, char in enumerate(text):
-        pyautogui.press(char) if len(char) == 1 and char.isprintable() else pyautogui.write(char)
+        pyautogui.write(char, interval=0)
         _play_sfx_or_system("typing", "/System/Library/Sounds/Tock.aiff", 0.25)
         progress = i / max(len(text) - 1, 1)
-        # Slow start → faster: delay shrinks as progress increases
         speed_mult = 0.4 + 1.4 * (progress ** 1.5)
         delay = TYPE_CHAR_INTERVAL / max(speed_mult, 0.2) * random.uniform(0.8, 1.2)
         time.sleep(max(0.015, delay))
@@ -1108,7 +1108,8 @@ def _execute_action_inner(action, params):
         activate_chrome()
         time.sleep(0.3)  # wait for focus before typing
         clean = text.rstrip("\n")
-        human_type_visible(clean)
+        pyperclip.copy(clean)
+        pyautogui.hotkey("command", "v")
         if text.endswith("\n"):
             pyautogui.press("return")
 
