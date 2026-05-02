@@ -1022,16 +1022,15 @@ def _execute_action_inner(action, params):
         activate_chrome()
         label = _get_element_label(x, y)
         high_stakes = _is_high_stakes(label)
-        # Fallback: check if Claude's narration explicitly says "click [high-stakes-word]"
+        # Fallback: check if Claude's narration mentions any high-stakes keyword
         if not high_stakes:
             with state_lock:
                 last_thought = state.get("last_thought", "").lower()
             for kw in _HIGH_STAKES_KEYWORDS:
-                idx = last_thought.find(kw)
-                if idx >= 0 and "click" in last_thought[max(0, idx - 40):idx]:
+                if kw in last_thought:
                     high_stakes = True
                     if not label:
-                        label = kw  # use keyword as display label
+                        label = kw
                     break
         print(f"[CLICK] label={label!r} high_stakes={high_stakes}", file=sys.stderr)
         if high_stakes:
