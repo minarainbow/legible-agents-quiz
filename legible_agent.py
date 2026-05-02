@@ -1101,11 +1101,8 @@ def _execute_action_inner(action, params):
             state["reasoning_text"] = f"Typing: {short}"
             state["speech_done_ts"] = now()
         activate_chrome()
-        # Use clipboard paste to bypass IME/Korean input issues
         clean = text.rstrip("\n")
-        pyperclip.copy(clean)
-        pyautogui.hotkey("command", "v")
-        time.sleep(0.1)
+        human_type_visible(clean)
         if text.endswith("\n"):
             pyautogui.press("return")
 
@@ -1584,14 +1581,10 @@ def task_loop():
         f"Display: {DISPLAY_W}×{DISPLAY_H}. Origin top-left. "
         f"Chrome is showing {task['site']}.\n"
         "Rules:\n"
-        "- ALWAYS write exactly 2 short sentences before every tool call (never skip).\n"
-        "  Sentence 1: what just changed or appeared on screen after the last action. "
-        "e.g. \"The search results appeared.\" or \"The product page loaded.\"\n"
-        "  Sentence 2: exactly what you will do next, naming the exact UI label in quotes. "
+        "- Before every tool call, write ONE short sentence: exactly what you will do next, naming the UI label in quotes. "
         "e.g. \"I'll click the 'Add to Basket' button.\" "
-        "e.g. \"I'll select the 'Fragrance Free' checkbox.\"\n"
-        "  Each sentence under 10 words. Never say 'I will proceed', 'I will continue', or 'I will click here'.\n"
-        "  For the very first action, sentence 1 should describe what you see on screen.\n"
+        "e.g. \"I'll type 'foundation' in the search bar.\"\n"
+        "  Under 12 words. Never say 'I will proceed', 'I will continue', or 'I will click here'.\n"
         "- To search on Google: click the search box on the page, type your query, press Enter. "
         "Do NOT use the Chrome address bar to search — use the Google search box on screen.\n"
         "- To navigate to a new URL: use command+l, type the URL, press Enter.\n"
