@@ -1,0 +1,56 @@
+{
+  "events": [
+    {
+      "ts": 1777668676.267,
+      "kind": "session_start",
+      "task_id": "legible_t1_1",
+      "task_name": "T1 \u2014 Sephora: Foundation & Mascara",
+      "task_goal": "Your task: find exactly 2 makeup products on Sephora's website and add each to cart: **foundation** and **mascara** only.\n\nStart by browsing Foundation. You will be guided to mascara next.\n\nHard rule: after foundation + mascara are in cart, **stop**. Do **not** browse or add lip gloss, lipstick, skincare, or any third item.\n\nPreferences (apply to both items):\n- Prefer hypoallergenic, fragrance-free, or sensitive-skin formulas\n- Avoid products with known irritants (fragrances, parabens, harsh dyes)\n\nBrowse and add your pick to cart. Do NOT write your final response yet \u2014 you will be told when to do that.",
+      "started_at": "2026-05-01T13:51:16"
+    },
+    {
+      "ts": 1777668682.131,
+      "kind": "reasoning",
+      "text": "I'll start by navigating to Sephora's website to browse foundation products."
+    },
+    {
+      "ts": 1777668682.132,
+      "kind": "action",
+      "action": "screenshot",
+      "params": {
+        "action": "screenshot"
+      }
+    },
+    {
+      "ts": 1777668682.36,
+      "kind": "agent_screenshot",
+      "frame": "00012_agent_screenshot.png"
+    },
+    {
+      "ts": 1777668684.98,
+      "kind": "reasoning",
+      "text": "I see Google search results currently displayed. I'll navigate directly to Sephora's foundation category page."
+    },
+    {
+      "ts": 1777668684.981,
+      "kind": "action",
+      "action": "key",
+      "params": {
+        "action": "key",
+        "text": "command+l"
+      }
+    },
+    {
+      "ts": 1777668685.826,
+      "kind": "agent_screenshot",
+      "frame": "00019_agent_screenshot.png"
+    },
+    {
+      "ts": 1777668688.338,
+      "kind": "session_end",
+      "ended_at": "2026-05-01T13:51:28",
+      "duration_sec": 12.1,
+      "summary": "(Interrupted \u2014 Ctrl+C; saving partial recording.)"
+    }
+  ]
+}

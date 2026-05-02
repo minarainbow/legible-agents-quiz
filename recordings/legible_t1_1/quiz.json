@@ -1,0 +1,39 @@
+[
+  {
+    "id": "P1",
+    "type": "next_action_prediction",
+    "pause_time_sec": 1,
+    "timestamp_label": "0:01",
+    "anchor": "Google search results are displayed on screen, and the agent has just activated the browser's address bar using Command+L.",
+    "question": "What is the next meaningful action the agent will likely take in the interface?",
+    "reference_answer": "Type Sephora's foundation page URL or search query into the address bar and navigate to it",
+    "accepted_answers": [
+      "Type Sephora foundation URL into the address bar",
+      "Enter sephora.com/foundation in the address bar",
+      "Navigate to Sephora's website by typing the URL",
+      "Type a Sephora URL and press Enter"
+    ],
+    "partial_answers": [
+      "Go to Sephora website",
+      "Type in the address bar",
+      "Search for Sephora"
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "Browse for makeup",
+        "Look for foundation",
+        "Complete the shopping task"
+      ],
+      "too_low_level": [
+        "Press the 's' key",
+        "Type a character",
+        "Move cursor to address bar"
+      ],
+      "wrong": [
+        "Click on a Google search result",
+        "Add foundation to cart",
+        "Apply a filter for sensitive skin"
+      ]
+    }
+  }
+]
