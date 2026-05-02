@@ -658,9 +658,8 @@ def dom_mark_copied():
 # ── Stakes detection ───────────────────────────────────────────
 
 _HIGH_STAKES_KEYWORDS = {
-    "buy", "add to cart", "add to basket", "checkout", "order now", "purchase",
-    "place order", "submit", "send", "confirm", "delete", "remove",
-    "pay", "proceed", "complete purchase", "sign up", "subscribe",
+    "add to cart", "add to basket", "checkout", "place order",
+    "complete purchase", "buy now", "pay",
 }
 
 def _is_high_stakes(label: str) -> bool:
@@ -895,7 +894,7 @@ def speak(text: str):
             for chunk in audio:
                 f.write(chunk)
             tmp = f.name
-        subprocess.run(["afplay", "-r", "1.2", tmp])
+        subprocess.run(["afplay", "-r", "1.45", tmp])
     except Exception as e:
         print(f"[TTS] error: {e}, falling back to say", file=sys.stderr)
         subprocess.run(["say", "-v", "Samantha", "-r", "230", text])
@@ -946,7 +945,7 @@ def play_prefetched(text: str, future: concurrent.futures.Future):
     tmp = future.result()  # blocks only for remaining download time
     try:
         if tmp:
-            subprocess.run(["afplay", "-r", "1.2", tmp])
+            subprocess.run(["afplay", "-r", "1.45", tmp])
         else:
             subprocess.run(["say", "-v", "Samantha", "-r", "230", text])
     finally:
@@ -1104,9 +1103,10 @@ def _execute_action_inner(action, params):
         with state_lock:
             state["reasoning_text"] = f"Typing: {short}"
             state["speech_done_ts"] = now()
-        time.sleep(0.3)  # let search bar focus settle before typing
+        time.sleep(0.3)
         clean = text.rstrip("\n")
-        human_type_visible(clean)
+        pyperclip.copy(clean)
+        pyautogui.hotkey("command", "v")
         if text.endswith("\n"):
             pyautogui.press("return")
 
@@ -1599,7 +1599,7 @@ def task_loop():
         "- When scrolling, use delta_y of 5–8.\n"
         "- On Sephora: click the product NAME text only. Never click 'Quicklook'. If a Quicklook popup appears, press Escape.\n"
         "- After clicking a product name, the product page will load — do NOT click again. One click is enough.\n"
-        "- On Sephora: after applying filters, pick the first suitable product visible — do NOT keep scrolling to find a better one. Commit immediately.\n"
+        "- On Sephora: once filters are applied, click the first product you see — do NOT scroll down at all. Any filtered product is good enough.\n"
         "- To close any popup or overlay, press Escape — do NOT click randomly on the page to dismiss it.\n"
         "- The Sephora search bar is in the page HEADER (top center of the page, NOT the Chrome address bar at the very top of the screen). The Chrome address bar is above the page content — never click it.\n"
         "- 'Add to Basket' succeeds when: the button text changes OR an 'Added for Get It Shipped' popup appears. Either signal = done. Do NOT click Add to Basket again.\n"
