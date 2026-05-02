@@ -1615,20 +1615,13 @@ def task_loop():
 
     set_progress(1, 4, f"Navigate to {task['url']}")
 
-    # ── Phase 2: Agent reads page + generates summary ──
-    print("[CU] Phase 2: Agent reading guidelines…", file=sys.stderr)
-    set_progress(2, 4, "Read guidelines")
+    # ── Phase 2: Build first message (goal only — agent takes first screenshot) ──
+    print("[CU] Phase 2: Starting agent…", file=sys.stderr)
+    set_progress(2, 4, "Start agent")
 
-    # Include post-navigation screenshot so agent doesn't waste iter 1 on screenshot
     messages = [{
         "role": "user",
-        "content": [
-            {"type": "image", "source": {
-                "type": "base64", "media_type": "image/png",
-                "data": screenshot_base64(),
-            }},
-            {"type": "text", "text": goal + f"\n\nYou are already on {task['url']}. The screenshot above shows the current page. Act immediately."},
-        ],
+        "content": goal,
     }]
 
     tools = [{
