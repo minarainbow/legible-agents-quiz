@@ -1595,7 +1595,6 @@ def task_loop():
         "- When scrolling, use delta_y of 5–8.\n"
         "- On Sephora: to open a product, take a screenshot first to see exact coordinates, then click the product NAME text only. "
         "Never click 'Quicklook'. If a Quicklook popup appears, press Escape and try again.\n"
-        "- You are already on the correct website. Do NOT press command+l or use the Chrome address bar at any point — use the site's search bar on the page instead.\n"
         "- To find products: click the search bar visible on the page, type the product name, press Enter.\n"
         "- When browsing products, use filter/sort options on the results page to narrow down.\n"
         "- If you see existing items in the cart that are not from this task, ignore them — treat the cart as empty."
@@ -1610,10 +1609,12 @@ def task_loop():
 
     # ── Phase 1: Pre-navigation ───────────────────────────────
     print(f"[CU] Phase 1: Navigating to {task['url']}…", file=sys.stderr)
-    activate_chrome()
-    time.sleep(0.8)
-    navigate_to_url(task["url"])
-    time.sleep(2.0)  # let page settle before screenshot
+    url_full = task["url"] if task["url"].startswith("http") else f"https://{task['url']}"
+    subprocess.run([
+        "osascript", "-e",
+        f'tell application "Google Chrome" to set URL of active tab of front window to "{url_full}"',
+    ], check=False)
+    time.sleep(3.0)  # let page load
 
     set_progress(1, 4, f"Navigate to {task['url']}")
 
@@ -1629,7 +1630,7 @@ def task_loop():
                 "type": "base64", "media_type": "image/png",
                 "data": screenshot_base64(),
             }},
-            {"type": "text", "text": goal + "\n\nThe screenshot above shows the current page. Your FIRST action must be a click or type on the page — do NOT take a screenshot. Act immediately."},
+            {"type": "text", "text": goal + f"\n\nYou are already on {task['url']}. The screenshot above shows the current page. Your FIRST action must be a click or type on the page — do NOT take a screenshot. Act immediately."},
         ],
     }]
 
