@@ -1767,23 +1767,11 @@ def task_loop():
 
             if action == "screenshot":
                 consec_shots += 1
-                if consec_shots >= 2:
-                    messages.append({
-                        "role": "user",
-                        "content": "Stop taking screenshots and act now.",
-                    })
-                    consec_shots = 0
             else:
                 consec_shots = 0
 
             if action == "wait":
                 consec_waits += 1
-                if consec_waits >= 3:
-                    messages.append({
-                        "role": "user",
-                        "content": "The page may still be loading. Try scrolling or clicking to interact — stop waiting.",
-                    })
-                    consec_waits = 0
             else:
                 consec_waits = 0
 
@@ -1811,6 +1799,14 @@ def task_loop():
         if not tool_results:
             break
         messages.append({"role": "user", "content": tool_results})
+
+        # Inject nudge messages AFTER tool_results so tool_use/tool_result pairing stays intact
+        if consec_shots >= 2:
+            messages.append({"role": "user", "content": "Stop taking screenshots and act now."})
+            consec_shots = 0
+        if consec_waits >= 3:
+            messages.append({"role": "user", "content": "The page may still be loading. Try scrolling or clicking to interact — stop waiting."})
+            consec_waits = 0
     else:
         print("[CU] Max iterations reached — saving recording.", file=sys.stderr)
         if not summary_text:
