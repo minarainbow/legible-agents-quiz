@@ -1218,16 +1218,19 @@ def task_loop():
             "url":  "sephora.com",
             "site": "Sephora website",
             "max_iterations": 85,
+            "system_prompt_extra": (
+                "- On Sephora: click the product NAME text only. Never click 'Quicklook'. If a Quicklook popup appears, press Escape.\n"
+                "- On Sephora: once you've browsed enough to decide, commit to a product — don't keep scrolling indefinitely.\n"
+            ),
             "goal": (
                 "Your task: find exactly 2 makeup products on Sephora's website and add each to cart: "
                 "**foundation** and **mascara** only.\n\n"
-                "Start by searching for 'foundation' using Sephora's search bar, then use the 'Clean at Sephora' or ingredient filters to narrow results before picking. You will be guided to mascara next.\n\n"
+                "Start by searching for 'foundation' using Sephora's search bar. You will be guided to mascara next.\n\n"
                 "Hard rule: after foundation + mascara are in cart, **stop**. "
                 "Do **not** browse or add lip gloss, lipstick, skincare, or any third item.\n\n"
                 "Preferences (apply to both items):\n"
                 "- Prefer hypoallergenic, fragrance-free, or sensitive-skin formulas\n"
-                "- Avoid products with known irritants (fragrances, parabens, harsh dyes)\n"
-                "- Tip: apply both 'Fragrance Free' and 'Paraben-free' ingredient filters on the results page, then pick the first suitable product\n\n"
+                "- Avoid products with known irritants (fragrances, parabens, harsh dyes)\n\n"
                 "Browse and add your pick to cart. "
                 "Do NOT write your final response yet — you will be told when to do that."
             ),
@@ -1586,27 +1589,20 @@ def task_loop():
         f"Display: {DISPLAY_W}×{DISPLAY_H}. Origin top-left. "
         f"Chrome is showing {task['site']}.\n"
         "Rules:\n"
-        "- Before every tool call, write ONE short sentence: exactly what you will do next, naming the UI label in quotes. "
-        "e.g. \"I'll click the 'Add to Basket' button.\" "
-        "e.g. \"I'll type 'foundation' in the search bar.\"\n"
-        "  Under 12 words. Never say 'I will proceed', 'I will continue', or 'I will click here'.\n"
-        "- To search on Google: click the search box on the page, type your query, press Enter. "
-        "Do NOT use the Chrome address bar to search — use the Google search box on screen.\n"
-        "- To navigate to a new URL: use command+l, type the URL, press Enter.\n"
-        "- Use 'command' for macOS shortcuts.\n"
-        "- NEVER take a screenshot. Every action already returns a screenshot — use that. Never take an extra one to 'verify' or 'wait for page to load'.\n"
-        "- After typing in a search bar, press Enter immediately in the next action — no screenshot or scroll in between.\n"
+        "- Before every tool call, write ONE short sentence describing what you will do next, naming the UI label in quotes. "
+        "e.g. \"I'll click the 'Add to Basket' button.\" Under 12 words. Never say 'I will proceed' or 'I will click here'.\n"
+        "- Never take two screenshots in a row.\n"
+        "- After typing in a search bar, press Enter immediately — no screenshot or scroll in between.\n"
         "- When scrolling, use delta_y of 5–8.\n"
-        "- On Sephora: click the product NAME text only. Never click 'Quicklook'. If a Quicklook popup appears, press Escape.\n"
-        "- After clicking a product name, the product page will load — do NOT click again. One click is enough.\n"
-        "- On Sephora: once filters are applied, click the first product you see — do NOT scroll down at all. Any filtered product is good enough.\n"
         "- To close any popup or overlay, press Escape — do NOT click randomly on the page to dismiss it.\n"
-        "- The Sephora search bar is in the page HEADER (top center of the page, NOT the Chrome address bar at the very top of the screen). The Chrome address bar is above the page content — never click it.\n"
-        "- 'Add to Basket' succeeds when: the button text changes OR an 'Added for Get It Shipped' popup appears. Either signal = done. Do NOT click Add to Basket again.\n"
-        "- After adding an item to cart: press Escape, then press command+Home to jump to the top of the page, then click the search bar.\n"
-        "- NEVER construct or type a URL to search — only use the Sephora search bar on the page.\n"
-        "- When browsing products, use filter/sort options on the results page to narrow down.\n"
-        "- If you see existing items in the cart that are not from this task, ignore them — treat the cart as empty."
+        "- After clicking a link or button, wait for the result — do NOT click again. One click is enough.\n"
+        "- The site search bar is in the page header. The Chrome address bar is above the page — never click it to search.\n"
+        "- Never construct or type a URL to navigate within a site — use the site's own search or navigation.\n"
+        "- When adding to cart: success = button text changes OR a confirmation popup appears. Do NOT click again.\n"
+        "- After adding to cart: press Escape, then command+Home, then click the search bar for the next item.\n"
+        "- Use 'command' for macOS shortcuts.\n"
+        "- If you see existing cart items not from this task, ignore them.\n"
+        f"{task.get('system_prompt_extra', '')}"
     )
 
     # Store task-specific overrides in state for use during action execution
