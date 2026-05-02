@@ -1594,7 +1594,7 @@ def task_loop():
         "- When scrolling, use delta_y of 5–8.\n"
         "- On Sephora: click the product NAME text only. Never click 'Quicklook'. If a Quicklook popup appears, press Escape.\n"
         "- After clicking a product name, the product page will load — do NOT click again. One click is enough.\n"
-        "- On Sephora: click the FIRST product you see with the 'Clean at Sephora' badge — do not scroll to compare other options. One click is enough to decide.\n"
+        "- On Sephora: use filters (e.g. 'Clean at Sephora') or search to narrow results, then pick a product that fits the preferences. Do not spend more than 2 scrolls comparing — commit and click.\n"
         "- To close any popup or overlay, press Escape — do NOT click randomly on the page to dismiss it.\n"
         "- The Sephora search bar is in the page HEADER (top center of the page, NOT the Chrome address bar at the very top of the screen). The Chrome address bar is above the page content — never click it.\n"
         "- 'Add to Basket' succeeds when: the button text changes OR an 'Added for Get It Shipped' popup appears. Either signal = done. Do NOT click Add to Basket again.\n"
