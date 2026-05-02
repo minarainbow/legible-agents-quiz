@@ -1719,18 +1719,8 @@ def task_loop():
                 }.get(a, f"Performing {a}.")
             print(f"[CLAUDE] fallback narration: {thought!r}", file=sys.stderr)
 
-        # Split thought into 2 sentences: sentence 1 = what changed, sentence 2 = what will do.
-        # Speak sentence 2 (intention) now; sentence 1 (observation) was spoken after last action.
-        sentences = [s.strip() for s in thought.split(". ") if s.strip()] if thought else []
-        intention  = sentences[-1] if sentences else ""
-        observation = ". ".join(sentences[:-1]) if len(sentences) > 1 else ""
-
-        # Store observation to be spoken after the upcoming action executes
-        with state_lock:
-            state["pending_observation"] = observation
-
-        if intention:
-            speak_async(intention)
+        if thought:
+            speak_async(thought)
 
         with state_lock:
             state["reasoning"]        = False
@@ -1783,13 +1773,6 @@ def task_loop():
 
             execute_action(action, block.input)
             time.sleep(random.uniform(0.04, 0.09))
-
-            # Speak "what changed" observation after meaningful actions
-            if action in ("left_click", "double_click", "right_click", "key", "type"):
-                with state_lock:
-                    obs = state.pop("pending_observation", "")
-                if obs:
-                    speak_async(obs)
 
             if _is_trivial_action(action, block.input):
                 content = _trivial_confirmation(action, block.input)
