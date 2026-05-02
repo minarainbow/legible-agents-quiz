@@ -1718,25 +1718,13 @@ def task_loop():
                 }.get(a, f"Performing {a}.")
             print(f"[CLAUDE] fallback narration: {thought!r}", file=sys.stderr)
 
-        # Clicks: show bubble text only (element label spoken per-action in _execute_action_inner)
-        # screenshot: skip entirely — boilerplate, always out of sync
-        # type/key/scroll: show bubble text only, don't speak (agent has already moved on)
-        _SPEAK_ACTIONS = set()  # only per-action click TTS now
-        if thought and first_action_type == "screenshot":
-            pass  # suppress narration for screenshot
-        elif thought and first_action_type not in _CLICK_ACTIONS:
-            with state_lock:
-                state["reasoning_text"] = thought
-                state["speech_done_ts"] = now()  # show bubble, no TTS
-        elif thought and first_action_type in _CLICK_ACTIONS:
-            with state_lock:
-                state["reasoning_text"] = thought
-                state["speech_done_ts"] = now()  # start fade timer immediately
+        # Speak thought aloud for all actions except screenshot (boilerplate)
+        if thought and first_action_type != "screenshot":
+            speak_async(thought)
 
         with state_lock:
             state["reasoning"]        = False
             state["reasoning_end_ts"] = now()
-            state["reasoning_text"]   = thought
             state["last_thought"]     = raw  # full raw text for high-stakes fallback
 
         messages.append({"role": "assistant", "content": response.content})
