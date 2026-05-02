@@ -1187,7 +1187,7 @@ def navigate_to_url(url: str):
     _ensure_chrome_english()
 
     pyautogui.hotkey("command", "l")
-    time.sleep(0.8)  # wait for address bar to fully focus
+    time.sleep(1.2)  # wait for address bar to fully focus
     pyautogui.hotkey("command", "a")  # select all existing text
     time.sleep(0.2)
     human_type_visible(url)
@@ -1610,7 +1610,7 @@ def task_loop():
     # ── Phase 1: Navigate to task site via human typing ───────
     print(f"[CU] Phase 1: Navigating to {task['url']}…", file=sys.stderr)
     activate_chrome()
-    time.sleep(0.8)
+    time.sleep(2.0)
     navigate_to_url(task["url"])
     time.sleep(1.5)  # let page fully load
 
