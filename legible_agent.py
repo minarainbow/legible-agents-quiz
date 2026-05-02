@@ -1048,12 +1048,13 @@ def _execute_action_inner(action, params):
             orbit_t.join(timeout=5.0)
             time.sleep(1.5)  # grace period after orbit — user can intervene
         else:
-            tts_text = f"I'll click '{label}'." if label else "I'll click here."
-            tts_future = prefetch_tts(tts_text)
+            tts_text = f"I'll click '{label}'." if label else ""
+            tts_future = prefetch_tts(tts_text) if tts_text else None
             dom_click_preview(x, y)
             move_t = threading.Thread(target=human_move_to, args=(x, y), kwargs={"speed_factor": base_speed}, daemon=True)
             move_t.start()
-            play_prefetched(tts_text, tts_future)
+            if tts_text and tts_future:
+                play_prefetched(tts_text, tts_future)
             move_t.join(timeout=2.0)
         dom_remove_click_preview()
         click_with_preview(x, y, speed_factor=base_speed)
@@ -1070,7 +1071,7 @@ def _execute_action_inner(action, params):
             play_prefetched(tts_text, tts_future)
             time.sleep(3.0)
         else:
-            tts_text = f"I'll double-click '{label}'." if label else "I'll double-click here."
+            tts_text = f"I'll double-click '{label}'." if label else ""
             tts_future = prefetch_tts(tts_text)
             dom_click_preview(x, y)
             move_t = threading.Thread(target=human_move_to, args=(x, y), kwargs={"speed_factor": base_speed}, daemon=True)
@@ -1625,7 +1626,7 @@ def task_loop():
                 "type": "base64", "media_type": "image/png",
                 "data": screenshot_base64(),
             }},
-            {"type": "text", "text": goal + "\n\nThe screenshot above shows the current page. Do NOT take another screenshot — act immediately."},
+            {"type": "text", "text": goal + "\n\nThe screenshot above shows the current page. Your first action must NOT be a screenshot — click or type directly."},
         ],
     }]
 
