@@ -1046,7 +1046,7 @@ def _execute_action_inner(action, params):
             play_prefetched(warning, tts_future)
             stop_ev.set()
             orbit_t.join(timeout=5.0)
-            time.sleep(1.5)  # grace period after orbit — user can intervene
+            time.sleep(1.0)  # grace period after orbit — user can intervene
         else:
             tts_text = f"I'll click '{label}'." if label else ""
             tts_future = prefetch_tts(tts_text) if tts_text else None
@@ -1091,7 +1091,7 @@ def _execute_action_inner(action, params):
         if tts_future:
             play_prefetched(f"Right-clicking '{label}'.", tts_future)
         dom_remove_click_preview()
-        time.sleep(0.55)
+        time.sleep(0.2)
         human_move_to(x, y, speed_factor=base_speed)
         pyautogui.rightClick()
 
@@ -1130,7 +1130,7 @@ def _execute_action_inner(action, params):
 
         last = keys[-1]
         if last in ("return", "enter"):
-            time.sleep(1.5)
+            time.sleep(1.0)
         elif "space" in keys and "command" in keys:
             time.sleep(0.6)
         else:
@@ -1190,13 +1190,13 @@ def navigate_to_url(url: str):
     time.sleep(0.1)
     pyautogui.press("l")
     pyautogui.keyUp("command")
-    time.sleep(1.2)  # wait for address bar to fully focus
+    time.sleep(0.8)  # wait for address bar to fully focus
     pyautogui.hotkey("command", "a")  # select all existing text
-    time.sleep(0.2)
+    time.sleep(0.15)
     human_type_visible(url)
-    time.sleep(0.2)
+    time.sleep(0.15)
     pyautogui.press("return")
-    time.sleep(2.0)
+    time.sleep(1.5)
 
 def task_loop():
     global _recorder
@@ -1590,11 +1590,12 @@ def task_loop():
         "Do NOT use the Chrome address bar to search — use the Google search box on screen.\n"
         "- To navigate to a new URL: use command+l, type the URL, press Enter.\n"
         "- Use 'command' for macOS shortcuts.\n"
-        "- Never take two screenshots in a row.\n"
+        "- Never take two screenshots in a row. Never take a screenshot just to verify a page loaded — trust the tool result.\n"
         "- When scrolling, use delta_y of 5–8.\n"
-        "- On Sephora: to open a product, take a screenshot first to see exact coordinates, then click the product NAME text only. "
-        "Never click 'Quicklook'. If a Quicklook popup appears, press Escape and try again.\n"
-        "- To find products: click the search bar visible on the page, type the product name, press Enter.\n"
+        "- On Sephora: click the product NAME text only. Never click 'Quicklook'. If a Quicklook popup appears, press Escape.\n"
+        "- After adding an item to cart, a popup appears. Press Escape to dismiss it, then use the search bar for the next item.\n"
+        "- To reach the search bar quickly: press Escape to close any popup, then click the search bar at the top of the page — do NOT scroll to find it.\n"
+        "- To find products: click the search bar, type the product name, press Enter.\n"
         "- When browsing products, use filter/sort options on the results page to narrow down.\n"
         "- If you see existing items in the cart that are not from this task, ignore them — treat the cart as empty."
     )
@@ -1609,7 +1610,7 @@ def task_loop():
     # ── Phase 1: Navigate to task site via human typing ───────
     print(f"[CU] Phase 1: Navigating to {task['url']}…", file=sys.stderr)
     activate_chrome()
-    time.sleep(2.0)
+    time.sleep(1.2)
     navigate_to_url(task["url"])
     time.sleep(1.5)  # let page fully load
 
