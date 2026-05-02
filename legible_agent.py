@@ -1715,7 +1715,7 @@ def task_loop():
                 if a == "type":
                     narration = f"I'll type '{inp.get('text','')[:40]}'."
                 elif a in ("left_click", "double_click", "right_click"):
-                    narration = thought  # per-element label spoken in _execute_action_inner
+                    narration = ""  # _execute_action_inner speaks element label
             if narration:
                 speak_async(narration)
 
