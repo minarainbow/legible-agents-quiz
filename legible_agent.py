@@ -1190,8 +1190,7 @@ def navigate_to_url(url: str):
     time.sleep(0.5)  # wait for address bar to fully focus
     pyautogui.hotkey("command", "a")  # select all existing text
     time.sleep(0.1)
-    pyperclip.copy(url)
-    pyautogui.hotkey("command", "v")
+    human_type_visible(url)
     time.sleep(0.1)
     pyautogui.press("return")
     time.sleep(1.5)

@@ -484,8 +484,7 @@ def _execute_action_inner(action, params):
     elif action == "type":
         text = params["text"]
         activate_chrome()
-        tx, ty = mouse_pos()
-        human_type_visible(text, target_pos=(tx, ty))
+        pyautogui.write(text, interval=0.02)
 
     elif action == "key":
         key_str = params["text"]
