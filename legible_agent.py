@@ -163,6 +163,7 @@ state = {
     "reading_done":       False,      # flips True when DOM reading finishes
     "cursor_state":       "default",  # "default" | "reading" | "thinking" | "clicking"
     "last_thought":       "",          # Claude's raw text (for high-stakes fallback)
+    "pending_observation": "",         # post-action observation to speak after action executes
     "high_stakes_warning": "",         # task-specific warning template (optional)
     "chat_history":       [],          # list of {"role": str, "text": str} for panel
 }
@@ -1583,14 +1584,14 @@ def task_loop():
         f"Display: {DISPLAY_W}×{DISPLAY_H}. Origin top-left. "
         f"Chrome is showing {task['site']}.\n"
         "Rules:\n"
-        "- ALWAYS write 1–2 short sentences before every tool call (never skip).\n"
-        "  Sentence 1 (if something changed): one phrase on what you now see or what changed. "
-        "e.g. \"The CFP page loaded.\" or \"The search results appeared.\"\n"
-        "  Sentence 2 (always): exactly what you will do next, naming the exact UI label in quotes. "
+        "- ALWAYS write exactly 2 short sentences before every tool call (never skip).\n"
+        "  Sentence 1: what just changed or appeared on screen after the last action. "
+        "e.g. \"The search results appeared.\" or \"The product page loaded.\"\n"
+        "  Sentence 2: exactly what you will do next, naming the exact UI label in quotes. "
         "e.g. \"I'll click the 'Add to Basket' button.\" "
-        "e.g. \"I'll select the 'Fragrance Free' checkbox.\" "
-        "e.g. \"I'll click the 'Sensitive Skin' filter option.\"\n"
-        "  Keep each sentence under 12 words. Never use vague phrases like 'I will proceed', 'I will continue', or 'I will click here'.\n"
+        "e.g. \"I'll select the 'Fragrance Free' checkbox.\"\n"
+        "  Each sentence under 10 words. Never say 'I will proceed', 'I will continue', or 'I will click here'.\n"
+        "  For the very first action, sentence 1 should describe what you see on screen.\n"
         "- To search on Google: click the search box on the page, type your query, press Enter. "
         "Do NOT use the Chrome address bar to search — use the Google search box on screen.\n"
         "- To navigate to a new URL: use command+l, type the URL, press Enter.\n"
@@ -1718,9 +1719,18 @@ def task_loop():
                 }.get(a, f"Performing {a}.")
             print(f"[CLAUDE] fallback narration: {thought!r}", file=sys.stderr)
 
-        # Speak thought aloud before every action
-        if thought:
-            speak_async(thought)
+        # Split thought into 2 sentences: sentence 1 = what changed, sentence 2 = what will do.
+        # Speak sentence 2 (intention) now; sentence 1 (observation) was spoken after last action.
+        sentences = [s.strip() for s in thought.split(". ") if s.strip()] if thought else []
+        intention  = sentences[-1] if sentences else ""
+        observation = ". ".join(sentences[:-1]) if len(sentences) > 1 else ""
+
+        # Store observation to be spoken after the upcoming action executes
+        with state_lock:
+            state["pending_observation"] = observation
+
+        if intention:
+            speak_async(intention)
 
         with state_lock:
             state["reasoning"]        = False
@@ -1773,6 +1783,13 @@ def task_loop():
 
             execute_action(action, block.input)
             time.sleep(random.uniform(0.04, 0.09))
+
+            # Speak "what changed" observation after meaningful actions
+            if action in ("left_click", "double_click", "right_click", "key", "type"):
+                with state_lock:
+                    obs = state.pop("pending_observation", "")
+                if obs:
+                    speak_async(obs)
 
             if _is_trivial_action(action, block.input):
                 content = _trivial_confirmation(action, block.input)
