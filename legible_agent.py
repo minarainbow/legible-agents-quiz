@@ -1690,30 +1690,27 @@ def task_loop():
                 _recorder.log_reasoning(raw)
             push_chat_message("thought", raw)
 
-        # Speak Claude's own reasoning aloud before acting.
-        # If Claude didn't write a narration, build one from the first action.
-        # Skip for click actions — _execute_action_inner will speak the specific element label.
-        _CLICK_ACTIONS = {"left_click", "double_click", "right_click"}
+        # Build narration from the actual action (not Claude's free text) so it always matches.
         first_action = next(
             (b for b in response.content if getattr(b, "type", "") == "tool_use"), None
         )
-        first_action_type = first_action.input.get("action", "") if first_action else ""
-
-        if not thought and first_action_type not in _CLICK_ACTIONS:
-            if first_action:
-                a = first_action_type
-                thought = {
-                    "screenshot":     "",   # suppress
-                    "scroll":         "Scrolling the page.",
-                    "type":           f"Typing: {first_action.input.get('text','')[:30]}",
-                    "key":            "",   # suppress
-                    "mouse_move":     "",   # suppress
-                    "wait":           "",   # suppress
-                }.get(a, f"Performing {a}.")
-            print(f"[CLAUDE] fallback narration: {thought!r}", file=sys.stderr)
-
-        if thought:
-            speak_async(thought)
+        if first_action:
+            a   = first_action.input.get("action", "")
+            inp = first_action.input
+            narration = {
+                "screenshot":   "",
+                "scroll":       "Scrolling the page.",
+                "wait":         "",
+                "mouse_move":   "",
+                "key":          "",
+            }.get(a, "")
+            if not narration:
+                if a == "type":
+                    narration = f"I'll type '{inp.get('text','')[:40]}'."
+                elif a in ("left_click", "double_click", "right_click"):
+                    narration = thought  # per-element label spoken in _execute_action_inner
+            if narration:
+                speak_async(narration)
 
         with state_lock:
             state["reasoning"]        = False
