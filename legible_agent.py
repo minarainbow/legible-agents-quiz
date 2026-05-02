@@ -1041,14 +1041,18 @@ def _execute_action_inner(action, params):
             tts_future = prefetch_tts(warning)
             dom_click_preview(x, y, high_stakes=True)
             stop_ev = threading.Event()
-            orbit_t = threading.Thread(target=orbit_mouse, args=(x, y, stop_ev), kwargs={"min_revolutions": 1.0}, daemon=True)
+            orbit_t = threading.Thread(target=orbit_mouse, args=(x, y, stop_ev), kwargs={"min_revolutions": 0.5}, daemon=True)
             orbit_t.start()
             play_prefetched(warning, tts_future)
             stop_ev.set()
             orbit_t.join(timeout=5.0)
             time.sleep(1.0)  # grace period after orbit — user can intervene
         else:
-            tts_text = f"I'll click '{label}'." if label else ""
+            # Only speak label if no thought narration was already queued
+            with state_lock:
+                has_thought = bool(state.get("last_thought", ""))
+            short_label = label[:40] + "…" if label and len(label) > 40 else label
+            tts_text = (f"I'll click '{short_label}'." if short_label and not has_thought else "")
             tts_future = prefetch_tts(tts_text) if tts_text else None
             dom_click_preview(x, y)
             move_t = threading.Thread(target=human_move_to, args=(x, y), kwargs={"speed_factor": base_speed}, daemon=True)
@@ -1715,7 +1719,7 @@ def task_loop():
                 if a == "type":
                     narration = f"I'll type '{inp.get('text','')[:40]}'."
                 elif a in ("left_click", "double_click", "right_click"):
-                    narration = ""  # _execute_action_inner speaks element label
+                    narration = thought  # speak thought; element label only as fallback
             if narration:
                 speak_async(narration)
 
