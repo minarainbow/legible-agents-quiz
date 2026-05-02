@@ -1102,6 +1102,7 @@ def _execute_action_inner(action, params):
             state["reasoning_text"] = f"Typing: {short}"
             state["speech_done_ts"] = now()
         activate_chrome()
+        time.sleep(0.3)  # wait for focus before typing
         clean = text.rstrip("\n")
         human_type_visible(clean)
         if text.endswith("\n"):
@@ -1598,7 +1599,7 @@ def task_loop():
         "- To close any popup or overlay, press Escape — do NOT click randomly on the page to dismiss it.\n"
         "- The Sephora search bar is in the page HEADER (top center of the page, NOT the Chrome address bar at the very top of the screen). The Chrome address bar is above the page content — never click it.\n"
         "- 'Add to Basket' succeeds when: the button text changes OR an 'Added for Get It Shipped' popup appears. Either signal = done. Do NOT click Add to Basket again.\n"
-        "- After adding an item to cart, press Escape to dismiss the popup, then click the Sephora search bar in the header.\n"
+        "- After adding an item to cart: press Escape, then press command+Home to jump to the top of the page, then click the search bar.\n"
         "- NEVER construct or type a URL to search — only use the Sephora search bar on the page.\n"
         "- When browsing products, use filter/sort options on the results page to narrow down.\n"
         "- If you see existing items in the cart that are not from this task, ignore them — treat the cart as empty."
