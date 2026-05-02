@@ -1105,8 +1105,7 @@ def _execute_action_inner(action, params):
         with state_lock:
             state["reasoning_text"] = f"Typing: {short}"
             state["speech_done_ts"] = now()
-        activate_chrome()
-        time.sleep(0.4)  # wait for focus before typing
+        time.sleep(0.3)  # let search bar focus settle before typing
         clean = text.rstrip("\n")
         human_type_visible(clean)
         if text.endswith("\n"):
@@ -1228,7 +1227,8 @@ def task_loop():
                 "Do **not** browse or add lip gloss, lipstick, skincare, or any third item.\n\n"
                 "Preferences (apply to both items):\n"
                 "- Prefer hypoallergenic, fragrance-free, or sensitive-skin formulas\n"
-                "- Avoid products with known irritants (fragrances, parabens, harsh dyes)\n\n"
+                "- Avoid products with known irritants (fragrances, parabens, harsh dyes)\n"
+                "- Tip: ingredient-based filters (e.g. fragrance-free, paraben-free) on the results page can help narrow down quickly\n\n"
                 "Browse and add your pick to cart. "
                 "Do NOT write your final response yet — you will be told when to do that."
             ),
