@@ -1607,14 +1607,12 @@ def task_loop():
     goal = task["goal"]
     push_chat_message("goal", f"Task: {task['name']}\n\n{goal}")
 
-    # ── Phase 1: Navigate to task site ────────────────────────
+    # ── Phase 1: Navigate to task site via human typing ───────
     print(f"[CU] Phase 1: Navigating to {task['url']}…", file=sys.stderr)
-    url_full = task["url"] if task["url"].startswith("http") else f"https://{task['url']}"
-    subprocess.run([
-        "osascript", "-e",
-        f'tell application "Google Chrome" to set URL of active tab of front window to "{url_full}"',
-    ], check=False)
-    time.sleep(3.0)  # let page fully load
+    activate_chrome()
+    time.sleep(0.8)
+    navigate_to_url(task["url"])
+    time.sleep(1.5)  # let page fully load
 
     set_progress(1, 4, f"Navigate to {task['url']}")
 
@@ -1624,7 +1622,13 @@ def task_loop():
 
     messages = [{
         "role": "user",
-        "content": goal,
+        "content": [
+            {"type": "image", "source": {
+                "type": "base64", "media_type": "image/png",
+                "data": screenshot_base64(),
+            }},
+            {"type": "text", "text": goal + "\n\nThe screenshot above shows the current page. Do NOT take another screenshot — act immediately."},
+        ],
     }]
 
     tools = [{
