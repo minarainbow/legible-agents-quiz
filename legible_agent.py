@@ -1607,11 +1607,14 @@ def task_loop():
     goal = task["goal"]
     push_chat_message("goal", f"Task: {task['name']}\n\n{goal}")
 
-    # ── Phase 1: Navigate to task site via human typing ───────
+    # ── Phase 1: Navigate to task site ────────────────────────
     print(f"[CU] Phase 1: Navigating to {task['url']}…", file=sys.stderr)
-    activate_chrome()
-    time.sleep(0.8)
-    navigate_to_url(task["url"])
+    url_full = task["url"] if task["url"].startswith("http") else f"https://{task['url']}"
+    subprocess.run([
+        "osascript", "-e",
+        f'tell application "Google Chrome" to set URL of active tab of front window to "{url_full}"',
+    ], check=False)
+    time.sleep(3.0)  # let page fully load
 
     set_progress(1, 4, f"Navigate to {task['url']}")
 
