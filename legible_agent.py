@@ -1186,7 +1186,11 @@ def navigate_to_url(url: str):
     """Focus Chrome address bar and navigate to url."""
     _ensure_chrome_english()
 
-    pyautogui.hotkey("command", "l")
+    # Press command+l explicitly with keyDown/keyUp to ensure it registers
+    pyautogui.keyDown("command")
+    time.sleep(0.1)
+    pyautogui.press("l")
+    pyautogui.keyUp("command")
     time.sleep(1.2)  # wait for address bar to fully focus
     pyautogui.hotkey("command", "a")  # select all existing text
     time.sleep(0.2)
