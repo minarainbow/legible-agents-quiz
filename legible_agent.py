@@ -1227,7 +1227,7 @@ def task_loop():
                 "Preferences (apply to both items):\n"
                 "- Prefer hypoallergenic, fragrance-free, or sensitive-skin formulas\n"
                 "- Avoid products with known irritants (fragrances, parabens, harsh dyes)\n"
-                "- Tip: ingredient-based filters (e.g. fragrance-free, paraben-free) on the results page can help narrow down quickly\n\n"
+                "- Tip: apply both 'Fragrance Free' and 'Paraben-free' ingredient filters on the results page, then pick the first suitable product\n\n"
                 "Browse and add your pick to cart. "
                 "Do NOT write your final response yet — you will be told when to do that."
             ),
