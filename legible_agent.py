@@ -286,26 +286,39 @@ def strip_old_screenshots(messages: list, keep_recent: int = 3) -> list:
     return result
 
 
+_ACTION_PREFIXES = ("let me", "i'll", "i will", "i need to", "i should", "now i'll", "now i will")
+
 def meaningful_thought(text, max_chars=80):
-    """Return one concise, meaningful sentence from Claude's response."""
+    """Return the most action-relevant sentence from Claude's response.
+
+    Prefers sentences that express intent ('Let me', 'I'll', etc.) over
+    pure observations, since those describe what is about to happen.
+    """
     if not text:
         return ""
     sentences = re.split(r'(?<=[.!?])\s+', text.strip())
+
+    def _truncate(s):
+        s = s.strip()
+        if len(s) > max_chars:
+            cut = s[:max_chars].rfind(' ')
+            s = s[:cut] + "…" if cut > 10 else s[:max_chars] + "…"
+        return s
+
+    # First pass: prefer action-intent sentences
+    for s in sentences:
+        low = s.strip().lower()
+        if any(low.startswith(p) for p in _ACTION_PREFIXES):
+            return _truncate(s)
+
+    # Second pass: first non-filler sentence
     for s in sentences:
         low = s.strip().lower()
         is_filler = any(low.startswith(f) for f in _FILLER_PREFIXES) and len(s) < 60
         if not is_filler:
-            s = s.strip()
-            if len(s) > max_chars:
-                cut = s[:max_chars].rfind(' ')
-                s = s[:cut] + "…" if cut > 10 else s[:max_chars] + "…"
-            return s
-    # fallback: last sentence, truncated
-    s = sentences[-1].strip()
-    if len(s) > max_chars:
-        cut = s[:max_chars].rfind(' ')
-        s = s[:cut] + "…" if cut > 10 else s[:max_chars] + "…"
-    return s
+            return _truncate(s)
+
+    return _truncate(sentences[-1])
 
 # ─────────────────────────────────────────────────────────────
 # State helpers
@@ -894,7 +907,7 @@ def speak(text: str):
             for chunk in audio:
                 f.write(chunk)
             tmp = f.name
-        subprocess.run(["afplay", "-r", "1.45", tmp])
+        subprocess.run(["afplay", "-r", "1.25", "-v", "2.0", tmp])
     except Exception as e:
         print(f"[TTS] error: {e}, falling back to say", file=sys.stderr)
         subprocess.run(["say", "-v", "Samantha", "-r", "230", text])
@@ -945,7 +958,7 @@ def play_prefetched(text: str, future: concurrent.futures.Future):
     tmp = future.result()  # blocks only for remaining download time
     try:
         if tmp:
-            subprocess.run(["afplay", "-r", "1.45", tmp])
+            subprocess.run(["afplay", "-r", "1.25", "-v", "2.0", tmp])
         else:
             subprocess.run(["say", "-v", "Samantha", "-r", "230", text])
     finally:
@@ -1021,12 +1034,13 @@ def _execute_action_inner(action, params):
         activate_chrome()
         label = _get_element_label(x, y)
         high_stakes = _is_high_stakes(label)
-        # Fallback: check if Claude's narration mentions any high-stakes keyword
+        # Fallback: check thought for explicit action intent toward a high-stakes element
         if not high_stakes:
             with state_lock:
                 last_thought = state.get("last_thought", "").lower()
+            action_intent = any(p in last_thought for p in ("i'll", "i will", "let me", "clicking", "now i"))
             for kw in _HIGH_STAKES_KEYWORDS:
-                if kw in last_thought:
+                if kw in last_thought and action_intent:
                     high_stakes = True
                     if not label:
                         label = kw
@@ -1034,8 +1048,18 @@ def _execute_action_inner(action, params):
         print(f"[CLICK] label={label!r} high_stakes={high_stakes}", file=sys.stderr)
         if high_stakes:
             with state_lock:
-                warning_tpl = state.get("high_stakes_warning", "")
-            warning = warning_tpl.format(label=label) if warning_tpl else f"Heads up — about to add to basket: {label}." if any(kw in label.lower() for kw in ("add to basket", "add to cart")) else f"Heads up — I'm about to click '{label}'."
+                warning_tpl  = state.get("high_stakes_warning", "")
+                raw_thought  = state.get("last_thought", "")
+            if warning_tpl:
+                warning = warning_tpl.format(label=label)
+            else:
+                action_phrase = "adding to basket" if any(kw in (label or "").lower() for kw in ("add to basket", "add to cart")) else f"clicking '{label}'" if label else "proceeding"
+                reason = meaningful_thought(raw_thought) if raw_thought else ""
+                if reason:
+                    reason = reason[:80].rsplit(" ", 1)[0] if len(reason) > 80 else reason
+                    warning = f"Heads up — {action_phrase}. {reason}."
+                else:
+                    warning = f"Heads up — {action_phrase}."
             tts_future = prefetch_tts(warning)
             dom_click_preview(x, y, high_stakes=True)
             stop_ev = threading.Event()
@@ -1104,9 +1128,9 @@ def _execute_action_inner(action, params):
             state["reasoning_text"] = f"Typing: {short}"
             state["speech_done_ts"] = now()
         time.sleep(0.3)
+        _ensure_abc_input()
         clean = text.rstrip("\n")
-        pyperclip.copy(clean)
-        pyautogui.hotkey("command", "v")
+        human_type_visible(clean)
         if text.endswith("\n"):
             pyautogui.press("return")
 
@@ -1176,6 +1200,18 @@ def activate_chrome():
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
     )
     time.sleep(0.4)
+
+def _ensure_abc_input():
+    """Switch macOS input source to ABC/English if Korean or other IME is active."""
+    script = """\
+tell application "System Events"
+    set src to name of first input source whose selected is true
+    if src does not contain "ABC" and src does not contain "U.S." then
+        keystroke space using {control down}
+        delay 0.15
+    end if
+end tell"""
+    subprocess.run(["osascript", "-e", script], capture_output=True)
 
 def _ensure_chrome_english():
     """Force Chrome UI language to English via defaults write (takes effect on next launch)."""
@@ -1592,14 +1628,14 @@ def task_loop():
         "- Before every tool call, write ONE short sentence describing what you will do next, naming the UI label in quotes. "
         "e.g. \"I'll click the 'Add to Basket' button.\" Under 12 words. Never say 'I will proceed' or 'I will click here'.\n"
         "- Never take two screenshots in a row.\n"
-        "- After typing in a search bar, press Enter immediately — no screenshot or scroll in between.\n"
+        "- On Sephora: click the search icon in the header to open the search input, then type and press Enter.\n"
+        "- After typing a search query and pressing Enter, an autocomplete dropdown may appear — ignore it and wait for the full search results page to load. Do NOT press Escape after Enter.\n"
         "- When scrolling, use delta_y of 5–8.\n"
         "- To close any popup or overlay, press Escape — do NOT click randomly on the page to dismiss it.\n"
         "- After clicking a link or button, wait for the result — do NOT click again. One click is enough.\n"
-        "- The site search bar is in the page header. The Chrome address bar is above the page — never click it to search.\n"
+        "- The Chrome address bar is above the page — never click it to search.\n"
         "- Never construct or type a URL to navigate within a site — use the site's own search or navigation.\n"
         "- When adding to cart: success = button text changes OR a confirmation popup appears. Do NOT click again.\n"
-        "- After adding to cart: press Escape, then command+Home, then click the search bar for the next item.\n"
         "- Use 'command' for macOS shortcuts.\n"
         "- If you see existing cart items not from this task, ignore them.\n"
         f"{task.get('system_prompt_extra', '')}"
@@ -1715,7 +1751,13 @@ def task_loop():
                 if a == "type":
                     narration = f"I'll type '{inp.get('text','')[:40]}'."
                 elif a in ("left_click", "double_click", "right_click"):
-                    narration = thought  # speak thought; element label only as fallback
+                    # Suppress narration for high-stakes clicks — execute_action will
+                    # speak a combined "Heads up + reason" instead.
+                    thought_lower = (thought or "").lower()
+                    if any(kw in thought_lower for kw in _HIGH_STAKES_KEYWORDS):
+                        narration = ""
+                    else:
+                        narration = thought
             if narration:
                 speak_async(narration)
 
