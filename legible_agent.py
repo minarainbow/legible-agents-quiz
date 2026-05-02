@@ -1610,10 +1610,12 @@ def task_loop():
 
     # ── Phase 1: Pre-navigation ───────────────────────────────
     print(f"[CU] Phase 1: Navigating to {task['url']}…", file=sys.stderr)
-    activate_chrome()
-    time.sleep(0.3)
-    navigate_to_url(task["url"])
-    time.sleep(1.5)  # let page settle before screenshot
+    url_full = task["url"] if task["url"].startswith("http") else f"https://{task['url']}"
+    subprocess.run([
+        "osascript", "-e",
+        f'tell application "Google Chrome" to set URL of active tab of front window to "{url_full}"',
+    ], check=False)
+    time.sleep(2.5)  # let page load
 
     set_progress(1, 4, f"Navigate to {task['url']}")
 
