@@ -657,7 +657,7 @@ def dom_mark_copied():
 # ── Stakes detection ───────────────────────────────────────────
 
 _HIGH_STAKES_KEYWORDS = {
-    "buy", "add to cart", "checkout", "order now", "purchase",
+    "buy", "add to cart", "add to basket", "checkout", "order now", "purchase",
     "place order", "submit", "send", "confirm", "delete", "remove",
     "pay", "proceed", "complete purchase", "sign up", "subscribe",
 }
@@ -1036,7 +1036,7 @@ def _execute_action_inner(action, params):
         if high_stakes:
             with state_lock:
                 warning_tpl = state.get("high_stakes_warning", "")
-            warning = warning_tpl.format(label=label) if warning_tpl else f"Heads up — I'm about to click '{label}'. This may be hard to undo!"
+            warning = warning_tpl.format(label=label) if warning_tpl else f"Heads up — about to add to basket: {label}." if any(kw in label.lower() for kw in ("add to basket", "add to cart")) else f"Heads up — I'm about to click '{label}'."
             tts_future = prefetch_tts(warning)
             dom_click_preview(x, y, high_stakes=True)
             stop_ev = threading.Event()
@@ -1100,7 +1100,13 @@ def _execute_action_inner(action, params):
             state["reasoning_text"] = f"Typing: {short}"
             state["speech_done_ts"] = now()
         activate_chrome()
-        human_type_visible(text)
+        # Use clipboard paste to bypass IME/Korean input issues
+        clean = text.rstrip("\n")
+        pyperclip.copy(clean)
+        pyautogui.hotkey("command", "v")
+        time.sleep(0.1)
+        if text.endswith("\n"):
+            pyautogui.press("return")
 
     elif action == "key":
         key_str = params["text"]
@@ -1180,13 +1186,12 @@ def navigate_to_url(url: str):
     """Focus Chrome address bar and navigate to url."""
     _ensure_chrome_english()
 
-    pyautogui.keyDown("command")
-    time.sleep(0.05)
-    pyautogui.press("l")
-    time.sleep(0.05)
-    pyautogui.keyUp("command")
-    time.sleep(0.3)
-    human_type_visible(url)
+    pyautogui.hotkey("command", "l")
+    time.sleep(0.5)  # wait for address bar to fully focus
+    pyautogui.hotkey("command", "a")  # select all existing text
+    time.sleep(0.1)
+    pyperclip.copy(url)
+    pyautogui.hotkey("command", "v")
     time.sleep(0.1)
     pyautogui.press("return")
     time.sleep(1.5)
@@ -1205,7 +1210,7 @@ def task_loop():
         # ── Transactional (T1–T3) ──────────────────────────────
         "1": {
             "name": "T1 — Sephora: Foundation & Mascara",
-            "url":  "google.com",
+            "url":  "sephora.com",
             "site": "Sephora website",
             "max_iterations": 85,
             "goal": (
@@ -1592,6 +1597,7 @@ def task_loop():
         "- On Sephora: to open a product, take a screenshot first to see exact coordinates, then click the product NAME text only. "
         "Never click 'Quicklook'. If a Quicklook popup appears, press Escape and try again.\n"
         "- Never guess or construct product URLs directly — always use the site's search bar to find products.\n"
+        "- When browsing products, prefer using the site's filter/sort options (e.g. ingredient filters, skin type) over searching with combined keyword strings. Browse naturally.\n"
         "- If you see existing items in the cart that are not from this task, ignore them — treat the cart as empty."
     )
 
