@@ -379,15 +379,15 @@ def human_move_to(x, y, speed_factor=1.0):
 
 
 def human_type_visible(text, target_pos=None):
-    """Type text char-by-char with human timing. Uses pyautogui.write per char to avoid
-    macOS treating individual keypresses as system shortcuts."""
+    """Type text with human-like timing using pyautogui.write (handles Unicode safely)."""
+    # Play typing sound then type each char with human-paced delay
     for i, char in enumerate(text):
         pyautogui.write(char, interval=0)
         _play_sfx_or_system("typing", "/System/Library/Sounds/Tock.aiff", 0.25)
         progress = i / max(len(text) - 1, 1)
         speed_mult = 0.4 + 1.4 * (progress ** 1.5)
         delay = TYPE_CHAR_INTERVAL / max(speed_mult, 0.2) * random.uniform(0.8, 1.2)
-        time.sleep(max(0.015, delay))
+        time.sleep(max(0.02, delay))
     time.sleep(0.15)
 
 # ─────────────────────────────────────────────────────────────
@@ -1106,10 +1106,9 @@ def _execute_action_inner(action, params):
             state["reasoning_text"] = f"Typing: {short}"
             state["speech_done_ts"] = now()
         activate_chrome()
-        time.sleep(0.3)  # wait for focus before typing
+        time.sleep(0.4)  # wait for focus before typing
         clean = text.rstrip("\n")
-        pyperclip.copy(clean)
-        pyautogui.hotkey("command", "v")
+        human_type_visible(clean)
         if text.endswith("\n"):
             pyautogui.press("return")
 
@@ -1224,7 +1223,7 @@ def task_loop():
             "goal": (
                 "Your task: find exactly 2 makeup products on Sephora's website and add each to cart: "
                 "**foundation** and **mascara** only.\n\n"
-                "Start by searching for 'foundation' using Sephora's search bar. You will be guided to mascara next.\n\n"
+                "Start by searching for 'foundation' using Sephora's search bar, then use the 'Clean at Sephora' or ingredient filters to narrow results before picking. You will be guided to mascara next.\n\n"
                 "Hard rule: after foundation + mascara are in cart, **stop**. "
                 "Do **not** browse or add lip gloss, lipstick, skincare, or any third item.\n\n"
                 "Preferences (apply to both items):\n"
