@@ -1718,8 +1718,8 @@ def task_loop():
                 }.get(a, f"Performing {a}.")
             print(f"[CLAUDE] fallback narration: {thought!r}", file=sys.stderr)
 
-        # Speak thought aloud for all actions except screenshot (boilerplate)
-        if thought and first_action_type != "screenshot":
+        # Speak thought aloud before every action
+        if thought:
             speak_async(thought)
 
         with state_lock:
