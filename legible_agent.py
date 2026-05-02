@@ -1215,7 +1215,7 @@ def task_loop():
             "goal": (
                 "Your task: find exactly 2 makeup products on Sephora's website and add each to cart: "
                 "**foundation** and **mascara** only.\n\n"
-                "Start by browsing Foundation. You will be guided to mascara next.\n\n"
+                "Start by clicking through the site's navigation menu to find Foundation — do NOT type a URL. You will be guided to mascara next.\n\n"
                 "Hard rule: after foundation + mascara are in cart, **stop**. "
                 "Do **not** browse or add lip gloss, lipstick, skincare, or any third item.\n\n"
                 "Preferences (apply to both items):\n"
@@ -1595,8 +1595,8 @@ def task_loop():
         "- When scrolling, use delta_y of 5–8.\n"
         "- On Sephora: to open a product, take a screenshot first to see exact coordinates, then click the product NAME text only. "
         "Never click 'Quicklook'. If a Quicklook popup appears, press Escape and try again.\n"
-        "- Never guess or construct product URLs directly — always use the site's search bar to find products.\n"
-        "- When browsing products, prefer using the site's filter/sort options (e.g. ingredient filters, skin type) over searching with combined keyword strings. Browse naturally.\n"
+        "- NEVER type a URL path like '/shop/foundation' or '/category/...' — you are already on the site's homepage. Use the site's navigation menu or search bar instead.\n"
+        "- When browsing products, prefer using the site's navigation menu (e.g. click 'Makeup' → 'Foundation') or filter/sort options over typing search queries. Browse naturally.\n"
         "- If you see existing items in the cart that are not from this task, ignore them — treat the cart as empty."
     )
 
@@ -1628,7 +1628,7 @@ def task_loop():
                 "type": "base64", "media_type": "image/png",
                 "data": screenshot_base64(),
             }},
-            {"type": "text", "text": goal + "\n\nThe screenshot above already shows the current page. Start acting immediately — do NOT take a screenshot first."},
+            {"type": "text", "text": goal + "\n\nThe screenshot above already shows the current page. Your FIRST action must be a click or navigation — do NOT take a screenshot, do NOT describe what you see. Act immediately."},
         ],
     }]
 
