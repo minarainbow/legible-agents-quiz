@@ -1629,7 +1629,7 @@ def task_loop():
                 "type": "base64", "media_type": "image/png",
                 "data": screenshot_base64(),
             }},
-            {"type": "text", "text": goal + f"\n\nYou are already on {task['url']}. Do NOT navigate there again. Your FIRST action must be a click or type on the page — do NOT take a screenshot, do NOT use the address bar. Act immediately."},
+            {"type": "text", "text": goal + "\n\nThe screenshot above shows the current page. Your FIRST action must be a click or type on the page — do NOT take a screenshot. Act immediately."},
         ],
     }]
 
