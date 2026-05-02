@@ -1221,15 +1221,15 @@ def task_loop():
                 "Do NOT write your final response yet — you will be told when to do that."
             ),
             "iteration_checkpoints": {
-                40: (
-                    "Good. Commit to one foundation now — pick the option and add it to cart.\n"
+                30: (
+                    "Good. If you have not added a foundation to cart yet, commit to one now and add it. "
                     "Then navigate to the Mascara section only. Browse mascaras, look for "
                     "hypoallergenic or sensitive-eye formulas. Change colors if needed. "
                     "Do not open Lip Gloss or any other category."
                 ),
-                72: (
-                    "Good. Commit to one mascara and add it to cart.\n"
-                    "You now have both required items — **do not add anything else**. "
+                60: (
+                    "Good. If you have not added a mascara to cart yet, commit to one now and add it. "
+                    "You should now have both required items — **do not add anything else**. "
                     "Do NOT use any tools — write your final list: "
                     "product name, brand, and price for each item."
                 ),
@@ -1589,7 +1589,9 @@ def task_loop():
         "- Use 'command' for macOS shortcuts.\n"
         "- Never take two screenshots in a row.\n"
         "- When scrolling, use delta_y of 5–8.\n"
-        "- On Sephora: click the product name text directly — never click 'Quicklook' buttons.\n"
+        "- On Sephora: to open a product, take a screenshot first to see exact coordinates, then click the product NAME text only. "
+        "Never click 'Quicklook'. If a Quicklook popup appears, press Escape and try again.\n"
+        "- Never guess or construct product URLs directly — always use the site's search bar to find products.\n"
         "- If you see existing items in the cart that are not from this task, ignore them — treat the cart as empty."
     )
 
