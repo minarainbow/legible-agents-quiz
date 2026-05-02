@@ -1187,13 +1187,13 @@ def navigate_to_url(url: str):
     _ensure_chrome_english()
 
     pyautogui.hotkey("command", "l")
-    time.sleep(0.5)  # wait for address bar to fully focus
+    time.sleep(0.8)  # wait for address bar to fully focus
     pyautogui.hotkey("command", "a")  # select all existing text
-    time.sleep(0.1)
+    time.sleep(0.2)
     human_type_visible(url)
-    time.sleep(0.1)
+    time.sleep(0.2)
     pyautogui.press("return")
-    time.sleep(1.5)
+    time.sleep(2.0)
 
 def task_loop():
     global _recorder
@@ -1595,8 +1595,8 @@ def task_loop():
         "- When scrolling, use delta_y of 5–8.\n"
         "- On Sephora: to open a product, take a screenshot first to see exact coordinates, then click the product NAME text only. "
         "Never click 'Quicklook'. If a Quicklook popup appears, press Escape and try again.\n"
-        "- NEVER type a full URL to navigate to a product category — you are already on the site. Do NOT use the Chrome address bar at all during this task.\n"
-        "- To find products: use the site's own search bar (on the page) or navigation menu. The search bar is the fastest way.\n"
+        "- You are already on the correct website. Do NOT press command+l or use the Chrome address bar at any point — use the site's search bar on the page instead.\n"
+        "- To find products: click the search bar visible on the page, type the product name, press Enter.\n"
         "- When browsing products, use filter/sort options on the results page to narrow down.\n"
         "- If you see existing items in the cart that are not from this task, ignore them — treat the cart as empty."
     )
@@ -1610,12 +1610,10 @@ def task_loop():
 
     # ── Phase 1: Pre-navigation ───────────────────────────────
     print(f"[CU] Phase 1: Navigating to {task['url']}…", file=sys.stderr)
-    url_full = task["url"] if task["url"].startswith("http") else f"https://{task['url']}"
-    subprocess.run([
-        "osascript", "-e",
-        f'tell application "Google Chrome" to set URL of active tab of front window to "{url_full}"',
-    ], check=False)
-    time.sleep(2.5)  # let page load
+    activate_chrome()
+    time.sleep(0.8)
+    navigate_to_url(task["url"])
+    time.sleep(2.0)  # let page settle before screenshot
 
     set_progress(1, 4, f"Navigate to {task['url']}")
 
