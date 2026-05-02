@@ -1113,6 +1113,11 @@ def _execute_action_inner(action, params):
         else:
             pyautogui.hotkey(*keys)
 
+        # Re-focus Chrome after Return/Enter in case page navigation shifts focus
+        if keys[-1] in ("return", "enter"):
+            time.sleep(0.2)
+            activate_chrome()
+
         # Mark copied text in DOM when agent copies
         if tuple(keys) == ("command", "c"):
             time.sleep(0.1)
@@ -1616,7 +1621,7 @@ def task_loop():
                 "type": "base64", "media_type": "image/png",
                 "data": screenshot_base64(),
             }},
-            {"type": "text", "text": goal},
+            {"type": "text", "text": goal + "\n\nThe screenshot above already shows the current page. Start acting immediately — do NOT take a screenshot first."},
         ],
     }]
 
