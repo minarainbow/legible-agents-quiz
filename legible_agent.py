@@ -1596,6 +1596,7 @@ def task_loop():
         "- To navigate to a new URL: use command+l, type the URL, press Enter.\n"
         "- Use 'command' for macOS shortcuts.\n"
         "- NEVER take a screenshot. Every action already returns a screenshot — use that. Never take an extra one to 'verify' or 'wait for page to load'.\n"
+        "- After typing in a search bar, press Enter immediately in the next action — no screenshot or scroll in between.\n"
         "- When scrolling, use delta_y of 5–8.\n"
         "- On Sephora: click the product NAME text only. Never click 'Quicklook'. If a Quicklook popup appears, press Escape.\n"
         "- After clicking a product name, the product page will load — do NOT click again. One click is enough.\n"
