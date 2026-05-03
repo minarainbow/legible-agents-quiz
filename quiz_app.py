@@ -234,45 +234,22 @@ def _fallback_action_quiz_from_log(task_id: str, target_n: int = 6) -> list[dict
 
 
 def _build_action_quiz_set(task_id: str, target_n: int = 6) -> list[dict]:
-    """Return action-only quiz items, expanded to target_n when possible.
-
-    Strategy:
-    1) keep existing action items
-    2) convert non-action items into action-form probes
-    3) if still short, clone action probes with a follow-up wording
-    """
+    """Return quiz items: all next_action_prediction (P-series) + past_action_recall (R-series)."""
     source = _load_quiz_items(task_id)
-    action_items = []
-    converted = []
+    next_items = [dict(it) for it in source if it.get("type") == "next_action_prediction"]
+    past_items = [dict(it) for it in source if it.get("type") == "past_action_recall"]
 
-    for it in source:
-        if it.get("type") == "next_action_prediction":
-            action_items.append(dict(it))
-        else:
-            c = dict(it)
-            c["type"] = "next_action_prediction"
-            c["question"] = "What is the agent's next meaningful action at this moment?"
-            converted.append(c)
+    next_items.sort(key=lambda it: it.get("pause_time_sec", 0))
+    for idx, it in enumerate(next_items, start=1):
+        it["id"] = f"P{idx}"
 
-    out = action_items + converted
+    past_items.sort(key=lambda it: it.get("pause_time_sec", 0))
+    for idx, it in enumerate(past_items, start=1):
+        it["id"] = f"R{idx}"
 
-    # If still short, duplicate from action-style probes with new IDs/wording.
-    i = 0
-    base = out[:] if out else action_items[:]
-    while len(out) < target_n and base:
-        src = dict(base[i % len(base)])
-        src["question"] = "Follow-up: what will the agent do next?"
-        out.append(src)
-        i += 1
-
-    # Final cleanup: cap to target_n and normalize IDs to P1..Pn in timeline order.
-    out = out[:target_n]
+    out = next_items + past_items
     if not out:
         return _fallback_action_quiz_from_log(task_id, target_n=target_n)
-    out.sort(key=lambda it: it.get("pause_time_sec", 0))
-    for idx, it in enumerate(out, start=1):
-        it["id"] = f"P{idx}"
-        it["type"] = "next_action_prediction"
     return out
 
 
@@ -694,6 +671,7 @@ HTML = r"""<!DOCTYPE html>
   }
   .type-badge.goal { background: #ede9fe; color: #6d28d9; }
   .type-badge.pred { background: #cffafe; color: #0e7490; }
+  .type-badge.past { background: #fef9c3; color: #854d0e; }
   .quiz-id  { font-size: 12px; font-weight: 700; color: var(--muted); }
   .quiz-ts  { font-size: 12px; color: var(--muted); margin-left: auto; font-variant-numeric: tabular-nums; }
 
@@ -1313,6 +1291,7 @@ function renderActiveQuiz() {
   const q        = S.quizItems.find(q => q.id === S.activeId);
   const existing = S.answers[q.id]?.userAnswer || '';
   const isGoal   = q.type === 'goal_legibility';
+  const isPast   = q.type === 'past_action_recall';
   const scoreData = S.answers[q.id];
   const isEvaluating = S.evaluating.has(q.id);
   const locked = scoreData?.score != null;
@@ -1345,13 +1324,12 @@ function renderActiveQuiz() {
   card.className = 'quiz-card';
   card.innerHTML = `
     <div class="quiz-card-header">
-      <span class="type-badge ${isGoal ? 'goal' : 'pred'}">${isGoal ? 'Goal Legibility' : 'Next Action'}</span>
+      <span class="type-badge ${isGoal ? 'goal' : isPast ? 'past' : 'pred'}">${isGoal ? 'Goal Legibility' : isPast ? 'Past Action' : 'Next Action'}</span>
       <span class="quiz-id">${q.id}</span>
       <span class="quiz-ts">⏱ ${q.timestamp_label}</span>
     </div>
     <div class="quiz-card-body">
       <p class="quiz-instruction">${instruction}</p>
-      <div class="quiz-anchor">📍 ${esc(q.anchor)}</div>
       <p class="quiz-question">${esc(q.question)}</p>
       <textarea id="answer-textarea" placeholder="Type your answer here…" rows="3" ${locked ? 'disabled' : ''}>${esc(existing)}</textarea>
       <div class="conf-wrap">
@@ -1502,9 +1480,10 @@ function renderQuizList() {
       scorePill = `<span class="row-score-pill ${lbl}">${scoreIcon(lbl)} ${scoreData.score}/3</span>`;
     }
 
+    const isPastRow = q.type === 'past_action_recall';
     row.innerHTML = `
       <span class="row-id">${esc(q.id)}</span>
-      <span class="type-badge ${isGoal ? 'goal' : 'pred'}" style="font-size:9px;padding:2px 7px">${isGoal ? 'Goal' : 'Pred'}</span>
+      <span class="type-badge ${isGoal ? 'goal' : isPastRow ? 'past' : 'pred'}" style="font-size:9px;padding:2px 7px">${isGoal ? 'Goal' : isPastRow ? 'Past' : 'Pred'}</span>
       <span class="row-ts">${esc(q.timestamp_label)}</span>
       <span class="row-q" title="${esc(q.question)}">${esc(q.question)}</span>
       ${scorePill}

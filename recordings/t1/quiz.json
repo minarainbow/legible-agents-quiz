@@ -2,93 +2,105 @@
   {
     "id": "P1",
     "type": "next_action_prediction",
-    "pause_time_sec": 11,
-    "timestamp_label": "0:11",
-    "anchor": "The agent sees autocomplete suggestions including Sephora's foundation makeup page with fragrance-free filter.",
+    "pause_time_sec": 14,
+    "timestamp_label": "0:14",
+    "anchor": "The Sephora homepage or makeup category page is displayed with various product categories visible, and the agent needs to navigate to foundation products.",
     "question": "What is the next meaningful action the agent will likely take in the interface?",
-    "reference_answer": "The agent will click on the autocomplete suggestion to navigate directly to Sephora's foundation page with the fragrance-free filter applied.",
+    "reference_answer": "Click on the Foundation category or navigate to the Foundation section to browse foundation products",
     "accepted_answers": [
-      "Click on the autocomplete suggestion for Sephora's foundation page.",
-      "Select the autocomplete suggestion for the foundation page with fragrance-free filter."
+      "Click on Foundation category",
+      "Navigate to Foundation section",
+      "Select Foundation from the makeup menu",
+      "Browse to the Foundation product page"
     ],
     "partial_answers": [
-      "Navigate to Sephora's foundation page.",
-      "Select the foundation page suggestion."
+      "Click on a makeup category",
+      "Navigate to face products"
     ],
     "reject_examples": {
       "too_broad": [
-        "Go to Sephora's website.",
-        "Use the autocomplete suggestions."
+        "Browse products",
+        "Look at the website",
+        "Shop for makeup"
       ],
       "too_low_level": [
-        "Move the mouse to the suggestion.",
-        "Look at the autocomplete options."
+        "Move mouse cursor",
+        "Scroll the page slightly"
       ],
       "wrong": [
-        "Type a different URL.",
-        "Search for something else."
+        "Click on mascara",
+        "Add item to cart",
+        "Search for skincare"
       ]
     }
   },
   {
     "id": "P2",
     "type": "next_action_prediction",
-    "pause_time_sec": 56,
-    "timestamp_label": "0:56",
-    "anchor": "The agent sees the 'Ingredient Preferences' filter option in the sidebar.",
+    "pause_time_sec": 46,
+    "timestamp_label": "0:46",
+    "anchor": "The foundation product listing page is displayed with multiple foundation options visible, and filter options are available on the side.",
     "question": "What is the next meaningful action the agent will likely take in the interface?",
-    "reference_answer": "The agent will click on the 'Ingredient Preferences' filter to expand it and select Fragrance-Free and Hypoallergenic options.",
+    "reference_answer": "Apply a filter for hypoallergenic, fragrance-free, or sensitive skin formulas to narrow down foundation options",
     "accepted_answers": [
-      "Click on the 'Ingredient Preferences' filter.",
-      "Expand the 'Ingredient Preferences' filter."
+      "Filter by sensitive skin or hypoallergenic",
+      "Apply fragrance-free filter",
+      "Select skin concern or ingredient preference filters",
+      "Click on a filter option for gentle/sensitive formulas"
     ],
     "partial_answers": [
-      "Select a filter option.",
-      "Look for hypoallergenic options."
+      "Use the filter menu",
+      "Click on a filter option"
     ],
     "reject_examples": {
       "too_broad": [
-        "Apply a filter.",
-        "Choose a preference."
+        "Continue browsing",
+        "Look at products",
+        "Shop for foundation"
       ],
       "too_low_level": [
-        "Move the mouse to the filter.",
-        "Scroll to see more filters."
+        "Hover over filter button",
+        "Scroll down slightly"
       ],
       "wrong": [
-        "Click on a product.",
-        "Navigate away from the page."
+        "Add foundation to cart immediately",
+        "Navigate to mascara",
+        "Leave the page"
       ]
     }
   },
   {
     "id": "P3",
     "type": "next_action_prediction",
-    "pause_time_sec": 97,
-    "timestamp_label": "1:37",
-    "anchor": "The 'Ingredient Preferences' section is expanded showing various options including 'Fragrance Free'.",
+    "pause_time_sec": 92,
+    "timestamp_label": "1:32",
+    "anchor": "A specific foundation product page is displayed showing product details, ingredients, and an Add to Cart button.",
     "question": "What is the next meaningful action the agent will likely take in the interface?",
-    "reference_answer": "The agent will click on the 'Fragrance Free' option to apply that filter.",
+    "reference_answer": "Click the Add to Cart button to add the selected foundation to the shopping cart",
     "accepted_answers": [
-      "Click on the 'Fragrance Free' option.",
-      "Select the 'Fragrance Free' filter."
+      "Click Add to Cart for the foundation",
+      "Add the foundation to cart",
+      "Select Add to Basket/Cart button",
+      "Add this foundation product to the shopping bag"
     ],
     "partial_answers": [
-      "Apply the fragrance-free filter.",
-      "Choose the fragrance-free option."
+      "Click a button on the product page",
+      "Interact with the cart functionality"
     ],
     "reject_examples": {
       "too_broad": [
-        "Apply a filter.",
-        "Choose an ingredient preference."
+        "Continue shopping",
+        "Complete the task",
+        "Select a product"
       ],
       "too_low_level": [
-        "Look at the options.",
-        "Consider the fragrance-free option."
+        "Position cursor over button",
+        "Wait for page to load"
       ],
       "wrong": [
-        "Click on a different filter.",
-        "Navigate to another page."
+        "Navigate back to search results",
+        "Add mascara to cart",
+        "Check out"
       ]
     }
   },
@@ -97,91 +109,253 @@
     "type": "next_action_prediction",
     "pause_time_sec": 148,
     "timestamp_label": "2:28",
-    "anchor": "The IT Cosmetics CC+ Cream product page is fully visible with the 'Add to Basket' button at the bottom.",
+    "anchor": "The foundation has been added to cart and a confirmation or cart panel is visible; the agent needs to continue to find mascara.",
     "question": "What is the next meaningful action the agent will likely take in the interface?",
-    "reference_answer": "The agent will click the 'Add to Basket' button to add the foundation to the cart.",
+    "reference_answer": "Navigate to the Mascara category or search for mascara products",
     "accepted_answers": [
-      "Click the 'Add to Basket' button.",
-      "Add the foundation to the cart."
+      "Navigate to Mascara section",
+      "Click on Mascara category",
+      "Search for mascara",
+      "Browse to eye makeup/mascara products"
     ],
     "partial_answers": [
-      "Select the 'Add to Basket' option.",
-      "Add the product to the basket."
+      "Navigate to another product category",
+      "Continue shopping for the second item"
     ],
     "reject_examples": {
       "too_broad": [
-        "Add to cart.",
-        "Make a purchase."
+        "Keep shopping",
+        "Look for more products",
+        "Use the website"
       ],
       "too_low_level": [
-        "Look at the product details.",
-        "Check the price."
+        "Close cart popup",
+        "Move to navigation menu"
       ],
       "wrong": [
-        "Select a different product.",
-        "Navigate away from the page."
+        "Proceed to checkout",
+        "Add another foundation",
+        "Exit the site"
       ]
     }
   },
   {
     "id": "P5",
     "type": "next_action_prediction",
-    "pause_time_sec": 170,
-    "timestamp_label": "2:50",
-    "anchor": "The Makeup dropdown menu is open, showing 'Mascara' under the 'Eye' category.",
+    "pause_time_sec": 202,
+    "timestamp_label": "3:22",
+    "anchor": "The mascara product listing page shows multiple mascara options, with filter options available for narrowing down choices based on preferences.",
     "question": "What is the next meaningful action the agent will likely take in the interface?",
-    "reference_answer": "The agent will click on 'Mascara' to navigate to the mascara section.",
+    "reference_answer": "Select a hypoallergenic or sensitive-formula mascara and click on it to view details or add to cart",
     "accepted_answers": [
-      "Click on 'Mascara'.",
-      "Navigate to the mascara section."
+      "Click on a mascara product suitable for sensitive eyes",
+      "Select a hypoallergenic mascara option",
+      "Filter for or select a fragrance-free mascara",
+      "Choose a mascara that meets the sensitive skin criteria"
     ],
     "partial_answers": [
-      "Select the mascara category.",
-      "Choose 'Mascara' from the menu."
+      "Click on a mascara product",
+      "Apply filters to mascara results"
     ],
     "reject_examples": {
       "too_broad": [
-        "Navigate to a new section.",
-        "Choose a makeup category."
+        "Browse mascara",
+        "Continue the task",
+        "Shop for products"
       ],
       "too_low_level": [
-        "Look at the menu options.",
-        "Consider the mascara option."
+        "Scroll through mascara list",
+        "Hover over product image"
       ],
       "wrong": [
-        "Click on a different category.",
-        "Close the menu."
+        "Go back to foundation",
+        "Proceed to checkout",
+        "Search for lipstick"
       ]
     }
   },
   {
-    "id": "P6",
-    "type": "next_action_prediction",
-    "pause_time_sec": 206,
-    "timestamp_label": "3:26",
-    "anchor": "The Fragrance Free filter is active, showing 31 results including the Kosas Soulgazer mascara.",
-    "question": "What is the next meaningful action the agent will likely take in the interface?",
-    "reference_answer": "The agent will click on the Kosas Soulgazer mascara to view its product details.",
+    "id": "R1",
+    "type": "past_action_recall",
+    "pause_time_sec": 26,
+    "timestamp_label": "0:26",
+    "anchor": "The Sephora website now displays a filtered list of foundation products with sensitive skin or hypoallergenic options visible.",
+    "question": "What meaningful action did the agent just take?",
+    "reference_answer": "Applied a filter for sensitive skin or hypoallergenic foundations",
     "accepted_answers": [
-      "Click on the Kosas Soulgazer mascara.",
-      "Select the Kosas mascara to view details."
+      "Filtered foundations by sensitive skin",
+      "Applied hypoallergenic filter",
+      "Selected sensitive skin filter option",
+      "Narrowed foundation results using skin concern filter"
     ],
     "partial_answers": [
-      "Choose the Kosas mascara.",
-      "View the Kosas product details."
+      "Used a filter",
+      "Filtered the products",
+      "Changed search settings"
     ],
     "reject_examples": {
       "too_broad": [
-        "Select a mascara.",
-        "Choose a product."
+        "Browsed Sephora",
+        "Looked at makeup",
+        "Searched for products"
       ],
       "too_low_level": [
-        "Look at the product options.",
-        "Consider the Kosas mascara."
+        "Clicked a checkbox",
+        "Moved the mouse",
+        "Scrolled the page"
       ],
       "wrong": [
-        "Click on a different mascara.",
-        "Navigate away from the page."
+        "Added foundation to cart",
+        "Selected a mascara",
+        "Searched for mascara"
+      ]
+    }
+  },
+  {
+    "id": "R2",
+    "type": "past_action_recall",
+    "pause_time_sec": 68,
+    "timestamp_label": "1:08",
+    "anchor": "A foundation product detail page is now displayed showing product information, ingredients, and an Add to Basket button.",
+    "question": "What meaningful action did the agent just take?",
+    "reference_answer": "Clicked on a foundation product to view its details",
+    "accepted_answers": [
+      "Selected a foundation to view details",
+      "Opened the foundation product page",
+      "Clicked on a specific foundation product",
+      "Navigated to foundation product details"
+    ],
+    "partial_answers": [
+      "Clicked on a product",
+      "Opened a product page",
+      "Selected an item"
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "Browsed foundations",
+        "Looked at Sephora",
+        "Shopped for makeup"
+      ],
+      "too_low_level": [
+        "Clicked with mouse",
+        "Pressed left click",
+        "Moved cursor"
+      ],
+      "wrong": [
+        "Added to cart",
+        "Applied a filter",
+        "Searched for mascara"
+      ]
+    }
+  },
+  {
+    "id": "R3",
+    "type": "past_action_recall",
+    "pause_time_sec": 108,
+    "timestamp_label": "1:48",
+    "anchor": "A confirmation message or cart indicator shows that a foundation has been successfully added to the shopping cart.",
+    "question": "What meaningful action did the agent just take?",
+    "reference_answer": "Added the selected foundation to the cart",
+    "accepted_answers": [
+      "Added foundation to cart",
+      "Clicked Add to Basket for the foundation",
+      "Put the foundation in the shopping cart",
+      "Added the foundation product to bag"
+    ],
+    "partial_answers": [
+      "Added item to cart",
+      "Clicked add to cart",
+      "Added a product"
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "Completed a task",
+        "Made progress on shopping",
+        "Did something with foundation"
+      ],
+      "too_low_level": [
+        "Clicked a button",
+        "Pressed Add to Basket",
+        "Made a click action"
+      ],
+      "wrong": [
+        "Added mascara to cart",
+        "Applied a filter",
+        "Proceeded to checkout"
+      ]
+    }
+  },
+  {
+    "id": "R4",
+    "type": "past_action_recall",
+    "pause_time_sec": 162,
+    "timestamp_label": "2:42",
+    "anchor": "The Sephora website now shows a list of mascara products with filters for sensitive or hypoallergenic options applied.",
+    "question": "What meaningful action did the agent just take?",
+    "reference_answer": "Navigated to mascara category and applied sensitive skin filters",
+    "accepted_answers": [
+      "Filtered mascara products for sensitive skin",
+      "Applied hypoallergenic filter to mascara results",
+      "Searched for sensitive skin mascara options",
+      "Narrowed mascara results using skin concern filters"
+    ],
+    "partial_answers": [
+      "Filtered mascara products",
+      "Browsed mascara section",
+      "Applied filters to mascara"
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "Looked at products",
+        "Continued shopping",
+        "Browsed Sephora"
+      ],
+      "too_low_level": [
+        "Clicked filter checkbox",
+        "Scrolled down",
+        "Moved to new page"
+      ],
+      "wrong": [
+        "Added mascara to cart",
+        "Selected foundation",
+        "Completed the task"
+      ]
+    }
+  },
+  {
+    "id": "R5",
+    "type": "past_action_recall",
+    "pause_time_sec": 222,
+    "timestamp_label": "3:42",
+    "anchor": "The shopping cart now displays two items: a foundation and a mascara, both meeting sensitive skin preferences.",
+    "question": "What meaningful action did the agent just take?",
+    "reference_answer": "Added the selected mascara to the cart",
+    "accepted_answers": [
+      "Added mascara to cart",
+      "Clicked Add to Basket for the mascara",
+      "Put the mascara in the shopping cart",
+      "Added the mascara product to bag"
+    ],
+    "partial_answers": [
+      "Added second item to cart",
+      "Added another product",
+      "Completed adding items"
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "Finished shopping",
+        "Completed the task",
+        "Added products"
+      ],
+      "too_low_level": [
+        "Clicked add button",
+        "Pressed a button",
+        "Made a click"
+      ],
+      "wrong": [
+        "Added foundation to cart",
+        "Proceeded to checkout",
+        "Applied a discount code"
       ]
     }
   }

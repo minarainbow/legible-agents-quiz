@@ -2,192 +2,350 @@
   {
     "id": "P1",
     "type": "next_action_prediction",
-    "pause_time_sec": 26,
-    "timestamp_label": "0:26",
-    "anchor": "Search results for 'gluten-free spaghetti' are showing with multiple options.",
+    "pause_time_sec": 27,
+    "timestamp_label": "0:27",
+    "anchor": "Search results for 'gluten-free spaghetti' are displayed showing multiple product options including Rummo Spaghetti Gluten-Free Pasta at $3.99 from Sprouts Farmers Market.",
     "question": "What is the next meaningful action the agent will likely take in the interface?",
-    "reference_answer": "Click on the Rummo Spaghetti Gluten-Free Pasta to see more details.",
+    "reference_answer": "Click on the Rummo Spaghetti Gluten-Free Pasta product to view details and add to cart",
     "accepted_answers": [
-      "Click on the Rummo Spaghetti Gluten-Free Pasta.",
-      "Select the Rummo Spaghetti Gluten-Free Pasta.",
-      "Choose the Rummo Spaghetti Gluten-Free Pasta."
+      "Click on the Rummo Gluten-Free Spaghetti product",
+      "Select the gluten-free pasta from search results",
+      "Click on a gluten-free spaghetti option to view or add it"
     ],
     "partial_answers": [
-      "Click on a gluten-free spaghetti option.",
-      "Select a gluten-free pasta."
+      "Click on a pasta product",
+      "Select a search result"
     ],
     "reject_examples": {
       "too_broad": [
-        "Choose a pasta option.",
-        "Select a product."
+        "Continue shopping",
+        "Add items to cart"
       ],
       "too_low_level": [
-        "Move the mouse over a product.",
-        "Scroll through the options."
+        "Move mouse to coordinates 634, 360",
+        "Left click"
       ],
       "wrong": [
-        "Click on a regular spaghetti option.",
-        "Search for another item."
+        "Search for tomatoes",
+        "Go to checkout",
+        "Select regular spaghetti"
       ]
     }
   },
   {
     "id": "P2",
     "type": "next_action_prediction",
-    "pause_time_sec": 72,
-    "timestamp_label": "1:12",
-    "anchor": "The diced tomatoes search results are showing with options from H-E-B and Sprouts.",
+    "pause_time_sec": 34,
+    "timestamp_label": "0:34",
+    "anchor": "The Rummo Spaghetti Gluten-Free Pasta product page is open showing the product labeled 'Gluten free' and 'Wheat free' at $3.99 with an 'Add to cart' button visible.",
     "question": "What is the next meaningful action the agent will likely take in the interface?",
-    "reference_answer": "Click on the H-E-B Organics Diced Tomatoes to check it's 14.5 oz organic.",
+    "reference_answer": "Click the 'Add to cart' button to add the gluten-free spaghetti to the cart",
     "accepted_answers": [
-      "Click on the H-E-B Organics Diced Tomatoes.",
-      "Select the H-E-B Organics Diced Tomatoes.",
-      "Choose the H-E-B Organics Diced Tomatoes."
+      "Click Add to cart for the gluten-free pasta",
+      "Add the Rummo Gluten-Free Spaghetti to cart",
+      "Click the Add to cart button"
     ],
     "partial_answers": [
-      "Click on an organic diced tomato option.",
-      "Select an organic tomato product."
+      "Add the product to cart",
+      "Click on the cart button"
     ],
     "reject_examples": {
       "too_broad": [
-        "Choose a tomato option.",
-        "Select a product."
+        "Proceed with the order",
+        "Continue shopping"
       ],
       "too_low_level": [
-        "Move the mouse over a product.",
-        "Scroll through the options."
+        "Click at position 944, 287",
+        "Perform a left click action"
       ],
       "wrong": [
-        "Click on a non-organic tomato option.",
-        "Search for another item."
+        "Go back to search results",
+        "Search for a different pasta",
+        "Close the product page"
       ]
     }
   },
   {
     "id": "P3",
     "type": "next_action_prediction",
-    "pause_time_sec": 154,
-    "timestamp_label": "2:34",
-    "anchor": "The search results show parmesan cheese options, including Sartori Shredded Cheese.",
+    "pause_time_sec": 73,
+    "timestamp_label": "1:13",
+    "anchor": "Search results for 'diced tomatoes' are displayed showing multiple options including H-E-B Organics Diced Tomatoes at $2.19 and regular H-E-B Diced Tomatoes at various prices.",
     "question": "What is the next meaningful action the agent will likely take in the interface?",
-    "reference_answer": "Click 'Add' on the Sartori Shredded Cheese, Parmesan Classic 7 oz.",
+    "reference_answer": "Click on the H-E-B Organics Diced Tomatoes to select the organic option as per the task preference",
     "accepted_answers": [
-      "Click 'Add' on the Sartori Shredded Cheese, Parmesan Classic.",
-      "Select the Sartori Shredded Cheese, Parmesan Classic.",
-      "Choose the Sartori Shredded Cheese, Parmesan Classic."
+      "Select the H-E-B Organics Diced Tomatoes",
+      "Click on an organic diced tomatoes product",
+      "Choose the organic tomato option from the results"
     ],
     "partial_answers": [
-      "Click 'Add' on a parmesan cheese option.",
-      "Select a parmesan cheese product."
+      "Click on a diced tomatoes product",
+      "Select tomatoes from the search results"
     ],
     "reject_examples": {
       "too_broad": [
-        "Choose a cheese option.",
-        "Select a product."
+        "Add tomatoes to cart",
+        "Continue with the grocery order"
       ],
       "too_low_level": [
-        "Move the mouse over a product.",
-        "Scroll through the options."
+        "Left click at coordinates 755, 290",
+        "Move cursor to product image"
       ],
       "wrong": [
-        "Click 'Add' on a different cheese option.",
-        "Search for another item."
+        "Select regular non-organic tomatoes",
+        "Search for fresh tomatoes",
+        "Add 3 cans of tomatoes"
       ]
     }
   },
   {
     "id": "P4",
     "type": "next_action_prediction",
-    "pause_time_sec": 174,
-    "timestamp_label": "2:54",
-    "anchor": "The search results for 'extra virgin olive oil' are showing.",
+    "pause_time_sec": 86,
+    "timestamp_label": "1:26",
+    "anchor": "A quantity dropdown menu is visible showing numbers 1 through 9, with the H-E-B Organics Diced Tomatoes product page open in the background.",
     "question": "What is the next meaningful action the agent will likely take in the interface?",
-    "reference_answer": "Click 'Add' on the H-E-B Extra Virgin Olive Oil.",
+    "reference_answer": "Select quantity 2 from the dropdown to add 2 cans of organic diced tomatoes (maximum allowed per constraints)",
     "accepted_answers": [
-      "Click 'Add' on the H-E-B Extra Virgin Olive Oil.",
-      "Select the H-E-B Extra Virgin Olive Oil.",
-      "Choose the H-E-B Extra Virgin Olive Oil."
+      "Select 2 from the quantity dropdown",
+      "Choose quantity 2 for the tomatoes",
+      "Click on number 2 to set quantity"
     ],
     "partial_answers": [
-      "Click 'Add' on an olive oil option.",
-      "Select an olive oil product."
+      "Select a quantity from the dropdown",
+      "Set the number of cans to add"
     ],
     "reject_examples": {
       "too_broad": [
-        "Choose an olive oil option.",
-        "Select a product."
+        "Adjust the quantity",
+        "Modify the order"
       ],
       "too_low_level": [
-        "Move the mouse over a product.",
-        "Scroll through the options."
+        "Click at position 826, 308",
+        "Perform mouse click"
       ],
       "wrong": [
-        "Click 'Add' on a different olive oil option.",
-        "Search for another item."
+        "Select 3 cans",
+        "Cancel the dropdown",
+        "Select 1 can only"
       ]
     }
   },
   {
     "id": "P5",
     "type": "next_action_prediction",
-    "pause_time_sec": 204,
-    "timestamp_label": "3:24",
-    "anchor": "The search bar is cleared and ready for a new search.",
+    "pause_time_sec": 175,
+    "timestamp_label": "2:55",
+    "anchor": "Search results for 'extra virgin olive oil' are displayed showing H-E-B Extra Virgin Olive Oil at $7.89 (17 oz) marked as 'Best seller' and 'Store choice' with an Add button visible.",
     "question": "What is the next meaningful action the agent will likely take in the interface?",
-    "reference_answer": "Type 'garlic' and press Enter to search.",
+    "reference_answer": "Click the Add button on the H-E-B Extra Virgin Olive Oil to add it to the cart",
     "accepted_answers": [
-      "Type 'garlic' and press Enter.",
-      "Search for 'garlic'.",
-      "Enter 'garlic' in the search bar."
+      "Click Add on the H-E-B Extra Virgin Olive Oil",
+      "Add the olive oil to cart",
+      "Select the H-E-B olive oil product to add it"
     ],
     "partial_answers": [
-      "Type 'garlic'.",
-      "Search for a new item."
+      "Click on an olive oil product",
+      "Add olive oil to the order"
     ],
     "reject_examples": {
       "too_broad": [
-        "Search for something.",
-        "Enter a new search query."
+        "Continue building the cart",
+        "Add more items"
       ],
       "too_low_level": [
-        "Move the mouse to the search bar.",
-        "Click on the search bar."
+        "Left click at pixel coordinates",
+        "Move mouse to Add button"
       ],
       "wrong": [
-        "Type a different search query.",
-        "Search for a non-garlic item."
+        "Search for a different oil",
+        "Go back to search",
+        "Select a different brand of olive oil"
       ]
     }
   },
   {
-    "id": "P6",
-    "type": "next_action_prediction",
-    "pause_time_sec": 212,
-    "timestamp_label": "3:32",
-    "anchor": "The garlic search results are showing with a fresh whole garlic bulb option.",
-    "question": "What is the next meaningful action the agent will likely take in the interface?",
-    "reference_answer": "Click 'Add' to add the fresh whole garlic bulb to the cart.",
+    "id": "R1",
+    "type": "past_action_recall",
+    "pause_time_sec": 27,
+    "timestamp_label": "0:27",
+    "anchor": "Search results for 'gluten-free spaghetti' are now displayed, showing multiple pasta options from various stores including Rummo Spaghetti Gluten-Free Pasta.",
+    "question": "What meaningful action did the agent just take?",
+    "reference_answer": "Pressed Enter to submit the search for gluten-free spaghetti",
     "accepted_answers": [
-      "Click 'Add' on the fresh whole garlic bulb.",
-      "Select the fresh whole garlic bulb.",
-      "Choose the fresh whole garlic bulb."
+      "Searched for gluten-free spaghetti",
+      "Submitted the search query for gluten-free spaghetti",
+      "Pressed Enter to execute the search",
+      "Performed a search for gluten-free pasta"
     ],
     "partial_answers": [
-      "Click 'Add' on a garlic option.",
-      "Select a garlic product."
+      "Searched for spaghetti",
+      "Ran a search",
+      "Pressed Enter"
     ],
     "reject_examples": {
       "too_broad": [
-        "Choose a garlic option.",
-        "Select a product."
+        "Looking for pasta",
+        "Shopping for groceries",
+        "Using Instacart"
       ],
       "too_low_level": [
-        "Move the mouse over a product.",
-        "Scroll through the options."
+        "Pressed the Return key",
+        "Hit a keyboard button",
+        "Used keyboard input"
       ],
       "wrong": [
-        "Click 'Add' on a different garlic option.",
-        "Search for another item."
+        "Added pasta to cart",
+        "Clicked on a product",
+        "Typed in the search box"
+      ]
+    }
+  },
+  {
+    "id": "R2",
+    "type": "past_action_recall",
+    "pause_time_sec": 38,
+    "timestamp_label": "0:38",
+    "anchor": "The Rummo Spaghetti Gluten-Free Pasta product page is open, and the button now shows '1 in cart' indicating the item was successfully added.",
+    "question": "What meaningful action did the agent just take?",
+    "reference_answer": "Clicked 'Add to cart' to add the gluten-free spaghetti to the cart",
+    "accepted_answers": [
+      "Added the gluten-free spaghetti to the cart",
+      "Clicked Add to cart for the Rummo pasta",
+      "Added Rummo Gluten-Free Pasta to cart",
+      "Added the pasta to the shopping cart"
+    ],
+    "partial_answers": [
+      "Added an item to cart",
+      "Clicked Add to cart",
+      "Added pasta"
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "Completed the pasta selection",
+        "Worked on the shopping list",
+        "Browsed products"
+      ],
+      "too_low_level": [
+        "Clicked a button",
+        "Made a mouse click",
+        "Left-clicked on the page"
+      ],
+      "wrong": [
+        "Searched for pasta",
+        "Changed the quantity",
+        "Removed item from cart"
+      ]
+    }
+  },
+  {
+    "id": "R3",
+    "type": "past_action_recall",
+    "pause_time_sec": 89,
+    "timestamp_label": "1:29",
+    "anchor": "A quantity dropdown menu is visible with numbers 1-9, and '2' is now highlighted as the selected quantity option.",
+    "question": "What meaningful action did the agent just take?",
+    "reference_answer": "Selected quantity of 2 from the dropdown menu for the organic diced tomatoes",
+    "accepted_answers": [
+      "Selected 2 as the quantity",
+      "Changed the quantity to 2 cans",
+      "Chose 2 from the quantity dropdown",
+      "Set the tomato quantity to 2"
+    ],
+    "partial_answers": [
+      "Changed the quantity",
+      "Selected a number from dropdown",
+      "Clicked on 2"
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "Adjusted the order",
+        "Modified the cart",
+        "Worked on tomatoes"
+      ],
+      "too_low_level": [
+        "Clicked on a number",
+        "Made a selection click",
+        "Used the mouse"
+      ],
+      "wrong": [
+        "Added tomatoes to cart",
+        "Opened the product page",
+        "Searched for tomatoes"
+      ]
+    }
+  },
+  {
+    "id": "R4",
+    "type": "past_action_recall",
+    "pause_time_sec": 175,
+    "timestamp_label": "2:55",
+    "anchor": "Search results for 'extra virgin olive oil' are now displayed, showing various olive oil options including H-E-B Extra Virgin Olive Oil marked as 'Best seller'.",
+    "question": "What meaningful action did the agent just take?",
+    "reference_answer": "Pressed Enter to search for extra virgin olive oil",
+    "accepted_answers": [
+      "Searched for extra virgin olive oil",
+      "Submitted the search for olive oil",
+      "Executed the olive oil search",
+      "Pressed Enter to find olive oil"
+    ],
+    "partial_answers": [
+      "Searched for olive oil",
+      "Performed a search",
+      "Pressed Enter"
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "Continued shopping",
+        "Looking for ingredients",
+        "Using the website"
+      ],
+      "too_low_level": [
+        "Pressed a key",
+        "Hit Return",
+        "Used the keyboard"
+      ],
+      "wrong": [
+        "Added olive oil to cart",
+        "Typed in the search box",
+        "Clicked on a product"
+      ]
+    }
+  },
+  {
+    "id": "R5",
+    "type": "past_action_recall",
+    "pause_time_sec": 218,
+    "timestamp_label": "3:38",
+    "anchor": "The garlic search results are displayed, and a fresh whole garlic bulb at $0.59 now shows it has been added to the cart.",
+    "question": "What meaningful action did the agent just take?",
+    "reference_answer": "Clicked 'Add' to add the fresh garlic to the cart",
+    "accepted_answers": [
+      "Added fresh garlic to the cart",
+      "Clicked Add on the garlic bulb",
+      "Added the garlic to cart",
+      "Added whole garlic to the shopping cart"
+    ],
+    "partial_answers": [
+      "Added garlic",
+      "Clicked Add",
+      "Added an item to cart"
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "Completed the shopping",
+        "Finished adding ingredients",
+        "Working on the order"
+      ],
+      "too_low_level": [
+        "Clicked a button",
+        "Made a left click",
+        "Clicked on the page"
+      ],
+      "wrong": [
+        "Searched for garlic",
+        "Changed the quantity",
+        "Opened the garlic product page"
       ]
     }
   }
