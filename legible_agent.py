@@ -54,7 +54,7 @@ load_dotenv()
 # Recording (optional — enabled with --record flag)
 # ─────────────────────────────────────────────────────────────
 
-from workflow_recorder import WorkflowRecorder  # noqa: E402
+from workflow_recorder import WorkflowRecorder, next_recording_id  # noqa: E402
 
 _recorder: WorkflowRecorder | None = None
 _record_enabled: bool = False
@@ -163,6 +163,7 @@ state = {
     "reading_done":       False,      # flips True when DOM reading finishes
     "cursor_state":       "default",  # "default" | "reading" | "thinking" | "clicking"
     "last_thought":       "",          # Claude's raw text (for high-stakes fallback)
+    "pending_observation": "",         # post-action observation to speak after action executes
     "high_stakes_warning": "",         # task-specific warning template (optional)
     "chat_history":       [],          # list of {"role": str, "text": str} for panel
 }
@@ -285,26 +286,39 @@ def strip_old_screenshots(messages: list, keep_recent: int = 3) -> list:
     return result
 
 
+_ACTION_PREFIXES = ("let me", "i'll", "i will", "i need to", "i should", "now i'll", "now i will")
+
 def meaningful_thought(text, max_chars=80):
-    """Return one concise, meaningful sentence from Claude's response."""
+    """Return the most action-relevant sentence from Claude's response.
+
+    Prefers sentences that express intent ('Let me', 'I'll', etc.) over
+    pure observations, since those describe what is about to happen.
+    """
     if not text:
         return ""
     sentences = re.split(r'(?<=[.!?])\s+', text.strip())
+
+    def _truncate(s):
+        s = s.strip()
+        if len(s) > max_chars:
+            cut = s[:max_chars].rfind(' ')
+            s = s[:cut] + "…" if cut > 10 else s[:max_chars] + "…"
+        return s
+
+    # First pass: prefer action-intent sentences
+    for s in sentences:
+        low = s.strip().lower()
+        if any(low.startswith(p) for p in _ACTION_PREFIXES):
+            return _truncate(s)
+
+    # Second pass: first non-filler sentence
     for s in sentences:
         low = s.strip().lower()
         is_filler = any(low.startswith(f) for f in _FILLER_PREFIXES) and len(s) < 60
         if not is_filler:
-            s = s.strip()
-            if len(s) > max_chars:
-                cut = s[:max_chars].rfind(' ')
-                s = s[:cut] + "…" if cut > 10 else s[:max_chars] + "…"
-            return s
-    # fallback: last sentence, truncated
-    s = sentences[-1].strip()
-    if len(s) > max_chars:
-        cut = s[:max_chars].rfind(' ')
-        s = s[:cut] + "…" if cut > 10 else s[:max_chars] + "…"
-    return s
+            return _truncate(s)
+
+    return _truncate(sentences[-1])
 
 # ─────────────────────────────────────────────────────────────
 # State helpers
@@ -378,15 +392,15 @@ def human_move_to(x, y, speed_factor=1.0):
 
 
 def human_type_visible(text, target_pos=None):
-    """Type char-by-char: starts slow, gradually speeds up, with keyboard click sounds."""
+    """Type text with human-like timing using pyautogui.write (handles Unicode safely)."""
+    # Play typing sound then type each char with human-paced delay
     for i, char in enumerate(text):
-        pyautogui.press(char) if len(char) == 1 and char.isprintable() else pyautogui.write(char)
+        pyautogui.write(char, interval=0)
         _play_sfx_or_system("typing", "/System/Library/Sounds/Tock.aiff", 0.25)
         progress = i / max(len(text) - 1, 1)
-        # Slow start → faster: delay shrinks as progress increases
         speed_mult = 0.4 + 1.4 * (progress ** 1.5)
         delay = TYPE_CHAR_INTERVAL / max(speed_mult, 0.2) * random.uniform(0.8, 1.2)
-        time.sleep(max(0.015, delay))
+        time.sleep(max(0.02, delay))
     time.sleep(0.15)
 
 # ─────────────────────────────────────────────────────────────
@@ -587,12 +601,12 @@ def dom_start_reading():
         "if(idx>0){"
         "var prev=els[idx-1];"
         "prev.style.transition='background-color 0.8s ease';"
-        "prev.style.backgroundColor='rgba(255,210,60,0.08)';"
+        "prev.style.backgroundColor='rgba(255,210,60,0.18)';"
         "prev.setAttribute('data-cr-read','1');"
         "}"
         "var cur=els[idx];"
         "cur.style.transition='background-color 0.35s ease';"
-        "cur.style.backgroundColor='rgba(255,215,60,0.38)';"
+        "cur.style.backgroundColor='rgba(255,215,60,0.55)';"
         "cur.scrollIntoView({behavior:'smooth',block:'nearest'});"
         "var len=(cur.textContent||'').length;"
         "var dwell=Math.min(Math.max(700,len*7),2800);"
@@ -657,9 +671,8 @@ def dom_mark_copied():
 # ── Stakes detection ───────────────────────────────────────────
 
 _HIGH_STAKES_KEYWORDS = {
-    "buy", "add to cart", "checkout", "order now", "purchase",
-    "place order", "submit", "send", "confirm", "delete", "remove",
-    "pay", "proceed", "complete purchase", "sign up", "subscribe",
+    "add to cart", "add to basket", "checkout", "place order",
+    "complete purchase", "buy now", "pay",
 }
 
 def _is_high_stakes(label: str) -> bool:
@@ -894,7 +907,7 @@ def speak(text: str):
             for chunk in audio:
                 f.write(chunk)
             tmp = f.name
-        subprocess.run(["afplay", "-r", "1.15", tmp])
+        subprocess.run(["afplay", "-r", "1.25", "-v", "2.0", tmp])
     except Exception as e:
         print(f"[TTS] error: {e}, falling back to say", file=sys.stderr)
         subprocess.run(["say", "-v", "Samantha", "-r", "230", text])
@@ -908,8 +921,11 @@ def speak(text: str):
 _tts_executor = concurrent.futures.ThreadPoolExecutor(max_workers=1, thread_name_prefix="tts-prefetch")
 
 def speak_async(text: str):
-    """Show bubble immediately, fire TTS in background — returns at once."""
-    threading.Thread(target=speak, args=(text,), daemon=True).start()
+    """Queue TTS through the single-thread executor so narrations never overlap."""
+    with state_lock:
+        state["reasoning_text"]  = text
+        state["speech_done_ts"]  = None  # keep bubble alive until TTS finishes
+    _tts_executor.submit(speak, text)
 
 def _tts_fetch(text: str):
     """Download TTS audio to a temp file in background. Returns path or None."""
@@ -942,7 +958,7 @@ def play_prefetched(text: str, future: concurrent.futures.Future):
     tmp = future.result()  # blocks only for remaining download time
     try:
         if tmp:
-            subprocess.run(["afplay", "-r", "1.15", tmp])
+            subprocess.run(["afplay", "-r", "1.25", "-v", "2.0", tmp])
         else:
             subprocess.run(["say", "-v", "Samantha", "-r", "230", text])
     finally:
@@ -1018,38 +1034,53 @@ def _execute_action_inner(action, params):
         activate_chrome()
         label = _get_element_label(x, y)
         high_stakes = _is_high_stakes(label)
-        # Fallback: check if Claude's narration explicitly says "click [high-stakes-word]"
+        # Fallback: check thought for explicit action intent toward a high-stakes element
         if not high_stakes:
             with state_lock:
                 last_thought = state.get("last_thought", "").lower()
+            action_intent = any(p in last_thought for p in ("i'll", "i will", "let me", "clicking", "now i"))
             for kw in _HIGH_STAKES_KEYWORDS:
-                idx = last_thought.find(kw)
-                if idx >= 0 and "click" in last_thought[max(0, idx - 40):idx]:
+                if kw in last_thought and action_intent:
                     high_stakes = True
                     if not label:
-                        label = kw  # use keyword as display label
+                        label = kw
                     break
         print(f"[CLICK] label={label!r} high_stakes={high_stakes}", file=sys.stderr)
         if high_stakes:
             with state_lock:
-                warning_tpl = state.get("high_stakes_warning", "")
-            warning = warning_tpl.format(label=label) if warning_tpl else f"Heads up — I'm about to click '{label}'. This may be hard to undo!"
+                warning_tpl  = state.get("high_stakes_warning", "")
+                raw_thought  = state.get("last_thought", "")
+            if warning_tpl:
+                warning = warning_tpl.format(label=label)
+            else:
+                action_phrase = "adding to basket" if any(kw in (label or "").lower() for kw in ("add to basket", "add to cart")) else f"clicking '{label}'" if label else "proceeding"
+                reason = meaningful_thought(raw_thought) if raw_thought else ""
+                if reason:
+                    reason = reason[:80].rsplit(" ", 1)[0] if len(reason) > 80 else reason
+                    warning = f"Heads up — {action_phrase}. {reason}."
+                else:
+                    warning = f"Heads up — {action_phrase}."
             tts_future = prefetch_tts(warning)
             dom_click_preview(x, y, high_stakes=True)
             stop_ev = threading.Event()
-            orbit_t = threading.Thread(target=orbit_mouse, args=(x, y, stop_ev), kwargs={"min_revolutions": 1.0}, daemon=True)
+            orbit_t = threading.Thread(target=orbit_mouse, args=(x, y, stop_ev), kwargs={"min_revolutions": 0.5}, daemon=True)
             orbit_t.start()
             play_prefetched(warning, tts_future)
             stop_ev.set()
             orbit_t.join(timeout=5.0)
-            time.sleep(1.5)  # grace period after orbit — user can intervene
+            time.sleep(1.0)  # grace period after orbit — user can intervene
         else:
-            tts_text = f"I'll click '{label}'." if label else "I'll click here."
-            tts_future = prefetch_tts(tts_text)
+            # Only speak label if no thought narration was already queued
+            with state_lock:
+                has_thought = bool(state.get("last_thought", ""))
+            short_label = label[:40] + "…" if label and len(label) > 40 else label
+            tts_text = (f"I'll click '{short_label}'." if short_label and not has_thought else "")
+            tts_future = prefetch_tts(tts_text) if tts_text else None
             dom_click_preview(x, y)
             move_t = threading.Thread(target=human_move_to, args=(x, y), kwargs={"speed_factor": base_speed}, daemon=True)
             move_t.start()
-            play_prefetched(tts_text, tts_future)
+            if tts_text and tts_future:
+                play_prefetched(tts_text, tts_future)
             move_t.join(timeout=2.0)
         dom_remove_click_preview()
         click_with_preview(x, y, speed_factor=base_speed)
@@ -1066,7 +1097,7 @@ def _execute_action_inner(action, params):
             play_prefetched(tts_text, tts_future)
             time.sleep(3.0)
         else:
-            tts_text = f"I'll double-click '{label}'." if label else "I'll double-click here."
+            tts_text = f"I'll double-click '{label}'." if label else ""
             tts_future = prefetch_tts(tts_text)
             dom_click_preview(x, y)
             move_t = threading.Thread(target=human_move_to, args=(x, y), kwargs={"speed_factor": base_speed}, daemon=True)
@@ -1086,7 +1117,7 @@ def _execute_action_inner(action, params):
         if tts_future:
             play_prefetched(f"Right-clicking '{label}'.", tts_future)
         dom_remove_click_preview()
-        time.sleep(0.55)
+        time.sleep(0.2)
         human_move_to(x, y, speed_factor=base_speed)
         pyautogui.rightClick()
 
@@ -1096,8 +1127,12 @@ def _execute_action_inner(action, params):
         with state_lock:
             state["reasoning_text"] = f"Typing: {short}"
             state["speech_done_ts"] = now()
-        activate_chrome()
-        human_type_visible(text)
+        time.sleep(0.3)
+        _ensure_abc_input()
+        clean = text.rstrip("\n")
+        human_type_visible(clean)
+        if text.endswith("\n"):
+            pyautogui.press("return")
 
     elif action == "key":
         key_str = params["text"]
@@ -1110,6 +1145,11 @@ def _execute_action_inner(action, params):
         else:
             pyautogui.hotkey(*keys)
 
+        # Re-focus Chrome after Return/Enter in case page navigation shifts focus
+        if keys[-1] in ("return", "enter"):
+            time.sleep(0.2)
+            activate_chrome()
+
         # Mark copied text in DOM when agent copies
         if tuple(keys) == ("command", "c"):
             time.sleep(0.1)
@@ -1117,7 +1157,7 @@ def _execute_action_inner(action, params):
 
         last = keys[-1]
         if last in ("return", "enter"):
-            time.sleep(1.5)
+            time.sleep(1.0)
         elif "space" in keys and "command" in keys:
             time.sleep(0.6)
         else:
@@ -1161,6 +1201,18 @@ def activate_chrome():
     )
     time.sleep(0.4)
 
+def _ensure_abc_input():
+    """Switch macOS input source to ABC/English if Korean or other IME is active."""
+    script = """\
+tell application "System Events"
+    set src to name of first input source whose selected is true
+    if src does not contain "ABC" and src does not contain "U.S." then
+        keystroke space using {control down}
+        delay 0.15
+    end if
+end tell"""
+    subprocess.run(["osascript", "-e", script], capture_output=True)
+
 def _ensure_chrome_english():
     """Force Chrome UI language to English via defaults write (takes effect on next launch)."""
     subprocess.run(
@@ -1172,14 +1224,16 @@ def navigate_to_url(url: str):
     """Focus Chrome address bar and navigate to url."""
     _ensure_chrome_english()
 
+    # Press command+l explicitly with keyDown/keyUp to ensure it registers
     pyautogui.keyDown("command")
-    time.sleep(0.05)
-    pyautogui.press("l")
-    time.sleep(0.05)
-    pyautogui.keyUp("command")
-    time.sleep(0.3)
-    human_type_visible(url)
     time.sleep(0.1)
+    pyautogui.press("l")
+    pyautogui.keyUp("command")
+    time.sleep(0.8)  # wait for address bar to fully focus
+    pyautogui.hotkey("command", "a")  # select all existing text
+    time.sleep(0.15)
+    human_type_visible(url)
+    time.sleep(0.15)
     pyautogui.press("return")
     time.sleep(1.5)
 
@@ -1197,13 +1251,17 @@ def task_loop():
         # ── Transactional (T1–T3) ──────────────────────────────
         "1": {
             "name": "T1 — Sephora: Foundation & Mascara",
-            "url":  "google.com",
+            "url":  "sephora.com",
             "site": "Sephora website",
             "max_iterations": 85,
+            "system_prompt_extra": (
+                "- On Sephora: click the product NAME text only. Never click 'Quicklook'. If a Quicklook popup appears, press Escape.\n"
+                "- On Sephora: once you've browsed enough to decide, commit to a product — don't keep scrolling indefinitely.\n"
+            ),
             "goal": (
                 "Your task: find exactly 2 makeup products on Sephora's website and add each to cart: "
                 "**foundation** and **mascara** only.\n\n"
-                "Start by browsing Foundation. You will be guided to mascara next.\n\n"
+                "Start by searching for 'foundation' using Sephora's search bar. You will be guided to mascara next.\n\n"
                 "Hard rule: after foundation + mascara are in cart, **stop**. "
                 "Do **not** browse or add lip gloss, lipstick, skincare, or any third item.\n\n"
                 "Preferences (apply to both items):\n"
@@ -1213,15 +1271,15 @@ def task_loop():
                 "Do NOT write your final response yet — you will be told when to do that."
             ),
             "iteration_checkpoints": {
-                28: (
-                    "Good. Commit to one foundation now — pick the option and add it to cart.\n"
+                30: (
+                    "Good. If you have not added a foundation to cart yet, commit to one now and add it. "
                     "Then navigate to the Mascara section only. Browse mascaras, look for "
                     "hypoallergenic or sensitive-eye formulas. Change colors if needed. "
                     "Do not open Lip Gloss or any other category."
                 ),
-                58: (
-                    "Good. Commit to one mascara and add it to cart.\n"
-                    "You now have both required items — **do not add anything else**. "
+                60: (
+                    "Good. If you have not added a mascara to cart yet, commit to one now and add it. "
+                    "You should now have both required items — **do not add anything else**. "
                     "Do NOT use any tools — write your final list: "
                     "product name, brand, and price for each item."
                 ),
@@ -1555,7 +1613,11 @@ def task_loop():
     print(f"\n  ▶ Running: {task['name']}\n", file=sys.stderr)
 
     if _record_enabled:
-        _recorder = WorkflowRecorder(task_id=choice)
+        base_id = f"legible_t{choice}"
+        rec_id = next_recording_id(base_id)
+        if rec_id != base_id:
+            print(f"[recorder] '{base_id}' exists -> saving as '{rec_id}'", file=sys.stderr)
+        _recorder = WorkflowRecorder(task_id=rec_id)
         _recorder.start(task_name=task["name"], task_goal=task["goal"])
 
     SYSTEM_PROMPT = (
@@ -1563,19 +1625,20 @@ def task_loop():
         f"Display: {DISPLAY_W}×{DISPLAY_H}. Origin top-left. "
         f"Chrome is showing {task['site']}.\n"
         "Rules:\n"
-        "- ALWAYS write 1–2 short sentences before every tool call (never skip).\n"
-        "  Sentence 1 (if something changed): one phrase on what you now see or what changed. "
-        "e.g. \"The CFP page loaded.\" or \"The search results appeared.\"\n"
-        "  Sentence 2 (always): exactly what you will do next, naming the UI element. "
-        "e.g. \"I'll click the 'Author Guidelines' link.\" "
-        "e.g. \"I'll scroll down to find the deadline section.\"\n"
-        "  Keep each sentence under 12 words. Never use vague phrases like 'I will proceed' or 'I will continue'.\n"
-        "- To search on Google: click the search box on the page, type your query, press Enter. "
-        "Do NOT use the Chrome address bar to search — use the Google search box on screen.\n"
-        "- To navigate to a new URL: use command+l, type the URL, press Enter.\n"
-        "- Use 'command' for macOS shortcuts.\n"
+        "- Before every tool call, write ONE short sentence describing what you will do next, naming the UI label in quotes. "
+        "e.g. \"I'll click the 'Add to Basket' button.\" Under 12 words. Never say 'I will proceed' or 'I will click here'.\n"
         "- Never take two screenshots in a row.\n"
-        "- When scrolling, use delta_y of 5–8."
+        "- On Sephora: click the search icon in the header to open the search input, then type and press Enter.\n"
+        "- After typing a search query and pressing Enter, an autocomplete dropdown may appear — ignore it and wait for the full search results page to load. Do NOT press Escape after Enter.\n"
+        "- When scrolling, use delta_y of 5–8.\n"
+        "- To close any popup or overlay, press Escape — do NOT click randomly on the page to dismiss it.\n"
+        "- After clicking a link or button, wait for the result — do NOT click again. One click is enough.\n"
+        "- The Chrome address bar is above the page — never click it to search.\n"
+        "- Never construct or type a URL to navigate within a site — use the site's own search or navigation.\n"
+        "- When adding to cart: success = button text changes OR a confirmation popup appears. Do NOT click again.\n"
+        "- Use 'command' for macOS shortcuts.\n"
+        "- If you see existing cart items not from this task, ignore them.\n"
+        f"{task.get('system_prompt_extra', '')}"
     )
 
     # Store task-specific overrides in state for use during action execution
@@ -1585,17 +1648,18 @@ def task_loop():
     goal = task["goal"]
     push_chat_message("goal", f"Task: {task['name']}\n\n{goal}")
 
-    # ── Phase 1: Pre-navigation ───────────────────────────────
+    # ── Phase 1: Navigate to task site via human typing ───────
     print(f"[CU] Phase 1: Navigating to {task['url']}…", file=sys.stderr)
     activate_chrome()
-    time.sleep(0.3)
+    time.sleep(1.2)
     navigate_to_url(task["url"])
+    time.sleep(1.5)  # let page fully load
 
     set_progress(1, 4, f"Navigate to {task['url']}")
 
-    # ── Phase 2: Agent reads page + generates summary ──
-    print("[CU] Phase 2: Agent reading guidelines…", file=sys.stderr)
-    set_progress(2, 4, "Read guidelines")
+    # ── Phase 2: Build first message (goal only — agent takes first screenshot) ──
+    print("[CU] Phase 2: Starting agent…", file=sys.stderr)
+    set_progress(2, 4, "Start agent")
 
     messages = [{
         "role": "user",
@@ -1604,7 +1668,7 @@ def task_loop():
                 "type": "base64", "media_type": "image/png",
                 "data": screenshot_base64(),
             }},
-            {"type": "text", "text": goal},
+            {"type": "text", "text": goal + "\n\nThe screenshot above shows the current page. Your first action must NOT be a screenshot — click or type directly."},
         ],
     }]
 
@@ -1617,6 +1681,7 @@ def task_loop():
 
     MAX_ITER = int(task.get("max_iterations", 60))
     consec_shots = 0
+    consec_waits = 0
     summary_text = ""
     checkpoints = task.get("iteration_checkpoints", {})
 
@@ -1638,7 +1703,7 @@ def task_loop():
             state["reasoning"]          = True
             state["reasoning_start_ts"] = now()
             state["reasoning_end_ts"]   = None
-            state["reasoning_text"]     = ""
+            # reasoning_text is left intact — bubble draw code fades it via speech_done_ts
             state["reading_done"]       = False
 
         dom_start_reading()
@@ -1668,43 +1733,37 @@ def task_loop():
                 _recorder.log_reasoning(raw)
             push_chat_message("thought", raw)
 
-        # Speak Claude's own reasoning aloud before acting.
-        # If Claude didn't write a narration, build one from the first action.
-        # Skip for click actions — _execute_action_inner will speak the specific element label.
-        _CLICK_ACTIONS = {"left_click", "double_click", "right_click"}
+        # Build narration from the actual action (not Claude's free text) so it always matches.
         first_action = next(
             (b for b in response.content if getattr(b, "type", "") == "tool_use"), None
         )
-        first_action_type = first_action.input.get("action", "") if first_action else ""
-
-        if not thought and first_action_type not in _CLICK_ACTIONS:
-            if first_action:
-                a = first_action_type
-                thought = {
-                    "screenshot":     "Looking at the screen.",
-                    "scroll":         "Scrolling the page.",
-                    "type":           f"Typing: {first_action.input.get('text','')[:30]}",
-                    "key":            f"Pressing {first_action.input.get('text','')}.",
-                    "mouse_move":     "Moving the mouse.",
-                    "wait":           "Waiting.",
-                }.get(a, f"Performing {a}.")
-            print(f"[CLAUDE] fallback narration: {thought!r}", file=sys.stderr)
-
-        # For click actions, skip generic thought — per-action speak uses real element label
-        # Non-click narrations fire async so the agent moves immediately after showing the bubble
-        if thought and first_action_type not in _CLICK_ACTIONS:
-            speak_async(thought)
-        elif thought and first_action_type in _CLICK_ACTIONS:
-            # Still update the bubble text with Claude's thought (shown visually)
-            # but don't speak it — _execute_action_inner will speak the element label
-            with state_lock:
-                state["reasoning_text"] = thought
-                state["speech_done_ts"] = now()  # start fade timer immediately
+        if first_action:
+            a   = first_action.input.get("action", "")
+            inp = first_action.input
+            narration = {
+                "screenshot":   "",
+                "scroll":       "Scrolling the page.",
+                "wait":         "",
+                "mouse_move":   "",
+                "key":          "",
+            }.get(a, "")
+            if not narration:
+                if a == "type":
+                    narration = f"I'll type '{inp.get('text','')[:40]}'."
+                elif a in ("left_click", "double_click", "right_click"):
+                    # Suppress narration for high-stakes clicks — execute_action will
+                    # speak a combined "Heads up + reason" instead.
+                    thought_lower = (thought or "").lower()
+                    if any(kw in thought_lower for kw in _HIGH_STAKES_KEYWORDS):
+                        narration = ""
+                    else:
+                        narration = thought
+            if narration:
+                speak_async(narration)
 
         with state_lock:
             state["reasoning"]        = False
             state["reasoning_end_ts"] = now()
-            state["reasoning_text"]   = thought
             state["last_thought"]     = raw  # full raw text for high-stakes fallback
 
         messages.append({"role": "assistant", "content": response.content})
@@ -1743,14 +1802,13 @@ def task_loop():
 
             if action == "screenshot":
                 consec_shots += 1
-                if consec_shots >= 2:
-                    messages.append({
-                        "role": "user",
-                        "content": "Stop taking screenshots and act now.",
-                    })
-                    consec_shots = 0
             else:
                 consec_shots = 0
+
+            if action == "wait":
+                consec_waits += 1
+            else:
+                consec_waits = 0
 
             execute_action(action, block.input)
             time.sleep(random.uniform(0.04, 0.09))
@@ -1776,6 +1834,14 @@ def task_loop():
         if not tool_results:
             break
         messages.append({"role": "user", "content": tool_results})
+
+        # Inject nudge messages AFTER tool_results so tool_use/tool_result pairing stays intact
+        if consec_shots >= 2:
+            messages.append({"role": "user", "content": "Stop taking screenshots and act now."})
+            consec_shots = 0
+        if consec_waits >= 3:
+            messages.append({"role": "user", "content": "The page may still be loading. Try scrolling or clicking to interact — stop waiting."})
+            consec_waits = 0
     else:
         print("[CU] Max iterations reached — saving recording.", file=sys.stderr)
         if not summary_text:
@@ -2218,17 +2284,7 @@ class OverlayView(NSView):
                                     max_chars=56, above=True, slide=1.0)
             return
 
-        # Only show reading/thinking if there's no narration to display
-        if reasoning and start_ts:
-            age = t - start_ts
-            if age < 1.5:
-                return
-            alpha = min((age - 1.5) / BUBBLE_FADE_IN, 1.0) * 0.85
-            slide = min((age - 1.5) / BUBBLE_FADE_IN, 1.0)
-            dots = "·" * (int(t * 3) % 4)
-            display = f"thinking{dots}" if reading_done else f"reading{dots}"
-            self.draw_speech_bubble(cx, cy, display, self.soft_blue, alpha,
-                                    max_chars=56, above=True, slide=slide)
+        # reading/thinking indicators removed
 
 # ─────────────────────────────────────────────────────────────
 # Timer / Window

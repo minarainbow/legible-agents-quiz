@@ -1,0 +1,172 @@
+[
+  {
+    "id": "P1",
+    "type": "next_action_prediction",
+    "pause_time_sec": 45,
+    "timestamp_label": "0:45",
+    "anchor": "The Sephora Foundation page has loaded showing 149 results, with filter options visible on the left side including Skin Type, Price Range, and Skin Concerns sections.",
+    "question": "What is the next meaningful action the agent will likely take in the interface?",
+    "reference_answer": "Click on the Skin Type filter to expand it and look for sensitive skin options",
+    "accepted_answers": [
+      "Click on Skin Type filter",
+      "Expand the Skin Type filter section",
+      "Click to filter by skin type",
+      "Open skin type filter options"
+    ],
+    "partial_answers": [
+      "Apply a filter",
+      "Use the filter options"
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "Browse products",
+        "Search for foundation"
+      ],
+      "too_low_level": [
+        "Move mouse to left sidebar",
+        "Hover over filter"
+      ],
+      "wrong": [
+        "Add a product to cart",
+        "Click on a foundation product",
+        "Search for mascara"
+      ]
+    }
+  },
+  {
+    "id": "P2",
+    "type": "next_action_prediction",
+    "pause_time_sec": 66,
+    "timestamp_label": "1:06",
+    "anchor": "The Ingredient Preferences filter section is expanded showing options including Paraben-free (12) and Fragrance Free (9), with the Sensitive skin filter already applied showing 19 results.",
+    "question": "What is the next meaningful action the agent will likely take in the interface?",
+    "reference_answer": "Click on the Fragrance Free checkbox to filter for fragrance-free foundations",
+    "accepted_answers": [
+      "Click Fragrance Free filter",
+      "Select Fragrance Free option",
+      "Check the Fragrance Free checkbox",
+      "Apply fragrance-free filter"
+    ],
+    "partial_answers": [
+      "Apply an ingredient preference filter",
+      "Filter by ingredient preferences"
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "Filter the results",
+        "Continue browsing"
+      ],
+      "too_low_level": [
+        "Click checkbox",
+        "Move cursor"
+      ],
+      "wrong": [
+        "Click on Paraben-free",
+        "Add product to cart",
+        "Navigate to mascara"
+      ]
+    }
+  },
+  {
+    "id": "P3",
+    "type": "next_action_prediction",
+    "pause_time_sec": 80,
+    "timestamp_label": "1:20",
+    "anchor": "The filtered foundation results show 9 fragrance-free products for sensitive skin, including Tower 28 Beauty SunnyDays SPF 30 Tinted Sunscreen Foundation prominently displayed with a Clean at Sephora badge.",
+    "question": "What is the next meaningful action the agent will likely take in the interface?",
+    "reference_answer": "Click on the Tower 28 Beauty SunnyDays SPF 30 Tinted Sunscreen Foundation product to view details",
+    "accepted_answers": [
+      "Click on Tower 28 Beauty foundation",
+      "Select the Tower 28 SunnyDays foundation",
+      "Click on the Clean at Sephora foundation product",
+      "Open the Tower 28 product page"
+    ],
+    "partial_answers": [
+      "Click on a foundation product",
+      "Select a product from the results"
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "Choose a foundation",
+        "Continue shopping"
+      ],
+      "too_low_level": [
+        "Left click on product image",
+        "Move mouse to product"
+      ],
+      "wrong": [
+        "Add to cart directly",
+        "Apply more filters",
+        "Navigate to mascara section"
+      ]
+    }
+  },
+  {
+    "id": "P4",
+    "type": "next_action_prediction",
+    "pause_time_sec": 136,
+    "timestamp_label": "2:16",
+    "anchor": "The shopping cart is open showing 2 items: Tower 28 Beauty foundation ($32.00) and a pre-existing ILIA Super Serum Skin Tint foundation ($48.00), with options to Move to Loves or delete items.",
+    "question": "What is the next meaningful action the agent will likely take in the interface?",
+    "reference_answer": "Click Move to Loves or delete the ILIA foundation to remove it from the cart since it was pre-existing",
+    "accepted_answers": [
+      "Remove the ILIA foundation from cart",
+      "Click Move to Loves on ILIA item",
+      "Delete the ILIA Super Serum Skin Tint",
+      "Remove the pre-existing foundation item"
+    ],
+    "partial_answers": [
+      "Remove an item from cart",
+      "Clean up the cart"
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "Manage the cart",
+        "Edit cart contents"
+      ],
+      "too_low_level": [
+        "Click a button",
+        "Scroll the page"
+      ],
+      "wrong": [
+        "Proceed to checkout",
+        "Remove the Tower 28 foundation",
+        "Add mascara to cart"
+      ]
+    }
+  },
+  {
+    "id": "P5",
+    "type": "next_action_prediction",
+    "pause_time_sec": 259,
+    "timestamp_label": "4:19",
+    "anchor": "The ILIA Limitless Lash Mascara product page is displayed with the color After Midnight - Soft Black selected, showing Clean at Sephora badge, 4.5 stars rating, and $29.00 price with an Add to Basket button visible.",
+    "question": "What is the next meaningful action the agent will likely take in the interface?",
+    "reference_answer": "Click Add to Basket to add the ILIA mascara to the cart",
+    "accepted_answers": [
+      "Click Add to Basket",
+      "Add the mascara to cart",
+      "Click Add to Basket for the ILIA mascara",
+      "Add ILIA Limitless Lash Mascara to basket"
+    ],
+    "partial_answers": [
+      "Add product to cart",
+      "Complete adding the second item"
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "Continue with the task",
+        "Finish shopping"
+      ],
+      "too_low_level": [
+        "Click button at bottom of page",
+        "Left click"
+      ],
+      "wrong": [
+        "Change the mascara color",
+        "Navigate back to filters",
+        "Browse more products"
+      ]
+    }
+  }
+]

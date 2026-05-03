@@ -93,6 +93,7 @@ class WorkflowRecorder:
         self._task_goal = ""
         self._summary   = ""
         self._active    = False
+        self._audio_proc: Optional[subprocess.Popen] = None
 
     # ── public API ────────────────────────────────────────────
 
@@ -115,6 +116,7 @@ class WorkflowRecorder:
         # background periodic frame capture
         self._stop_flag.clear()
         threading.Thread(target=self._frame_loop, daemon=True).start()
+        self._start_audio()
         print(f"[recorder] started → {self.task_dir}", file=sys.stderr)
 
     def log_action(self, action: str, params: dict):
@@ -155,6 +157,7 @@ class WorkflowRecorder:
             "summary": summary,
         })
 
+        self._stop_audio()
         self._write_log()
         self._write_report()
         self._compile_video()
@@ -270,8 +273,39 @@ class WorkflowRecorder:
         report_path.write_text("\n".join(lines))
         print(f"[recorder] report → {report_path}", file=sys.stderr)
 
+    def _start_audio(self):
+        """Record system audio from BlackHole 2ch to audio.aac (background process)."""
+        audio_path = self.task_dir / "audio.aac"
+        cmd = [
+            "ffmpeg", "-y",
+            "-f", "avfoundation",
+            "-i", ":BlackHole 2ch",
+            "-c:a", "aac", "-b:a", "128k",
+            str(audio_path),
+        ]
+        try:
+            self._audio_proc = subprocess.Popen(
+                cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            )
+            print("[recorder] audio recording started (BlackHole 2ch)", file=sys.stderr)
+        except Exception as exc:
+            print(f"[recorder] audio start failed: {exc}", file=sys.stderr)
+            self._audio_proc = None
+
+    def _stop_audio(self):
+        """Stop the ffmpeg audio recording process."""
+        if self._audio_proc is None:
+            return
+        try:
+            self._audio_proc.terminate()
+            self._audio_proc.wait(timeout=5)
+            print("[recorder] audio recording stopped", file=sys.stderr)
+        except Exception as exc:
+            print(f"[recorder] audio stop failed: {exc}", file=sys.stderr)
+        self._audio_proc = None
+
     def _compile_video(self):
-        """Try to compile frames into video.mp4 using ffmpeg."""
+        """Try to compile frames into video.mp4 using ffmpeg. Mux audio.aac if present."""
         try:
             result = subprocess.run(
                 ["ffmpeg", "-version"],
@@ -284,20 +318,24 @@ class WorkflowRecorder:
             return
 
         out_path = self.task_dir / "video.mp4"
+        audio_path = self.task_dir / "audio.aac"
+        has_audio = audio_path.exists() and audio_path.stat().st_size > 1024
+
         cmd = [
             "ffmpeg", "-y",
             "-framerate", str(round(1.0 / FRAME_INTERVAL)),
             "-pattern_type", "glob",
             "-i", str(self.frames_dir / "*.png"),
-            "-c:v", "libx264",
-            "-pix_fmt", "yuv420p",
-            "-crf", "23",
-            str(out_path),
         ]
+        if has_audio:
+            cmd += ["-i", str(audio_path), "-c:a", "aac", "-shortest"]
+        cmd += ["-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "23", str(out_path)]
+
         try:
-            result = subprocess.run(cmd, capture_output=True, timeout=120, text=True)
+            result = subprocess.run(cmd, capture_output=True, timeout=300, text=True)
             if result.returncode == 0 and out_path.exists():
-                print(f"[recorder] video → {out_path}", file=sys.stderr)
+                src = "video+audio" if has_audio else "video only"
+                print(f"[recorder] video ({src}) → {out_path}", file=sys.stderr)
             else:
                 err = (result.stderr or result.stdout or "").strip()
                 if err:

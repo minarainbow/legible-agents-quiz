@@ -1,0 +1,168 @@
+[
+  {
+    "id": "P1",
+    "type": "next_action_prediction",
+    "pause_time_sec": 43,
+    "timestamp_label": "0:43",
+    "anchor": "The Ingredient Preferences filter section is expanded on the Sephora foundation page, showing options including 'Fragrance Free (64)' and 'Paraben-free (88)'.",
+    "question": "What is the next meaningful action the agent will likely take in the interface?",
+    "reference_answer": "Click on the 'Fragrance Free' checkbox to filter foundations for sensitive skin preferences",
+    "accepted_answers": [
+      "Click Fragrance Free filter",
+      "Select the Fragrance Free checkbox",
+      "Apply fragrance-free filter",
+      "Check the Fragrance Free option"
+    ],
+    "partial_answers": [
+      "Apply a filter",
+      "Select an ingredient preference"
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "Browse foundations",
+        "Filter products"
+      ],
+      "too_low_level": [
+        "Move mouse to checkbox",
+        "Left click at coordinates"
+      ],
+      "wrong": [
+        "Click Paraben-free first",
+        "Close the filter panel",
+        "Add a product to cart"
+      ]
+    }
+  },
+  {
+    "id": "P2",
+    "type": "next_action_prediction",
+    "pause_time_sec": 99,
+    "timestamp_label": "1:39",
+    "anchor": "The Sephora foundation page displays filtered results with Rare Beauty 'True to Myself Natural Matte Longwear Foundation' visible among fragrance-free and paraben-free options.",
+    "question": "What is the next meaningful action the agent will likely take in the interface?",
+    "reference_answer": "Click on the Rare Beauty 'True to Myself Natural Matte Longwear Foundation' product to view details",
+    "accepted_answers": [
+      "Click on the Rare Beauty foundation product",
+      "Select the Rare Beauty True to Myself foundation",
+      "Open the Rare Beauty foundation product page",
+      "Click on a foundation product to view details"
+    ],
+    "partial_answers": [
+      "Click on a product",
+      "Select a foundation"
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "Continue shopping",
+        "Browse products"
+      ],
+      "too_low_level": [
+        "Left click at position 583, 247"
+      ],
+      "wrong": [
+        "Add to cart without viewing",
+        "Apply more filters",
+        "Navigate to mascara section"
+      ]
+    }
+  },
+  {
+    "id": "P3",
+    "type": "next_action_prediction",
+    "pause_time_sec": 121,
+    "timestamp_label": "2:01",
+    "anchor": "The Rare Beauty 'True to Myself Natural Matte Longwear Foundation' product page is displayed showing the product details, shade options, and an 'Add to Basket' button.",
+    "question": "What is the next meaningful action the agent will likely take in the interface?",
+    "reference_answer": "Click the 'Add to Basket' button to add the foundation to the cart",
+    "accepted_answers": [
+      "Click Add to Basket",
+      "Add the foundation to cart",
+      "Click the Add to Basket button",
+      "Add this product to basket"
+    ],
+    "partial_answers": [
+      "Add product to cart",
+      "Click a button to purchase"
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "Complete the purchase",
+        "Continue shopping"
+      ],
+      "too_low_level": [
+        "Left click at coordinates 611, 410"
+      ],
+      "wrong": [
+        "Select a different shade",
+        "Navigate to mascara",
+        "Close the page"
+      ]
+    }
+  },
+  {
+    "id": "P4",
+    "type": "next_action_prediction",
+    "pause_time_sec": 156,
+    "timestamp_label": "2:36",
+    "anchor": "The Sephora mascara page shows the Ingredient Preferences filter expanded with options including 'Fragrance Free (32)' and 'Paraben-free (66)'.",
+    "question": "What is the next meaningful action the agent will likely take in the interface?",
+    "reference_answer": "Click on the 'Fragrance Free' checkbox to filter mascaras for sensitive skin",
+    "accepted_answers": [
+      "Click Fragrance Free filter",
+      "Select the Fragrance Free checkbox",
+      "Apply fragrance-free filter for mascara",
+      "Check the Fragrance Free option"
+    ],
+    "partial_answers": [
+      "Apply a filter",
+      "Select an ingredient preference filter"
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "Filter mascaras",
+        "Browse products"
+      ],
+      "too_low_level": [
+        "Left click at position 94, 434"
+      ],
+      "wrong": [
+        "Click Paraben-free instead",
+        "Select a mascara product",
+        "Go back to foundation"
+      ]
+    }
+  },
+  {
+    "id": "P5",
+    "type": "next_action_prediction",
+    "pause_time_sec": 219,
+    "timestamp_label": "3:39",
+    "anchor": "The ILIA Limitless Lash Mascara product page shows the selected color 'After Midnight - Soft Black' and the 'Add to Basket' button is visible.",
+    "question": "What is the next meaningful action the agent will likely take in the interface?",
+    "reference_answer": "Click the 'Add to Basket' button to add the mascara to the cart",
+    "accepted_answers": [
+      "Click Add to Basket",
+      "Add the mascara to cart",
+      "Click the Add to Basket button",
+      "Add the ILIA mascara to basket"
+    ],
+    "partial_answers": [
+      "Add product to cart",
+      "Complete adding the second item"
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "Finish the task",
+        "Complete shopping"
+      ],
+      "too_low_level": [
+        "Left click at coordinates 597, 673"
+      ],
+      "wrong": [
+        "Change the mascara color",
+        "Navigate to another product",
+        "Add lip gloss"
+      ]
+    }
+  }
+]
