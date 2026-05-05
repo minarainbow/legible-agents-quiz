@@ -147,7 +147,6 @@ class WorkflowRecorder:
         if not self._active:
             return
         self._active = False
-        self._stop_flag.set()
         self._summary = summary
 
         duration = round(_ts() - self._start_ts, 1) if self._start_ts else 0
@@ -156,6 +155,10 @@ class WorkflowRecorder:
             "duration_sec": duration,
             "summary": summary,
         })
+
+        # Stop frame capture AFTER logging session_end so last frames are captured
+        self._stop_flag.set()
+        time.sleep(FRAME_INTERVAL + 0.1)  # let frame loop finish its current capture
 
         self._stop_audio()
         self._write_log()
@@ -321,26 +324,61 @@ class WorkflowRecorder:
         audio_path = self.task_dir / "audio.aac"
         has_audio = audio_path.exists() and audio_path.stat().st_size > 1024
 
-        cmd = [
+        # Build sorted frame list (numeric prefix order) to avoid glob sort artifacts
+        import re as _re
+        frames = sorted(
+            [f for f in self.frames_dir.iterdir() if f.suffix == ".png"],
+            key=lambda f: (int(_re.match(r"(\d+)", f.name).group(1)),
+                           1 if "_" in f.name else 0),
+        )
+        if not frames:
+            print("[recorder] no frames — skipping video compile", file=sys.stderr)
+            return
+
+        concat_path = self.task_dir / "frames.txt"
+        with open(concat_path, "w") as fh:
+            for fr in frames:
+                fh.write(f"file '{fr}'\nduration {FRAME_INTERVAL}\n")
+        video_duration = len(frames) * FRAME_INTERVAL
+
+        # First pass: video only
+        tmp_path = self.task_dir / "video_tmp.mp4"
+        cmd_v = [
             "ffmpeg", "-y",
-            "-framerate", str(round(1.0 / FRAME_INTERVAL)),
-            "-pattern_type", "glob",
-            "-i", str(self.frames_dir / "*.png"),
+            "-f", "concat", "-safe", "0", "-i", str(concat_path),
+            "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "23",
+            str(tmp_path),
         ]
+        # Second pass: mux audio trimmed to exact video duration
         if has_audio:
-            cmd += ["-i", str(audio_path), "-c:a", "aac", "-shortest"]
-        cmd += ["-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "23", str(out_path)]
+            cmd_a = [
+                "ffmpeg", "-y",
+                "-i", str(tmp_path),
+                "-ss", "0", "-t", str(video_duration), "-i", str(audio_path),
+                "-c:v", "copy", "-c:a", "aac",
+                "-map", "0:v", "-map", "1:a",
+                str(out_path),
+            ]
+        else:
+            cmd_a = None
 
         try:
-            result = subprocess.run(cmd, capture_output=True, timeout=300, text=True)
-            if result.returncode == 0 and out_path.exists():
+            r = subprocess.run(cmd_v, capture_output=True, timeout=300, text=True)
+            if r.returncode != 0:
+                print(f"[recorder] ffmpeg video pass failed: {r.stderr[:300]}", file=sys.stderr)
+                return
+            if cmd_a:
+                r2 = subprocess.run(cmd_a, capture_output=True, timeout=60, text=True)
+                if r2.returncode != 0:
+                    print(f"[recorder] ffmpeg audio mux failed: {r2.stderr[:300]}", file=sys.stderr)
+                    tmp_path.rename(out_path)
+                else:
+                    tmp_path.unlink(missing_ok=True)
+            else:
+                tmp_path.rename(out_path)
+
+            if out_path.exists():
                 src = "video+audio" if has_audio else "video only"
                 print(f"[recorder] video ({src}) → {out_path}", file=sys.stderr)
-            else:
-                err = (result.stderr or result.stdout or "").strip()
-                if err:
-                    print(f"[recorder] ffmpeg failed (code {result.returncode}): {err[:500]}", file=sys.stderr)
-                else:
-                    print(f"[recorder] ffmpeg failed (code {result.returncode}) — no video written", file=sys.stderr)
         except Exception as exc:
             print(f"[recorder] video compile failed: {exc}", file=sys.stderr)

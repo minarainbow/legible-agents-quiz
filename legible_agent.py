@@ -1127,9 +1127,11 @@ def _execute_action_inner(action, params):
         with state_lock:
             state["reasoning_text"] = f"Typing: {short}"
             state["speech_done_ts"] = now()
+            in_address_bar = state.pop("address_bar_focused", False)
         time.sleep(0.3)
-        _ensure_abc_input()
         clean = text.rstrip("\n")
+        if not in_address_bar:
+            _ensure_abc_input()
         human_type_visible(clean)
         if text.endswith("\n"):
             pyautogui.press("return")
@@ -1144,6 +1146,12 @@ def _execute_action_inner(action, params):
             pyautogui.press(keys[0])
         else:
             pyautogui.hotkey(*keys)
+
+        # After cmd+l (address bar focus), mark state so next type uses paste (no Dictation)
+        if tuple(keys) == ("command", "l"):
+            time.sleep(0.5)
+            with state_lock:
+                state["address_bar_focused"] = True
 
         # Re-focus Chrome after Return/Enter in case page navigation shifts focus
         if keys[-1] in ("return", "enter"):
@@ -1202,12 +1210,14 @@ def activate_chrome():
     time.sleep(0.4)
 
 def _ensure_abc_input():
-    """Switch macOS input source to ABC/English if Korean or other IME is active."""
+    """Switch macOS input source to ABC/English without triggering Dictation."""
+    # Use TIS to select ABC directly — avoids ctrl+space which can trigger Dictation
     script = """\
 tell application "System Events"
     set src to name of first input source whose selected is true
     if src does not contain "ABC" and src does not contain "U.S." then
-        keystroke space using {control down}
+        set abcSource to first input source whose name contains "ABC"
+        select abcSource
         delay 0.15
     end if
 end tell"""
@@ -1366,6 +1376,7 @@ def task_loop():
             "url":  "google.com",
             "site": "Google",
             "write_doc": True,
+            "max_iterations": 75,
             "goal": (
                 "Your task: compare graduate school financial aid across three New York universities "
                 "— NYU, Columbia University, and Cornell Tech — and summarize the findings.\n\n"
@@ -1373,19 +1384,29 @@ def task_loop():
                 "  - Types of aid available (fellowships, assistantships, scholarships, loans)\n"
                 "  - Typical funding amounts or stipends for PhD vs Master's students\n"
                 "  - Whether Master's students are commonly funded or self-funded\n"
-                "  - Any named fellowships or competitive awards\n"
-                "  - Application deadlines or requirements to be considered for aid\n\n"
-                "Steps:\n"
-                "1. Click the Google search box on screen, type 'NYU graduate financial aid', "
-                "press Enter, then click the most relevant official NYU result and read it.\n"
-                "2. Go back to google.com, click the search box, type 'Columbia University graduate "
-                "financial aid', press Enter, click the official Columbia result and read it.\n"
-                "3. Go back to google.com, click the search box, type 'Cornell Tech graduate "
-                "financial aid', press Enter, click the official Cornell Tech result and read it.\n"
-                "4. Write a structured comparison with a section for each school, followed by a "
-                "summary table comparing the three side by side.\n"
-                "Do NOT use any tools in your final response — just write the comparison text."
+                "  - Any named fellowships or competitive awards\n\n"
+                "The Google search box is already focused. Type 'NYU GSAS fellowships assistantships financial aid' and press Enter. "
+                "Click the 'Graduate School Fellowships and Assistantships' NYU GSAS result and read it. "
+                "You will be told when to move to the next school.\n\n"
+                "Do NOT write your final response yet — you will be asked to do that later."
             ),
+            "iteration_checkpoints": {
+                10: (
+                    "Good work on NYU. Now move to Columbia. "
+                    "Press Cmd+L, type 'Columbia University GSAS graduate financial aid', "
+                    "press Enter, click the official Columbia GSAS result and read it."
+                ),
+                25: (
+                    "Good work on Columbia. Now move to Cornell Tech. "
+                    "Press Cmd+L, type 'Cornell Tech graduate financial aid scholarships', "
+                    "press Enter, click the official Cornell Tech result and read it."
+                ),
+                40: (
+                    "Good work on all three schools. "
+                    "Do NOT use any tools — write your final structured comparison now: "
+                    "a section for each school followed by a side-by-side summary table."
+                ),
+            },
         },
         "5": {
             "name": "S2 — Mobile Plan Comparison (Verizon / AT&T / T-Mobile)",
@@ -1635,6 +1656,8 @@ def task_loop():
         "- After clicking a link or button, wait for the result — do NOT click again. One click is enough.\n"
         "- The Chrome address bar is above the page — never click it to search.\n"
         "- Never construct or type a URL to navigate within a site — use the site's own search or navigation.\n"
+        "- To search on Google: press Cmd+L to focus the address bar, type your query, press Enter. Never click the search box.\n"
+        "- On any single page, scroll down at most once through the content — do NOT scroll back up and re-read the same page.\n"
         "- When adding to cart: success = button text changes OR a confirmation popup appears. Do NOT click again.\n"
         "- Use 'command' for macOS shortcuts.\n"
         "- If you see existing cart items not from this task, ignore them.\n"
@@ -1654,6 +1677,12 @@ def task_loop():
     time.sleep(1.2)
     navigate_to_url(task["url"])
     time.sleep(1.5)  # let page fully load
+
+    # For Google homepage, click the search box so the agent can type immediately
+    if task["url"].rstrip("/") == "google.com":
+        sw, sh = pyautogui.size()
+        pyautogui.click(sw // 2, int(sh * 0.43))
+        time.sleep(0.3)
 
     set_progress(1, 4, f"Navigate to {task['url']}")
 
@@ -2502,8 +2531,8 @@ def main():
     parser.add_argument(
         "--panel",
         action=argparse.BooleanOptionalAction,
-        default=True,
-        help="Show the side reasoning panel (default: on). Use --no-panel to hide.",
+        default=False,
+        help="Show the side reasoning panel (default: off). Use --panel to enable.",
     )
     args, _ = parser.parse_known_args()
 

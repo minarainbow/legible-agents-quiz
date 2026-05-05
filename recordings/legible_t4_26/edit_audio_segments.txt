@@ -1,0 +1,9 @@
+file 'audio.aac'
+inpoint 10
+outpoint 140
+file 'audio.aac'
+inpoint 175
+outpoint 210
+file 'audio.aac'
+inpoint 233
+outpoint 240

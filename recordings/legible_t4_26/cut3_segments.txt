@@ -1,0 +1,6 @@
+file 'video_cut2.mp4'
+inpoint 0
+outpoint 170
+file 'video_cut2.mp4'
+inpoint 186
+outpoint 195

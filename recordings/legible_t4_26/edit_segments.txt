@@ -1,0 +1,9 @@
+file 'video_noaudio.mp4'
+inpoint 10
+outpoint 140
+file 'video_noaudio.mp4'
+inpoint 175
+outpoint 210
+file 'video_noaudio.mp4'
+inpoint 233
+outpoint 240

@@ -1,0 +1,86 @@
+[
+  {
+    "id": "P1",
+    "type": "next_action_prediction",
+    "pause_time_sec": 13,
+    "timestamp_label": "0:13",
+    "anchor": "Google search results for 'NYU GSAS fellowships assistantships financial aid' are displayed. The top results include 'Graduate School Fellowships and Assistantships | NYU GSAS' and an AI Overview summarizing key funding details.",
+    "question": "What is the next meaningful action the agent will likely take in the interface?",
+    "reference_answer": "Click the 'Graduate School Fellowships and Assistantships' NYU GSAS result",
+    "accepted_answers": ["Click on the 'Graduate School Fellowships and Assistantships' link", "Click the NYU GSAS fellowships page result", "Select the top NYU GSAS result to read the funding page"],
+    "partial_answers": ["Click on a search result", "Navigate to the NYU GSAS page"],
+    "reject_examples": {"too_broad": ["Read the search results", "Look for information"], "too_low_level": ["Click at a specific coordinate"], "wrong": ["Refine the search query", "Click the AI Overview", "Scroll down"]}
+  },
+  {
+    "id": "P2",
+    "type": "next_action_prediction",
+    "pause_time_sec": 48,
+    "timestamp_label": "0:48",
+    "anchor": "The NYU GSAS 'Graduate School Fellowships and Assistantships' page is open. The agent has scrolled through sections on the MacCracken Program, Master's student funding, and Federal/State/Private Programs.",
+    "question": "What is the next meaningful action the agent will likely take in the interface?",
+    "reference_answer": "Press Cmd+L to focus the address bar and search for Columbia University financial aid",
+    "accepted_answers": ["Focus the address bar and type a Columbia University search query", "Press Cmd+L to navigate to Columbia's financial aid page", "Search for Columbia GSAS graduate financial aid"],
+    "partial_answers": ["Navigate to the next school's page", "Search for Columbia University information"],
+    "reject_examples": {"too_broad": ["Move to the next school", "Continue researching"], "too_low_level": ["Click at a specific coordinate"], "wrong": ["Scroll back up to re-read the NYU page", "Click a link on the NYU page", "Take a screenshot"]}
+  },
+  {
+    "id": "P3",
+    "type": "next_action_prediction",
+    "pause_time_sec": 63,
+    "timestamp_label": "1:03",
+    "anchor": "Google search results for 'Columbia University GSAS graduate financial aid' are displayed. Results include 'Financial Aid | GSAS - Columbia University' as a top result.",
+    "question": "What is the next meaningful action the agent will likely take in the interface?",
+    "reference_answer": "Click the 'Financial Aid | GSAS' Columbia University result",
+    "accepted_answers": ["Click on 'Financial Aid | GSAS - Columbia University'", "Click the Columbia GSAS financial aid link", "Select the official Columbia GSAS financial aid page"],
+    "partial_answers": ["Click on a Columbia University result", "Navigate to a Columbia financial aid page"],
+    "reject_examples": {"too_broad": ["Look at the search results", "Find Columbia information"], "too_low_level": ["Click at a specific coordinate"], "wrong": ["Search for a different query", "Click on a non-official result", "Scroll down"]}
+  },
+  {
+    "id": "P4",
+    "type": "next_action_prediction",
+    "pause_time_sec": 84,
+    "timestamp_label": "1:24",
+    "anchor": "The Columbia GSAS Financial Aid page is loaded showing a 'Financial Aid Toolkit' section with two tabs: 'Resources' and 'Fellowships'.",
+    "question": "What is the next meaningful action the agent will likely take in the interface?",
+    "reference_answer": "Click the 'Fellowships' tab to view fellowship funding information",
+    "accepted_answers": ["Click on the 'Fellowships' tab", "Select the Fellowships tab in the Financial Aid Toolkit", "Open the Fellowships section"],
+    "partial_answers": ["Click on one of the tabs", "Interact with the Financial Aid Toolkit"],
+    "reject_examples": {"too_broad": ["Explore the page", "Find fellowship information"], "too_low_level": ["Click at a specific coordinate"], "wrong": ["Click the 'Resources' tab", "Scroll down past the toolkit", "Go back to search results"]}
+  },
+  {
+    "id": "P5",
+    "type": "next_action_prediction",
+    "pause_time_sec": 96,
+    "timestamp_label": "1:36",
+    "anchor": "The Fellowships tab is now active, showing links including 'Fellowship Information for Doctoral Students' and 'Fellowship Information for Master's Students'.",
+    "question": "What is the next meaningful action the agent will likely take in the interface?",
+    "reference_answer": "Click 'Fellowship Information for Doctoral Students' to read doctoral funding details",
+    "accepted_answers": ["Click on 'Fellowship Information for Doctoral Students'", "Select the doctoral students fellowship link", "Open the doctoral fellowship information page"],
+    "partial_answers": ["Click on one of the fellowship information links", "Navigate to a fellowship details page"],
+    "reject_examples": {"too_broad": ["Read about fellowships", "Find funding details"], "too_low_level": ["Click at a specific coordinate"], "wrong": ["Click 'Fellowship Information for Master's Students'", "Scroll down", "Go back to the Resources tab"]}
+  },
+  {
+    "id": "P6",
+    "type": "next_action_prediction",
+    "pause_time_sec": 133,
+    "timestamp_label": "2:13",
+    "anchor": "The agent has read through Columbia GSAS doctoral fellowship details showing multi-year funding guarantees, stipend amounts, and health insurance coverage. The agent is now at the bottom of the Columbia funding page.",
+    "question": "What is the next meaningful action the agent will likely take in the interface?",
+    "reference_answer": "Press Cmd+L to focus the address bar and search for Cornell Tech graduate financial aid",
+    "accepted_answers": ["Focus the address bar and search for Cornell Tech financial aid", "Press Cmd+L and type a Cornell Tech search query", "Navigate to Cornell Tech's financial aid page"],
+    "partial_answers": ["Navigate to the next school", "Search for Cornell Tech information"],
+    "reject_examples": {"too_broad": ["Move on to the next school", "Continue the task"], "too_low_level": ["Click at a specific coordinate"], "wrong": ["Scroll back up on the Columbia page", "Click a link on the Columbia page", "Write the final summary now"]}
+  },
+  {
+    "id": "P7",
+    "type": "next_action_prediction",
+    "pause_time_sec": 158,
+    "timestamp_label": "2:38",
+    "anchor": "Google search results for 'Cornell Tech graduate financial aid scholarships' are displayed showing official Cornell Tech results including a Tuition & Fees page.",
+    "question": "What is the next meaningful action the agent will likely take in the interface?",
+    "reference_answer": "Click the Cornell Tech Tuition & Fees result to read financial aid information",
+    "accepted_answers": ["Click on the Cornell Tech Tuition & Fees link", "Select the official Cornell Tech financial aid result", "Navigate to the Cornell Tech tuition and fees page"],
+    "partial_answers": ["Click on a Cornell Tech result", "Open a Cornell Tech financial information page"],
+    "reject_examples": {"too_broad": ["Look at the search results", "Find Cornell Tech information"], "too_low_level": ["Click at a specific coordinate"], "wrong": ["Search for a different query", "Click a non-Cornell result", "Scroll down without clicking"]}
+  }
+]

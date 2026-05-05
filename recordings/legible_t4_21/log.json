@@ -1,0 +1,19 @@
+{
+  "events": [
+    {
+      "ts": 1777964978.328,
+      "kind": "session_start",
+      "task_id": "legible_t4_21",
+      "task_name": "S1 \u2014 NY Grad School Financial Aid Comparison (NYU / Columbia / Cornell Tech)",
+      "task_goal": "Your task: compare graduate school financial aid across three New York universities \u2014 NYU, Columbia University, and Cornell Tech \u2014 and summarize the findings.\n\nFor each school, find and record:\n  - Types of aid available (fellowships, assistantships, scholarships, loans)\n  - Typical funding amounts or stipends for PhD vs Master's students\n  - Whether Master's students are commonly funded or self-funded\n  - Any named fellowships or competitive awards\n\nStart by clicking the 'Graduate School Fellowships and Assistantships' NYU GSAS result on screen and reading it. You will be told when to move to the next school.\n\nDo NOT write your final response yet \u2014 you will be asked to do that later.",
+      "started_at": "2026-05-05T00:09:38"
+    },
+    {
+      "ts": 1777964990.558,
+      "kind": "session_end",
+      "ended_at": "2026-05-05T00:09:50",
+      "duration_sec": 12.2,
+      "summary": "(Interrupted \u2014 Ctrl+C; saving partial recording.)"
+    }
+  ]
+}
