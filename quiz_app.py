@@ -22,7 +22,7 @@ from flask import Flask, Response, abort, jsonify, request, send_file
 
 RECORDINGS_DIR = Path(__file__).parent / "recordings"
 FRAME_INTERVAL = 0.5   # seconds per frame (must match workflow_recorder.py)
-QUIZ_TASK_IDS = ["s1", "s2", "s3", "t1", "t2", "t3", "legible_t1", "legible_t1_3", "legible_t1_19"]
+QUIZ_TASK_IDS = ["s1", "s2", "s3", "t1", "t2", "t3", "legible_t1", "legible_t1_3", "legible_t1_9", "legible_t1_19", "legible_t1_19_cropped", "legible_t4_26"]
 FIREBASE_DB_URL = os.environ.get("FIREBASE_DB_URL", "https://legible-agents-default-rtdb.firebaseio.com").rstrip("/")
 FIREBASE_DB_SECRET = os.environ.get("FIREBASE_DB_SECRET", "").strip()
 
@@ -910,7 +910,7 @@ const btnLogToggle = document.getElementById('btn-log-toggle');
 const taskSelectEl  = document.getElementById('task-select');
 const participantEl = document.getElementById('participant-input');
 const toast         = document.getElementById('toast');
-const QUIZ_TASK_IDS = ['s1', 's2', 's3', 't1', 't2', 't3', 'legible_t1', 'legible_t1_3'];
+const QUIZ_TASK_IDS = ['s1', 's2', 's3', 't1', 't2', 't3', 'legible_t1', 'legible_t1_3', 'legible_t1_9', 'legible_t1_19', 'legible_t1_19_cropped', 'legible_t4_26'];
 let _autosaveTimer = null;
 let _autosaveDirty = false;
 
