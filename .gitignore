@@ -5,3 +5,4 @@ __pycache__/
 recordings/*/frames/
 recordings/*/scores/
 recordings/*/report.md
+survey_logs/

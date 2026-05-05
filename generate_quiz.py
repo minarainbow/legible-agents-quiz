@@ -2,12 +2,12 @@
 generate_quiz.py — Auto-generate quiz.json for a recording using an LLM.
 
 Usage:
-    python generate_quiz.py --task 1
-    python generate_quiz.py --task 8 --n 6      # request 6 probes (default: 5)
-    python generate_quiz.py --task 1 --model gpt-4o
+    python generate_quiz.py --task s1 --n 4      # appends up to 4 new next + 4 new past probes to quiz.json
+    python generate_quiz.py --task s1 --past-only --n 4   # append past probes only
+    python generate_quiz.py --task s1 --overwrite --n 4   # replace quiz.json (no merge)
 
 Reads:  recordings/<task_id>/log.json
-Writes: recordings/<task_id>/quiz.json   (overwrites if present)
+Writes: recordings/<task_id>/quiz.json (merges new probes into existing file by default)
 
 Requires OPENAI_API_KEY or ANTHROPIC_API_KEY in .env or environment.
 """
@@ -25,6 +25,76 @@ RECORDINGS_DIR = Path(__file__).parent / "recordings"
 FRAME_INTERVAL = 0.5  # seconds per frame — must match workflow_recorder.py
 MEANINGFUL_ACTIONS = {"left_click", "double_click", "right_click", "type", "key", "left_click_drag"}
 
+
+def _params_dict(ev: dict) -> dict:
+    p = ev.get("params") or {}
+    return p if isinstance(p, dict) else {}
+
+
+def action_should_skip_for_quiz(act: str, ev: dict) -> bool:
+    """Exclude scroll and navigation-only keys from quiz moments (still in agent log)."""
+    act = (act or "").strip().lower()
+    if act == "scroll":
+        return True
+    if act != "key":
+        return False
+    params = _params_dict(ev)
+    raw = str(params.get("text", "")).strip().lower().replace(" ", "")
+    # Navigation / confirm-only keys — not substantive quiz targets
+    boring = frozenset({
+        "return", "enter", "\r", "\n", "escape", "esc", "tab",
+        "keydown", "keyup",
+    })
+    if raw in boring:
+        return True
+    # Common spellings
+    if "return" in raw or raw == "enter":
+        return True
+    return False
+
+
+def moment_line_is_banned(actions: list[str]) -> bool:
+    """True if logged action line is scroll or Enter/Return/Escape/Tab key."""
+    for a in actions or []:
+        al = (a or "").lower()
+        if al.startswith("scroll"):
+            return True
+        if al.startswith("key"):
+            if any(k in a for k in ("Return", "Enter", "enter", "Escape", "escape", "Esc", "\r", "\n", "Tab")):
+                return True
+    return False
+
+
+_REF_ANSWER_BAN = re.compile(
+    r"\b(scroll(ed|ing|s)?|scrolled|mouse\s*wheel|\bwheel\b|"
+    r"press(ed)?\s*(enter|return)|\benter\b|\breturn\b|hit\s+enter|return\s+key|escape(\s+key)?|tab\s+key)\b",
+    re.I,
+)
+
+
+def probe_reference_is_banned(p: dict) -> bool:
+    blob = " ".join([
+        str(p.get("reference_answer") or ""),
+        " ".join(p.get("accepted_answers") or []) if isinstance(p.get("accepted_answers"), list) else "",
+    ])
+    return bool(_REF_ANSWER_BAN.search(blob))
+
+
+def filter_llm_probes(probes: list[dict], moments: list[dict], label: str) -> list[dict]:
+    """Remove probes that target banned moments or mention scroll/Enter in the answer text."""
+    out = []
+    for p in probes:
+        mi = p.get("moment_index")
+        if mi is not None and isinstance(mi, int) and 0 <= mi < len(moments):
+            if moment_line_is_banned(moments[mi].get("actions") or []):
+                print(f"[generate_quiz] drop {label} {p.get('id', '?')}: moment #{mi} is scroll/enter", file=sys.stderr)
+                continue
+        if probe_reference_is_banned(p):
+            print(f"[generate_quiz] drop {label} {p.get('id', '?')}: answer text mentions scroll/Enter/navigation key", file=sys.stderr)
+            continue
+        out.append(p)
+    return out
+
 # ── Load .env ────────────────────────────────────────────────────────────────
 _env_path = Path(__file__).parent / ".env"
 if _env_path.exists():
@@ -38,9 +108,37 @@ if _env_path.exists():
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def frame_to_sec(frame_filename: str) -> float:
-    """Convert '00024_agent_screenshot.png' → 12.0 seconds."""
+    """Legacy fallback: frame_index * FRAME_INTERVAL (does NOT match compiled video).
+
+    workflow_recorder concatenates every PNG in numeric order; for each index N there is
+    usually both ``NNNN.png`` and ``NNNN_agent_screenshot.png``, each with duration
+    FRAME_INTERVAL — so real video time ≠ frame_index * FRAME_INTERVAL.
+    Prefer :func:`build_frame_start_map` when ``recordings/<task>/frames`` exists.
+    """
     m = re.match(r"^(\d+)", frame_filename)
     return int(m.group(1)) * FRAME_INTERVAL if m else 0.0
+
+
+def build_frame_start_map(task_dir: Path) -> dict[str, float]:
+    """Map each ``frames/*.png`` basename → start time in compiled ``video.mp4``.
+
+    Order matches ``workflow_recorder._compile_video`` (regular frame before agent screenshot
+    at the same numeric prefix).
+    """
+    frames_dir = task_dir / "frames"
+    if not frames_dir.exists():
+        return {}
+    frames = sorted(
+        [f for f in frames_dir.iterdir() if f.suffix == ".png"],
+        key=lambda f: (int(re.match(r"(\d+)", f.name).group(1)),
+                       1 if "_" in f.name else 0),
+    )
+    t = 0.0
+    out: dict[str, float] = {}
+    for f in frames:
+        out[f.name] = t
+        t += FRAME_INTERVAL
+    return out
 
 
 def fmt_time(sec: float) -> str:
@@ -48,7 +146,7 @@ def fmt_time(sec: float) -> str:
     return f"{m}:{s:02d}"
 
 
-def build_timeline(log: dict) -> list[dict]:
+def build_timeline(log: dict, task_dir: Path | None = None) -> list[dict]:
     """
     Return a list of moments anchored to the screenshot BEFORE each meaningful action.
 
@@ -61,18 +159,22 @@ def build_timeline(log: dict) -> list[dict]:
     (clicks, types, key presses) — screenshot-only and wait steps are skipped.
     """
     events = log.get("events", [])
+    starts = build_frame_start_map(task_dir) if task_dir else {}
     moments = []
     pending_reasoning: list[str] = []
     last_shot_sec: float | None = None
 
     pending_action: dict | None = None  # {pre_sec, action_label, reasoning}
 
+    def shot_time(fname: str) -> float:
+        return starts.get(fname, frame_to_sec(fname))
+
     for ev in events:
         kind = ev.get("kind")
         if kind == "reasoning":
             pending_reasoning.append(ev["text"])
         elif kind == "agent_screenshot":
-            shot_sec = frame_to_sec(ev["frame"])
+            shot_sec = shot_time(ev["frame"])
             if pending_action is not None:
                 # This screenshot is the post-action result — complete the moment
                 pending_action["post_sec"] = shot_sec
@@ -85,6 +187,8 @@ def build_timeline(log: dict) -> list[dict]:
             if act not in MEANINGFUL_ACTIONS:
                 continue
             params = ev.get("params", ev)
+            if action_should_skip_for_quiz(act, ev):
+                continue
             detail = ""
             if act == "type":
                 detail = f" '{params.get('text', '')[:60]}'"
@@ -107,7 +211,12 @@ def build_timeline(log: dict) -> list[dict]:
     if pending_action is not None:
         moments.append(pending_action)
 
-    return moments
+    moments_out: list[dict] = []
+    for m in moments:
+        if moment_line_is_banned(m.get("actions") or []):
+            continue
+        moments_out.append(m)
+    return moments_out
 
 
 def build_timeline_from_frames(task_dir: Path) -> list[dict]:
@@ -128,15 +237,15 @@ def build_timeline_from_frames(task_dir: Path) -> list[dict]:
     if len(shot_files) < 2:
         return []
 
-    def _f2s(fname: str) -> float:
-        m = re.match(r"^(\d+)", fname)
-        return (int(m.group(1)) - 1) * FRAME_INTERVAL if m else 0.0
+    starts = build_frame_start_map(task_dir)
 
-    shot_secs = [_f2s(f.name) for f in shot_files]
+    def start_for(fname: str) -> float:
+        return starts.get(fname, frame_to_sec(fname))
+
     moments = []
-    for i in range(len(shot_secs) - 1):
-        pre  = shot_secs[i]
-        post = shot_secs[i + 1]
+    for i in range(len(shot_files) - 1):
+        pre  = start_for(shot_files[i].name)
+        post = start_for(shot_files[i + 1].name)
         moments.append({
             "video_sec":       pre,
             "timestamp_label": fmt_time(int(pre)),
@@ -180,11 +289,11 @@ def build_synthetic_timeline(log: dict, n: int) -> list[dict]:
 
 def _timeline_text(moments: list[dict]) -> str:
     lines = []
-    for m in moments:
+    for i, m in enumerate(moments):
         pre  = int(round(m["video_sec"]))
         post = int(round(m["post_sec"]))
         lines.append(
-            f"\n[Pre-action @ {fmt_time(pre)}/{pre}s → action → Post-action @ {fmt_time(post)}/{post}s]\n"
+            f"\n[Moment #{i} | Pre-action @ {fmt_time(pre)}/{pre}s → action → Post-action @ {fmt_time(post)}/{post}s]\n"
             f"  Reasoning: {m['reasoning']}\n"
             f"  Action:    {', '.join(m['actions'])}\n"
         )
@@ -214,24 +323,33 @@ Generate exactly {n} NEXT-ACTION-PREDICTION probes spread across the timeline.
 
 Rules:
 - Type must be "next_action_prediction" for all probes.
-- The video pauses at the PRE-ACTION time (pause_time_sec = the Pre-action timestamp).
-  The participant sees the screen BEFORE the decision and predicts what happens next.
-- pause_time_sec MUST be at least 10 seconds into the video (no probes at the very start).
-- Prefer moments where the agent chooses between alternatives (which item, filter, link).
+- Each probe MUST correspond to exactly one Moment from the numbered list above.
+  Set moment_index to that Moment's number (e.g. 3 for "Moment #3").
+- pause_time_sec MUST equal the Pre-action timestamp of your chosen Moment EXACTLY
+  (copy it from the timeline — do NOT invent intermediate values).
+- pause_time_sec MUST be >= 10 seconds.
+- Prefer moments where the agent chooses between alternatives (which item, filter, link, button).
 - Avoid bunching probes — spread them across the full timeline.
 - Do NOT reveal the action in the anchor or question.
+- The "question" text MUST end with exactly: (Exclude trivial actions such as screenshots or scrolling the page.)
+- SKIP moments whose Action line is scroll, mouse-wheel scroll, or a navigation-only key
+  (Enter, Return, Escape, Tab). Do NOT choose moments that are only those actions.
+- NEVER write reference_answer, accepted_answers, or partial_answers that describe
+  scrolling, pressing Enter/Return, Escape, or Tab — even if reasoning text mentions them.
+- Only use moments with substantive actions (click, type meaningful text, drag, choose links).
 {avoid_clause}- Provide accepted_answers (2-4), partial_answers (1-3), reject_examples with keys
   "too_broad", "too_low_level", "wrong" (1-3 each).
 
 Respond with a JSON array ONLY (no markdown). Each element:
 {{
   "id": "P1" … "P{n}",
+  "moment_index": <integer Moment # you chose>,
   "type": "next_action_prediction",
-  "pause_time_sec": <Pre-action timestamp as int, must be >= 10>,
+  "pause_time_sec": <Pre-action timestamp of that Moment as int, copied exactly>,
   "timestamp_label": "<M:SS>",
   "anchor": "<one sentence: what is visible on screen right before the action>",
-  "question": "What is the next meaningful action the agent will likely take in the interface?",
-  "reference_answer": "<ideal answer>",
+  "question": "What is the next meaningful action the agent will likely take in the interface? (Exclude trivial actions such as screenshots or scrolling the page.)",
+  "reference_answer": "<ideal answer describing the action IN that chosen Moment>",
   "accepted_answers": [...],
   "partial_answers": [...],
   "reject_examples": {{"too_broad": [...], "too_low_level": [...], "wrong": [...]}}
@@ -262,24 +380,33 @@ Generate exactly {n} PAST-ACTION-RECALL probes spread across the timeline.
 
 Rules:
 - Type must be "past_action_recall" for all probes.
-- The video pauses at the POST-ACTION time (pause_time_sec = the Post-action timestamp).
-  The participant sees the screen AFTER the action happened and recalls what was just done.
-- pause_time_sec MUST be at least 10 seconds into the video (no probes at the very start).
+- Each probe MUST correspond to exactly one Moment from the numbered list above.
+  Set moment_index to that Moment's number (e.g. 5 for "Moment #5").
+- pause_time_sec MUST equal the Post-action timestamp of your chosen Moment EXACTLY
+  (copy it from the timeline — do NOT invent intermediate values).
+- pause_time_sec MUST be >= 10 seconds.
 - Choose different moments from each other — spread them across the full timeline.
 - Do NOT reveal the action in the anchor or question.
-- The anchor describes what is now visible on screen AFTER the action.
+- The anchor describes what is visible on screen AFTER the action.
+- The reference_answer MUST describe the action connecting Pre-action to Post-action
+  of YOUR CHOSEN Moment — NOT an action from a different moment in the timeline.
+- The "question" text MUST end with exactly: (Exclude trivial actions such as screenshots or scrolling the page.)
+- SKIP moments whose Action line is scroll or Enter/Return/Escape/Tab-only.
+- NEVER write reference_answer or accepted_answers that describe scrolling or pressing Enter/Return.
+- Only choose moments with substantive actions (click, type, drag, select links/filters).
 {avoid_clause}- Provide accepted_answers (2-4), partial_answers (1-3), reject_examples with keys
   "too_broad", "too_low_level", "wrong" (1-3 each).
 
 Respond with a JSON array ONLY (no markdown). Each element:
 {{
   "id": "R1" … "R{n}",
+  "moment_index": <integer Moment # you chose>,
   "type": "past_action_recall",
-  "pause_time_sec": <Post-action timestamp as int, must be >= 10>,
+  "pause_time_sec": <Post-action timestamp of that Moment as int, copied exactly>,
   "timestamp_label": "<M:SS>",
-  "anchor": "<one sentence: what is now visible on screen after the action just occurred>",
-  "question": "What meaningful action did the agent just take?",
-  "reference_answer": "<ideal answer>",
+  "anchor": "<one sentence: what is visible on screen after the action just occurred>",
+  "question": "What meaningful action did the agent just take? (Exclude trivial actions such as screenshots or scrolling the page.)",
+  "reference_answer": "<ideal answer describing only the action IN that chosen Moment>",
   "accepted_answers": [...],
   "partial_answers": [...],
   "reject_examples": {{"too_broad": [...], "too_low_level": [...], "wrong": [...]}}
@@ -325,13 +452,57 @@ def generate(prompt: str, model: str) -> str:
         sys.exit("❌  No API key found. Set OPENAI_API_KEY or ANTHROPIC_API_KEY in .env.")
 
 
+def load_existing_quiz(task_dir: Path) -> list[dict]:
+    path = task_dir / "quiz.json"
+    if not path.exists():
+        return []
+    try:
+        data = json.loads(path.read_text())
+        return data if isinstance(data, list) else []
+    except json.JSONDecodeError:
+        print("[generate_quiz] Warning: quiz.json is not valid JSON — treating as empty.", file=sys.stderr)
+        return []
+
+
+def max_id_suffix(existing: list[dict], prefix: str) -> int:
+    """Highest N in ids like P7 / R12 (case-insensitive)."""
+    rx = re.compile(rf"^{re.escape(prefix)}(\d+)$", re.I)
+    mx = 0
+    for p in existing:
+        m = rx.match(str(p.get("id") or ""))
+        if m:
+            mx = max(mx, int(m.group(1)))
+    return mx
+
+
+def dedupe_key(p: dict) -> tuple[str | None, int]:
+    return (p.get("type"), int(round(float(p.get("pause_time_sec", 0)))))
+
+
+def filter_new_against_keys(new_items: list[dict], keys: set) -> list[dict]:
+    """Keep probes whose (type, pause_sec) is not already in keys; update keys."""
+    out = []
+    for p in new_items:
+        k = dedupe_key(p)
+        if k in keys:
+            print(f"[generate_quiz] skip duplicate: {k[0]} @ {k[1]}s", file=sys.stderr)
+            continue
+        keys.add(k)
+        out.append(p)
+    return out
+
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate quiz.json for a recording.")
-    parser.add_argument("--task", required=True, help="Recording/task ID (e.g. 1, 8)")
+    parser.add_argument("--task", required=True, help="Recording/task ID (e.g. t1, legible_t1_19_cropped)")
     parser.add_argument("--n", type=int, default=4, help="Number of probes per type (default: 4, generates 4 next + 4 past = 8 total)")
     parser.add_argument("--model", default="", help="Override LLM model name")
+    parser.add_argument("--past-only", action="store_true",
+                        help="Do not generate new next-action probes; only append new past-action probes")
+    parser.add_argument("--overwrite", action="store_true",
+                        help="Ignore existing quiz.json and write only newly generated probes (old behavior)")
     args = parser.parse_args()
 
     task_dir = RECORDINGS_DIR / args.task
@@ -343,12 +514,16 @@ def main() -> None:
     log = json.loads(log_path.read_text())
     events = log.get("events", [])
 
+    existing = [] if args.overwrite else load_existing_quiz(task_dir)
+    if existing and not args.overwrite:
+        print(f"[generate_quiz] Loaded {len(existing)} existing probe(s) from quiz.json (merge mode).", file=sys.stderr)
+
     # Pull task metadata from session_start event
     session = next((e for e in events if e.get("kind") == "session_start"), {})
     task_name = session.get("task_name", f"Task {args.task}")
     task_goal = session.get("task_goal", "(no goal recorded)")
 
-    moments = build_timeline(log)
+    moments = build_timeline(log, task_dir)
     print(f"[generate_quiz] Task: {task_name}", file=sys.stderr)
     print(f"[generate_quiz] Timeline moments: {len(moments)}", file=sys.stderr)
 
@@ -373,43 +548,108 @@ def main() -> None:
             print(f"❌  LLM returned invalid JSON:\n{raw}", file=sys.stderr)
             sys.exit(f"JSON parse error: {e}")
 
+    def snap_to_timeline(probes: list[dict], use_post: bool) -> list[dict]:
+        """Snap each probe's pause_time_sec to the exact timeline value.
+
+        If the LLM honoured moment_index, we use that directly to look up the
+        pre_sec (next-action) or post_sec (past-action) of that moment.
+        For past-action fallbacks, prefer the moment whose [pre, post] interval
+        contains the LLM's pause time, then the smallest post_sec >= pause
+        (never snap backward to an earlier moment's post — that caused pauses
+        before the described action was visible).
+        """
+        if not moments:
+            return probes
+        pre_secs  = [int(round(m["video_sec"])) for m in moments]
+        post_secs = [int(round(m["post_sec"]))  for m in moments]
+        snapped = []
+        for p in probes:
+            mi = p.get("moment_index")
+            if mi is not None and isinstance(mi, int) and 0 <= mi < len(moments):
+                correct = post_secs[mi] if use_post else pre_secs[mi]
+            elif use_post:
+                pause = int(round(p.get("pause_time_sec", 0)))
+                contain_i = None
+                for i in range(len(moments)):
+                    if pre_secs[i] <= pause <= post_secs[i]:
+                        contain_i = i
+                        break
+                if contain_i is not None:
+                    correct = post_secs[contain_i]
+                else:
+                    forwards = [s for s in post_secs if s >= pause]
+                    correct = min(forwards) if forwards else min(post_secs, key=lambda s: abs(s - pause))
+            else:
+                pool = pre_secs
+                correct = min(pool, key=lambda s: abs(s - p.get("pause_time_sec", 0)))
+            old = p.get("pause_time_sec", 0)
+            if old != correct:
+                print(f"  [snap] probe {p.get('id','?')} pause {old}s → {correct}s", file=sys.stderr)
+            p["pause_time_sec"] = correct
+            p["timestamp_label"] = fmt_time(correct)
+            snapped.append(p)
+        return snapped
+
     MIN_PAUSE_SEC = 10  # never pause in the first 10 seconds
 
+    dedupe_keys = {dedupe_key(p) for p in existing}
+
+    next_batch: list[dict] = []
+
     # ── Next-action probes ─────────────────────────────────────────────────────
-    print(f"[generate_quiz] Calling LLM for {args.n} next-action probes…", file=sys.stderr)
-    next_probes = parse_probes(generate(build_next_action_prompt(task_name, task_goal, moments, args.n), args.model))
-    next_probes = [p for p in next_probes if p.get("pause_time_sec", 0) >= MIN_PAUSE_SEC]
-    next_probes.sort(key=lambda p: p.get("pause_time_sec", 0))
-    for idx, p in enumerate(next_probes, start=1):
-        p["type"] = "next_action_prediction"
-        p["id"] = f"P{idx}"
+    if args.past_only:
+        existing_next = [p for p in existing if p.get("type") == "next_action_prediction"]
+        if not existing_next:
+            print("[generate_quiz] --past-only but no existing next-action probes — generating next + past.", file=sys.stderr)
+            args.past_only = False
+
+    if not args.past_only:
+        print(f"[generate_quiz] Calling LLM for {args.n} next-action probes…", file=sys.stderr)
+        next_batch = parse_probes(generate(build_next_action_prompt(task_name, task_goal, moments, args.n), args.model))
+        next_batch = snap_to_timeline(next_batch, use_post=False)
+        next_batch = filter_llm_probes(next_batch, moments, "next")
+        next_batch = [p for p in next_batch if p.get("pause_time_sec", 0) >= MIN_PAUSE_SEC]
+        next_batch.sort(key=lambda p: p.get("pause_time_sec", 0))
+        next_batch = filter_new_against_keys(next_batch, dedupe_keys)
+        mp = max_id_suffix(existing, "P")
+        for p in next_batch:
+            p["type"] = "next_action_prediction"
+            mp += 1
+            p["id"] = f"P{mp}"
 
     # ── Past-action probes ─────────────────────────────────────────────────────
-    # Pass next-action timestamps so the LLM avoids the same actions
-    next_secs = [p["pause_time_sec"] for p in next_probes]
-    print(f"[generate_quiz] Calling LLM for {args.n} past-action probes…", file=sys.stderr)
-    past_probes = parse_probes(generate(build_past_action_prompt(task_name, task_goal, moments, args.n, avoid_secs=next_secs), args.model))
-    # Also filter in post-processing: drop any past probe within 15s of a next probe
-    past_probes = [
-        p for p in past_probes
-        if p.get("pause_time_sec", 0) >= MIN_PAUSE_SEC
-        and all(abs(p["pause_time_sec"] - ns) > 15 for ns in next_secs)
+    next_secs_prompt = [
+        int(round(p["pause_time_sec"]))
+        for p in existing
+        if p.get("type") == "next_action_prediction"
     ]
-    past_probes.sort(key=lambda p: p.get("pause_time_sec", 0))
-    for idx, p in enumerate(past_probes, start=1):
-        p["type"] = "past_action_recall"
-        p["id"] = f"R{idx}"
+    next_secs_prompt.extend(int(round(p["pause_time_sec"])) for p in next_batch)
 
-    all_probes = next_probes + past_probes
+    print(f"[generate_quiz] Calling LLM for {args.n} past-action probes…", file=sys.stderr)
+    past_batch = parse_probes(generate(build_past_action_prompt(task_name, task_goal, moments, args.n, avoid_secs=next_secs_prompt), args.model))
+    past_batch = snap_to_timeline(past_batch, use_post=True)
+    past_batch = filter_llm_probes(past_batch, moments, "past")
+    past_batch = [p for p in past_batch if p.get("pause_time_sec", 0) >= MIN_PAUSE_SEC]
+    past_batch.sort(key=lambda p: p.get("pause_time_sec", 0))
+    past_batch = filter_new_against_keys(past_batch, dedupe_keys)
+    mr = max_id_suffix(existing, "R")
+    for p in past_batch:
+        p["type"] = "past_action_recall"
+        mr += 1
+        p["id"] = f"R{mr}"
+
+    all_probes = existing + next_batch + past_batch
+    all_probes.sort(key=lambda p: p.get("pause_time_sec", 0))
 
     out_path = task_dir / "quiz.json"
     out_path.write_text(json.dumps(all_probes, indent=2, ensure_ascii=False))
-    print(f"✅  Wrote {len(all_probes)} probes ({len(next_probes)} next + {len(past_probes)} past) → {out_path}", file=sys.stderr)
-    if len(next_probes) < args.n or len(past_probes) < args.n:
-        print(f"⚠️  Note: requested {args.n} of each type but got {len(next_probes)} next / {len(past_probes)} past after filtering.", file=sys.stderr)
+    added_n, added_p = len(next_batch), len(past_batch)
+    print(f"✅  quiz.json → {len(all_probes)} total probes (+{added_n} next, +{added_p} past) → {out_path}", file=sys.stderr)
+    if added_n < args.n or added_p < args.n:
+        print(f"⚠️  Requested {args.n} new of each type but added {added_n} next / {added_p} past (after dedupe / filtering).", file=sys.stderr)
 
-    for p in all_probes:
-        print(f"  [{p['id']}] {p['type']} @ {p['timestamp_label']} — {p['question'][:60]}…")
+    for p in next_batch + past_batch:
+        print(f"  [NEW {p['id']}] {p['type']} @ {p['timestamp_label']} — {p['question'][:60]}…")
 
 
 if __name__ == "__main__":

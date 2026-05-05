@@ -23,6 +23,28 @@ from flask import Flask, Response, abort, jsonify, request, send_file
 RECORDINGS_DIR = Path(__file__).parent / "recordings"
 FRAME_INTERVAL = 0.5   # seconds per frame (must match workflow_recorder.py)
 QUIZ_TASK_IDS = ["s1", "s2", "s3", "t1", "t2", "t3", "legible_t1", "legible_t1_3", "legible_t1_9", "legible_t1_19", "legible_t1_19_cropped", "legible_t4_26"]
+
+# ── Study counterbalancing config ─────────────────────────────
+# Map each condition name to a recording task_id.
+LEGIBLE_S1_TASK_ID  = "legible_t4_26"
+BASELINE_T1_TASK_ID = "t1"
+LEGIBLE_T1_TASK_ID  = "legible_t1_19_cropped"
+BASELINE_S1_TASK_ID = "s1"
+
+STUDY_CONDITIONS = {
+    "baseline_t1": BASELINE_T1_TASK_ID,
+    "legible_t1":  LEGIBLE_T1_TASK_ID,
+    "baseline_s1": BASELINE_S1_TASK_ID,
+    "legible_s1":  LEGIBLE_S1_TASK_ID,
+}
+
+# Group letter (first char of participant ID, uppercase) → ordered list of condition names
+STUDY_GROUPS = {
+    "A": ["baseline_t1", "legible_s1"],
+    "B": ["baseline_s1", "legible_t1"],
+    "C": ["legible_t1",  "baseline_s1"],
+    "D": ["legible_s1",  "baseline_t1"],
+}
 FIREBASE_DB_URL = os.environ.get("FIREBASE_DB_URL", "https://legible-agents-default-rtdb.firebaseio.com").rstrip("/")
 FIREBASE_DB_SECRET = os.environ.get("FIREBASE_DB_SECRET", "").strip()
 
@@ -56,10 +78,17 @@ Accepted answers (full credit): {accepted}
 Partial credit answers: {partial}
 Reject examples: {rejected}
 
-Score on this scale:
-  2 = Correct   — matches the reference or accepted answers in substance
-  1 = Partial   — captures some key aspects but misses important details
-  0 = Incorrect — wrong, off-topic, too vague, or "I don't know"
+Score on this scale — be LENIENT, focus on whether the participant understood the action:
+  2 = Correct   — the participant got the right action. Minor wording differences, abbreviations,
+                  or missing fine detail are fine. "click clean at sephora" is correct if the
+                  reference is "clicked the Clean at Sephora filter". Substance matters, not phrasing.
+  1 = Partial   — the participant identified the right general area or intent but is missing a
+                  meaningful specific (e.g. says "clicked a filter" without naming which one, or
+                  names the wrong specific item).
+  0 = Incorrect — wrong action, completely off-topic, too vague to evaluate ("did something"),
+                  or "I don't know".
+
+When in doubt between 1 and 2, give 2. Only give 0 if clearly wrong or empty of content.
 
 Respond with JSON only, no extra text:
 {{"score": <0-2>, "label": "<correct|partial|incorrect>", "explanation": "<one concise sentence>"}}"""
@@ -219,7 +248,7 @@ def _fallback_action_quiz_from_log(task_id: str, target_n: int = 6) -> list[dict
             "pause_time_sec": sec,
             "timestamp_label": f"{sec // 60}:{str(sec % 60).zfill(2)}",
             "anchor": c["anchor"],
-            "question": "What is the agent's next meaningful action at this moment?",
+            "question": "What is the agent's next meaningful action at this moment? (Exclude trivial actions such as screenshots or scrolling the page.)",
             "reference_answer": c["reference"],
             "accepted_answers": [c["reference"]],
             "partial_answers": ["The agent will continue by taking the next UI step."],
@@ -304,6 +333,64 @@ def get_quiz(task_id):
     return jsonify(_build_action_quiz_set(task_id, target_n=6))
 
 
+@app.route("/api/quiz/<task_id>/delete/<quiz_id>", methods=["POST"])
+def delete_quiz_item(task_id, quiz_id):
+    """Remove a single probe from quiz.json (superuser only)."""
+    quiz_path = RECORDINGS_DIR / task_id / "quiz.json"
+    if not quiz_path.exists():
+        return jsonify({"error": "quiz.json not found"}), 404
+    items = json.loads(quiz_path.read_text())
+    before = len(items)
+    items = [q for q in items if q.get("id") != quiz_id]
+    if len(items) == before:
+        return jsonify({"error": f"id '{quiz_id}' not found"}), 404
+    quiz_path.write_text(json.dumps(items, indent=2, ensure_ascii=False))
+    return jsonify({"deleted": quiz_id, "remaining": len(items)})
+
+
+def _quiz_ts_label(sec: float) -> str:
+    sec_i = max(0, int(round(sec)))
+    m, s = divmod(sec_i, 60)
+    return f"{m}:{s:02d}"
+
+
+@app.route("/api/quiz/<task_id>/timing/<quiz_id>", methods=["POST"])
+def adjust_quiz_timing(task_id, quiz_id):
+    """Adjust pause_time_sec by delta (seconds); persist to quiz.json."""
+    quiz_path = RECORDINGS_DIR / task_id / "quiz.json"
+    if not quiz_path.exists():
+        return jsonify({"error": "quiz.json not found"}), 404
+    data = request.get_json(force=True) or {}
+    delta = data.get("delta")
+    if delta is None:
+        return jsonify({"error": "missing delta"}), 400
+    try:
+        delta = int(delta)
+    except (TypeError, ValueError):
+        return jsonify({"error": "delta must be an integer"}), 400
+
+    items = json.loads(quiz_path.read_text())
+    found = None
+    for q in items:
+        if q.get("id") == quiz_id:
+            found = q
+            break
+    if not found:
+        return jsonify({"error": f"id '{quiz_id}' not found"}), 404
+
+    cur = int(found.get("pause_time_sec", 0))
+    new_sec = max(0, cur + delta)
+    found["pause_time_sec"] = new_sec
+    found["timestamp_label"] = _quiz_ts_label(new_sec)
+
+    quiz_path.write_text(json.dumps(items, indent=2, ensure_ascii=False))
+    return jsonify({
+        "id": quiz_id,
+        "pause_time_sec": new_sec,
+        "timestamp_label": found["timestamp_label"],
+    })
+
+
 @app.route("/api/tasks")
 def list_tasks():
     items = []
@@ -320,6 +407,37 @@ def list_tasks():
             pass
         items.append({"task_id": task_id, "task_name": task_name})
     return jsonify(items)
+
+
+@app.route("/api/participant_group/<participant_id>")
+def get_participant_group(participant_id):
+    """Return group letter and ordered task list for a participant ID.
+
+    Participant IDs must start with A–D (case-insensitive), e.g. A1, B12, C3, D7.
+    Returns {group, tasks: [{session, condition, task_id, task_name}]}.
+    """
+    pid = participant_id.strip()
+    group = pid[0].upper() if pid else ""
+    if group not in STUDY_GROUPS:
+        return jsonify({"error": f"Participant ID must start with A, B, C, or D (got '{pid}')"}), 400
+
+    tasks = []
+    for session_idx, condition in enumerate(STUDY_GROUPS[group], start=1):
+        task_id = STUDY_CONDITIONS[condition]
+        task_name = f"Task {task_id}"
+        try:
+            evs = _events(task_id)
+            start = next((e for e in evs if e.get("kind") == "session_start"), {})
+            task_name = start.get("task_name", task_name)
+        except Exception:
+            pass
+        tasks.append({
+            "session": session_idx,
+            "condition": condition,
+            "task_id": task_id,
+            "task_name": task_name,
+        })
+    return jsonify({"group": group, "participant_id": pid, "tasks": tasks})
 
 
 @app.route("/api/evaluate", methods=["POST"])
@@ -399,6 +517,9 @@ def api_save_progress():
     task_type   = (data.get("task_type") or data.get("task_id") or "unknown").strip()
     participant = (data.get("participant") or "anonymous").strip().replace(" ", "_")
     responses   = data.get("responses", [])
+    group       = data.get("group", "")
+    condition   = data.get("condition", "")
+    session_num = data.get("session", "")
 
     # ── Local flat file per save ──────────────────────────────────
     out_dir = RECORDINGS_DIR / task_type / "scores"
@@ -429,6 +550,9 @@ def api_save_progress():
             "answer_time_sec":   row.get("answer_time_sec"),
             "answered_at":       row.get("answered_at"),
         }
+        if group:     fb_data["group"]     = group
+        if condition: fb_data["condition"] = condition
+        if session_num: fb_data["session"] = session_num
         fb_data = {k: v for k, v in fb_data.items() if v is not None}
         fb_path = (
             f"participants/{_safe_key(participant)}"
@@ -446,6 +570,55 @@ def api_save_progress():
         "saved_local": str(out_path.relative_to(Path(__file__).parent)),
         "firebase_saved": len(saved_paths),
         "firebase_errors": errors,
+    })
+
+
+@app.route("/api/save_survey", methods=["POST"])
+def api_save_survey():
+    """Save post-task or final surveys to Firebase RTDB and a local JSON audit copy."""
+    data        = request.get_json(force=True)
+    participant = _safe_key((data.get("participant") or "anonymous").strip().replace(" ", "_"))
+    survey_type = data.get("survey_type", "post_task")   # "post_task" | "final_preference"
+    task_type   = _safe_key(data.get("task_type") or "unknown")
+    group       = data.get("group", "")
+    condition   = data.get("condition", "")
+    responses   = data.get("responses") or {}
+
+    # Firebase path: participants/<pid>/surveys/<survey_type>/<task_type or "final">
+    sub = task_type if survey_type == "post_task" else "final"
+    fb_path = f"participants/{participant}/surveys/{_safe_key(survey_type)}/{sub}"
+
+    # Flatten response fields onto root for easy Firebase filtering; keep nested copy too.
+    payload = {
+        "participant": participant,
+        "survey_type": survey_type,
+        "task_type": task_type,
+        "group": group,
+        "condition": condition,
+        "submitted_at": data.get("submitted_at") or "",
+        **responses,
+        "responses": responses,
+    }
+
+    ok, detail = _firebase_put(fb_path, payload)
+    if not ok:
+        print(f"[firebase] save_survey failed: {detail}", file=sys.stderr)
+
+    survey_log_dir = Path(__file__).parent / "survey_logs"
+    survey_log_dir.mkdir(parents=True, exist_ok=True)
+    ts = time.strftime("%Y%m%d_%H%M%S")
+    local_name = f"{participant}_{survey_type}_{sub}_{ts}.json"
+    local_path = survey_log_dir / local_name
+    try:
+        local_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False))
+    except OSError as exc:
+        print(f"[save_survey] local write failed: {exc}", file=sys.stderr)
+
+    return jsonify({
+        "firebase_saved": ok,
+        "firebase_path": detail if ok else None,
+        "firebase_error": None if ok else detail,
+        "saved_local": str(local_path.relative_to(Path(__file__).parent)),
     })
 
 
@@ -492,6 +665,8 @@ HTML = r"""<!DOCTYPE html>
 <title>Agent Quiz Reviewer</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  /* Generic utility — session-complete buttons and overlays both use .hidden */
+  .hidden { display: none !important; }
   :root {
     --bg:        #f0f0f5;
     --surface:   #ffffff;
@@ -542,19 +717,195 @@ HTML = r"""<!DOCTYPE html>
   }
   #task-select:focus { border-color: var(--accent); outline: none; }
 
-  /* Participant input */
+  /* Participant badge in header */
   #participant-wrap {
     display: flex; align-items: center; gap: 6px; flex-shrink: 0;
   }
-  #participant-wrap label { font-size: 11px; color: var(--muted); white-space: nowrap; }
-  #participant-input {
-    width: 120px; padding: 4px 9px;
-    border: 1.5px solid var(--border); border-radius: 7px;
-    font-family: inherit; font-size: 12px; color: var(--text);
-    background: #fafafe; outline: none; transition: border-color .15s;
+  #participant-badge {
+    font-size: 12px; font-weight: 600; color: var(--accent);
+    background: var(--accent-lt); padding: 3px 10px; border-radius: 20px;
   }
-  #participant-input:focus { border-color: var(--accent); background: #fff; }
-  #participant-input::placeholder { color: #9ca3af; }
+  #session-badge {
+    font-size: 11px; color: var(--muted);
+    background: var(--bg); padding: 3px 9px; border-radius: 20px;
+    border: 1px solid var(--border);
+  }
+
+  /* ── Superuser task select ── */
+  #superuser-bar {
+    display: none;
+    align-items: center; gap: 8px; flex-shrink: 0;
+  }
+  #superuser-bar.visible { display: flex; }
+  #superuser-bar label { font-size: 11px; color: var(--muted); }
+  #task-select {
+    font-size: 12px; padding: 5px 8px;
+    border: 1px solid var(--border); border-radius: 8px;
+    background: #fff; color: var(--text); min-width: 180px;
+  }
+  #task-select:focus { border-color: var(--accent); outline: none; }
+
+  /* ── Instruction slides ── */
+  #instructions {
+    position: fixed; inset: 0; background: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 90;
+  }
+  #instructions.hidden { display: none; }
+  .instr-card {
+    background: var(--surface); border-radius: 16px;
+    box-shadow: var(--shadow); padding: 44px 52px;
+    max-width: 560px; width: 100%;
+  }
+  .instr-step { font-size: 11px; color: var(--muted); font-weight: 600;
+    letter-spacing: .08em; text-transform: uppercase; margin-bottom: 10px; }
+  .instr-card h2 { font-size: 19px; margin-bottom: 14px; }
+  .instr-card p  { font-size: 14px; color: #374151; line-height: 1.7; }
+  .instr-card p + p { margin-top: 10px; }
+  .instr-highlight { background: #fef9c3; border-left: 3px solid #d97706;
+    padding: 8px 12px; border-radius: 0 6px 6px 0; margin-top: 12px; font-size: 13px; }
+  .instr-nav { display: flex; justify-content: space-between; align-items: center; margin-top: 32px; }
+  .instr-dots { display: flex; gap: 6px; }
+  .instr-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); transition: background .2s; }
+  .instr-dot.active { background: var(--accent); }
+  .instr-btn {
+    padding: 9px 22px; border-radius: 9px; border: none;
+    font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit;
+  }
+  .instr-btn.back { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
+  .instr-btn.back:hover { background: var(--border); }
+  .instr-btn.next { background: var(--accent); color: #fff; }
+  .instr-btn.next:hover { background: #4338ca; }
+  .instr-btn.start { background: var(--green); color: #fff; }
+  .instr-btn.start:hover { background: #15803d; }
+
+  /* ── Splash / participant ID screen ── */
+  #splash {
+    position: fixed; inset: 0; background: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 100;
+  }
+  #splash.hidden { display: none; }
+  .splash-card {
+    background: var(--surface); border-radius: 16px;
+    box-shadow: var(--shadow); padding: 44px 48px;
+    max-width: 420px; width: 100%; text-align: center;
+  }
+  .splash-card h2 { font-size: 20px; margin-bottom: 8px; }
+  .splash-card p  { font-size: 13px; color: var(--muted); margin-bottom: 28px; line-height: 1.5; }
+  #pid-input {
+    width: 100%; padding: 11px 16px; font-size: 20px; font-weight: 700;
+    letter-spacing: 2px; text-align: center; text-transform: uppercase;
+    border: 2px solid var(--border); border-radius: 10px;
+    font-family: inherit; outline: none; transition: border-color .15s;
+    margin-bottom: 12px;
+  }
+  #pid-input:focus { border-color: var(--accent); }
+  #pid-error { font-size: 12px; color: var(--red); min-height: 18px; margin-bottom: 10px; }
+  #pid-submit {
+    width: 100%; padding: 12px; background: var(--accent); color: #fff;
+    border: none; border-radius: 10px; font-size: 15px; font-weight: 600;
+    cursor: pointer; font-family: inherit; transition: background .12s;
+  }
+  #pid-submit:hover { background: #4338ca; }
+
+  /* ── Session complete overlay ── */
+  #session-complete {
+    position: fixed; inset: 0; background: rgba(240,240,245,.92);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 50;
+  }
+  #session-complete.hidden { display: none; }
+  .complete-card {
+    background: var(--surface); border-radius: 16px;
+    box-shadow: var(--shadow); padding: 44px 48px;
+    max-width: 420px; width: 100%; text-align: center;
+  }
+  .complete-card h2 { font-size: 20px; margin-bottom: 10px; }
+  .complete-card p  { font-size: 13px; color: var(--muted); margin-bottom: 28px; line-height: 1.5; }
+  #btn-next-session {
+    width: 100%; padding: 12px; background: var(--green); color: #fff;
+    border: none; border-radius: 10px; font-size: 15px; font-weight: 600;
+    cursor: pointer; font-family: inherit; transition: background .12s;
+  }
+  #btn-next-session:hover { background: #15803d; }
+  #btn-finish {
+    width: 100%; padding: 12px; background: var(--accent); color: #fff;
+    border: none; border-radius: 10px; font-size: 15px; font-weight: 600;
+    cursor: pointer; font-family: inherit; transition: background .12s; margin-top: 10px;
+  }
+  #btn-finish:hover { background: #4338ca; }
+
+  /* ── Task intro overlay ── */
+  #task-intro {
+    position: fixed; inset: 0; background: rgba(240,240,245,.94);
+    display: flex; align-items: center; justify-content: center; z-index: 55;
+  }
+  #task-intro.hidden { display: none; }
+  #task-intro-content {
+    font-size: 14px; color: var(--muted); line-height: 1.7;
+    margin: 18px 0 28px; text-align: center;
+  }
+  #task-intro-content strong { color: var(--text); }
+
+  /* ── Survey overlay ── */
+  #survey-overlay {
+    position: fixed; inset: 0; background: rgba(240,240,245,.95);
+    display: flex; align-items: center; justify-content: center; z-index: 55;
+    overflow-y: auto;
+  }
+  #survey-overlay.hidden { display: none; }
+  .survey-card {
+    background: var(--surface); border-radius: 16px;
+    box-shadow: var(--shadow); padding: 36px 44px;
+    max-width: 560px; width: 100%; margin: 20px;
+  }
+  .survey-card h2 { font-size: 20px; margin-bottom: 4px; }
+  .survey-subtitle { font-size: 12px; color: var(--muted); margin-bottom: 24px; }
+  .survey-page.hidden { display: none; }
+  .survey-q { margin-bottom: 26px; }
+  .survey-q-title { font-weight: 600; font-size: 13px; margin-bottom: 3px; }
+  .survey-q-desc  { font-size: 11.5px; color: var(--muted); margin-bottom: 10px; line-height: 1.5; }
+  .likert-row {
+    display: flex; gap: 8px; align-items: center; justify-content: space-between;
+  }
+  .likert-row label {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 4px; cursor: pointer; font-size: 11px; color: var(--muted);
+    flex: 1;
+  }
+  .likert-row input[type="radio"] { cursor: pointer; accent-color: var(--accent); width: 16px; height: 16px; }
+  .likert-row label.selected { color: var(--accent); font-weight: 700; }
+  .likert-anchor { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); margin-top: 4px; }
+  .survey-error { font-size: 12px; color: var(--red); margin: 8px 0 4px; }
+  #survey-dots { display: flex; gap: 6px; }
+
+  /* ── Final forced-choice ── */
+  #final-choice {
+    position: fixed; inset: 0; background: rgba(240,240,245,.95);
+    display: flex; align-items: center; justify-content: center; z-index: 55;
+  }
+  #final-choice.hidden { display: none; }
+  #final-choice .survey-card { max-width: 620px; }
+  .choice-options { display: flex; gap: 14px; margin: 20px 0 8px; flex-wrap: wrap; }
+  .choice-opt {
+    flex: 1; min-width: 200px; border: 2px solid var(--border); border-radius: 12px;
+    padding: 18px 16px; cursor: pointer; transition: border-color .15s, background .15s;
+    text-align: center;
+  }
+  .choice-opt:hover { border-color: var(--accent); background: rgba(99,102,241,.05); }
+  .choice-opt.selected { border-color: var(--accent); background: rgba(99,102,241,.1); }
+  .choice-opt .choice-label { font-weight: 600; font-size: 14px; margin-bottom: 8px; color: var(--text); }
+  .choice-opt .choice-desc { font-size: 11.5px; color: var(--muted); line-height: 1.55; }
+  #final-open-ended { margin-top: 22px; text-align: left; }
+  #final-open-ended textarea {
+    width: 100%; box-sizing: border-box; margin-top: 8px; padding: 10px 12px;
+    border: 1px solid var(--border); border-radius: 8px; font-family: inherit; font-size: 13px;
+    color: var(--text); background: #fff; resize: vertical; min-height: 92px; line-height: 1.5;
+  }
+  #final-open-ended textarea:focus {
+    outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-lt);
+  }
 
   .hdr-btn {
     padding: 5px 13px; border-radius: 7px; border: 1px solid var(--border);
@@ -596,7 +947,7 @@ HTML = r"""<!DOCTYPE html>
     font-size: 18px; cursor: pointer; padding: 0 4px; line-height: 1;
   }
   #progress-wrap {
-    flex: 1; height: 5px; background: #3a3a5c;
+    flex: 1; height: 5px; background: #3a3a5c; cursor: default;
     border-radius: 3px; cursor: pointer; position: relative;
   }
   #progress-fill { height: 100%; background: var(--accent); border-radius: 3px; width: 0%; pointer-events: none; }
@@ -795,6 +1146,22 @@ HTML = r"""<!DOCTYPE html>
     cursor: pointer; font-family: inherit; color: var(--muted); flex-shrink: 0;
   }
   .row-jump:hover { border-color: var(--accent); color: var(--accent); }
+  .row-delete {
+    font-size: 11px; padding: 2px 7px; border-radius: 5px;
+    border: 1px solid #fca5a5; background: var(--bg);
+    cursor: pointer; font-family: inherit; color: var(--red); flex-shrink: 0;
+  }
+  .row-delete:hover { background: var(--red-lt); }
+  .row-timing {
+    display: inline-flex; gap: 2px; align-items: center; flex-shrink: 0;
+    margin-right: 4px;
+  }
+  .row-time-delta {
+    font-size: 10px; padding: 1px 5px; border-radius: 4px;
+    border: 1px solid var(--border); background: var(--bg);
+    cursor: pointer; font-family: inherit; color: var(--muted); line-height: 1.2;
+  }
+  .row-time-delta:hover { border-color: var(--accent); color: var(--accent); }
 
   #quiz-bottom-actions {
     position: sticky;
@@ -829,15 +1196,159 @@ HTML = r"""<!DOCTYPE html>
 </head>
 <body>
 
+<!-- ── Splash: Participant ID entry ── -->
+<div id="splash">
+  <div class="splash-card">
+    <h2>⬡ Agent Quiz Study</h2>
+    <p>Enter your participant ID to begin.<br/>Your ID determines which tasks you will complete.</p>
+    <input id="pid-input" type="text" placeholder="e.g. A1" maxlength="12" autocomplete="off" autocapitalize="characters"/>
+    <div id="pid-error"></div>
+    <button id="pid-submit">Start Study</button>
+  </div>
+</div>
+
+<!-- ── Instruction slides ── -->
+<div id="instructions" class="hidden">
+  <div class="instr-card">
+    <div class="instr-step" id="instr-step-label">Step 1 of 4</div>
+    <div id="instr-content"></div>
+    <div class="instr-nav">
+      <button class="instr-btn back" id="instr-back">← Back</button>
+      <div class="instr-dots" id="instr-dots"></div>
+      <button class="instr-btn next" id="instr-next">Next →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Session complete overlay ── -->
+<div id="session-complete" class="hidden">
+  <div class="complete-card">
+    <h2>✅ Session Complete</h2>
+    <p id="complete-msg">You've finished this session. Ready for the next one?</p>
+    <button id="btn-next-session">Continue to Next Session →</button>
+    <button id="btn-finish" class="hidden">Finish Study</button>
+  </div>
+</div>
+
+<!-- ── Task description modal (before each task) ── -->
+<div id="task-intro" class="hidden">
+  <div class="instr-card">
+    <div class="instr-step" id="task-intro-label">Session 1 of 2</div>
+    <div id="task-intro-content"></div>
+    <div class="instr-nav" style="justify-content:center">
+      <button class="instr-btn next" id="task-intro-begin">Begin Task →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Post-task survey ── -->
+<div id="survey-overlay" class="hidden">
+  <div class="survey-card">
+    <div class="instr-step" id="survey-page-label">Survey – Page 1 of 2</div>
+    <h2 id="survey-title">Share Your Experience</h2>
+    <p class="survey-subtitle">Rate each item from <strong>1 (low)</strong> to <strong>7 (high)</strong>.</p>
+    <div id="survey-page-1" class="survey-page">
+      <div class="survey-q" data-key="mental_demand">
+        <div class="survey-q-title">Mental Demand</div>
+        <div class="survey-q-desc">How much mental and perceptual activity was required? Was the task easy or demanding, simple or complex?</div>
+        <div class="likert-row" data-key="mental_demand"></div>
+      </div>
+      <div class="survey-q" data-key="physical_demand">
+        <div class="survey-q-title">Physical Demand</div>
+        <div class="survey-q-desc">How much physical activity was required? Was the task easy or demanding, slack or strenuous?</div>
+        <div class="likert-row" data-key="physical_demand"></div>
+      </div>
+      <div class="survey-q" data-key="temporal_demand">
+        <div class="survey-q-title">Temporal Demand</div>
+        <div class="survey-q-desc">How much time pressure did you feel due to the pace at which the tasks or task elements occurred? Was the pace slow or rapid?</div>
+        <div class="likert-row" data-key="temporal_demand"></div>
+      </div>
+      <div class="survey-q" data-key="own_performance">
+        <div class="survey-q-title">Own Performance</div>
+        <div class="survey-q-desc">How successful were you in performing the task? How satisfied were you with your performance?</div>
+        <div class="likert-row" data-key="own_performance"></div>
+      </div>
+    </div>
+    <div id="survey-page-2" class="survey-page hidden">
+      <div class="survey-q" data-key="effort">
+        <div class="survey-q-title">Effort</div>
+        <div class="survey-q-desc">How hard did you have to work (mentally and physically) to accomplish your level of performance?</div>
+        <div class="likert-row" data-key="effort"></div>
+      </div>
+      <div class="survey-q" data-key="frustration">
+        <div class="survey-q-title">Frustration Level</div>
+        <div class="survey-q-desc">How irritated, stressed, and annoyed versus content, relaxed, and complacent did you feel during the task?</div>
+        <div class="likert-row" data-key="frustration"></div>
+      </div>
+      <div class="survey-q" data-key="agent_intelligence">
+        <div class="survey-q-title">Perceived Agent Intelligence</div>
+        <div class="survey-q-desc">How intelligent do you think the agent is?</div>
+        <div class="likert-row" data-key="agent_intelligence"></div>
+      </div>
+      <div class="survey-q" data-key="collaboration">
+        <div class="survey-q-title">Collaboration</div>
+        <div class="survey-q-desc">I can easily collaborate with this agent.</div>
+        <div class="likert-row" data-key="collaboration"></div>
+      </div>
+    </div>
+    <div id="survey-error" class="survey-error hidden">Please answer all questions before continuing.</div>
+    <div class="instr-nav">
+      <button class="instr-btn back hidden" id="survey-back">← Back</button>
+      <div class="instr-dots" id="survey-dots"></div>
+      <button class="instr-btn next" id="survey-next">Next →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Final agent preference ── -->
+<div id="final-choice" class="hidden">
+  <div class="survey-card">
+    <div class="instr-step">Final questions</div>
+    <h2>Which experience did you prefer?</h2>
+    <p class="survey-subtitle">Choose the agent style you found more helpful or engaging overall — not which session came first.</p>
+    <div id="final-choice-options" class="choice-options">
+      <div class="choice-opt" data-agent-style="silent_abrupt" onclick="selectFinalChoice(this)">
+        <div class="choice-label">Silent, abrupt agent</div>
+        <div class="choice-desc">No spoken narration and no extra on-screen highlights — the interface updates with little explanation.</div>
+      </div>
+      <div class="choice-opt" data-agent-style="talking_rich_cue" onclick="selectFinalChoice(this)">
+        <div class="choice-label">Talking, rich-cue agent</div>
+        <div class="choice-desc">Spoke actions aloud and used clear visual cues on screen.</div>
+      </div>
+    </div>
+    <div id="final-choice-error" class="survey-error hidden">Please select which agent style you preferred.</div>
+    <div id="final-open-ended">
+      <div class="survey-q">
+        <div class="survey-q-title">Silent, abrupt agent</div>
+        <div class="survey-q-desc">What was your experience like? (e.g., what was hard, what was good?)</div>
+        <textarea id="final-exp-silent" maxlength="4000" placeholder="Your thoughts…" aria-label="Experience with the silent abrupt agent"></textarea>
+      </div>
+      <div class="survey-q" style="margin-top:22px">
+        <div class="survey-q-title">Talking, rich-cue agent</div>
+        <div class="survey-q-desc">What was your experience like? (e.g., what was helpful, what was distracting?)</div>
+        <textarea id="final-exp-talking" maxlength="4000" placeholder="Your thoughts…" aria-label="Experience with the talking rich-cue agent"></textarea>
+      </div>
+    </div>
+    <div id="final-choice-field-error" class="survey-error hidden">Please write a few words about <strong>each</strong> agent (at least ~15 characters each).</div>
+    <div class="instr-nav" style="justify-content:center;margin-top:20px">
+      <button class="instr-btn next" id="final-choice-submit">Submit &amp; Finish</button>
+    </div>
+  </div>
+</div>
+
 <header>
-  <h1>⬡ Quiz Reviewer</h1>
-  <select id="task-select" title="Choose task"></select>
+  <h1>⬡ Quiz</h1>
+  <div id="superuser-bar">
+    <label for="task-select">Task:</label>
+    <select id="task-select" title="Choose task"></select>
+    <button type="button" class="hdr-btn" id="btn-preview-final" title="Open the final preference modal (no save)">Preview final question</button>
+  </div>
   <span id="task-name">Loading…</span>
   <div id="participant-wrap">
-    <label for="participant-input">Participant:</label>
-    <input id="participant-input" type="text" placeholder="name" autocomplete="off"/>
+    <span id="participant-badge"></span>
+    <span id="session-badge"></span>
   </div>
-  <button class="hdr-btn danger"  id="btn-reset">Reset</button>
+  <button class="hdr-btn danger" id="btn-reset">Reset</button>
 </header>
 
 <main>
@@ -880,7 +1391,16 @@ HTML = r"""<!DOCTYPE html>
 <script>
 // ── State ──────────────────────────────────────────────────────
 const S = {
+  // Study session state
+  participantId: '',
+  group: '',
+  isSuperuser: false,
+  studyTasks: [],      // [{session, condition, task_id, task_name}]
+  currentSessionIdx: 0,
+
+  // Per-task state
   taskId: null, taskName: '',
+  condition: '',
   quizItems: [],
   logEvents: [],
   answers:    {},      // id -> {userAnswer, answeredAt, score, score_label, score_explanation}
@@ -907,35 +1427,222 @@ const logStrip     = document.getElementById('log-strip');
 const logItemsEl   = document.getElementById('log-items');
 const logStepHdr   = document.getElementById('log-step-hdr');
 const btnLogToggle = document.getElementById('btn-log-toggle');
-const taskSelectEl  = document.getElementById('task-select');
-const participantEl = document.getElementById('participant-input');
-const toast         = document.getElementById('toast');
-const QUIZ_TASK_IDS = ['s1', 's2', 's3', 't1', 't2', 't3', 'legible_t1', 'legible_t1_3', 'legible_t1_9', 'legible_t1_19', 'legible_t1_19_cropped', 'legible_t4_26'];
+const toast        = document.getElementById('toast');
+const splashEl     = document.getElementById('splash');
+const pidInputEl   = document.getElementById('pid-input');
+const pidErrorEl   = document.getElementById('pid-error');
+const pidSubmitEl  = document.getElementById('pid-submit');
+const instrEl            = document.getElementById('instructions');
+const instrStepLabelEl   = document.getElementById('instr-step-label');
+const instrContentEl     = document.getElementById('instr-content');
+const instrDotsEl        = document.getElementById('instr-dots');
+const instrBackBtn       = document.getElementById('instr-back');
+const instrNextBtn       = document.getElementById('instr-next');
+const sessionCompleteEl  = document.getElementById('session-complete');
+const completeMsgEl      = document.getElementById('complete-msg');
+const btnNextSession     = document.getElementById('btn-next-session');
+const btnFinish          = document.getElementById('btn-finish');
+const participantBadge   = document.getElementById('participant-badge');
+const sessionBadge       = document.getElementById('session-badge');
+const superuserBar       = document.getElementById('superuser-bar');
+const taskSelectEl       = document.getElementById('task-select');
+const taskIntroEl        = document.getElementById('task-intro');
+const taskIntroLabelEl   = document.getElementById('task-intro-label');
+const taskIntroContentEl = document.getElementById('task-intro-content');
+const taskIntroBeginBtn  = document.getElementById('task-intro-begin');
+const surveyOverlayEl    = document.getElementById('survey-overlay');
+const finalChoiceEl      = document.getElementById('final-choice');
+const finalChoiceOptionsEl = document.getElementById('final-choice-options');
+const finalChoiceSubmitBtn = document.getElementById('final-choice-submit');
 let _autosaveTimer = null;
 let _autosaveDirty = false;
 
-// ── Init ────────────────────────────────────────────────────────
-async function init() {
-  const params = new URLSearchParams(location.search);
-  const requestedTask = params.get('task');
-  startAutosave();
-  await loadTaskOptions();
-  const defaultTask = (requestedTask && QUIZ_TASK_IDS.includes(requestedTask))
-    ? requestedTask
-    : (taskSelectEl.value || 's1');
-  taskSelectEl.value = defaultTask;
-  await loadTask(defaultTask);
+// ── Task descriptions (by condition) ─────────────────────────
+const TASK_DESCRIPTIONS = {
+  baseline_t1: `In this task, you asked an AI agent to browse the <strong>Sephora</strong> website and find a <strong>foundation and a mascara</strong> suited for sensitive skin, then add both products to the shopping cart.`,
+  legible_t1:  `In this task, you asked an AI agent to browse the <strong>Sephora</strong> website and find a <strong>foundation and a mascara</strong> suited for sensitive skin, then add both products to the shopping cart.`,
+  baseline_s1: `In this task, you asked an AI agent to compare <strong>graduate financial aid packages</strong> across three New York universities (NYU, Columbia, and Cornell Tech) and summarize the key findings.`,
+  legible_s1:  `In this task, you asked an AI agent to compare <strong>graduate financial aid packages</strong> across three New York universities (NYU, Columbia, and Cornell Tech) and summarize the key findings.`,
+};
+
+// ── Survey state ──────────────────────────────────────────────
+const SURVEY_PAGE1_KEYS = ['mental_demand','physical_demand','temporal_demand','own_performance'];
+const SURVEY_PAGE2_KEYS = ['effort','frustration','agent_intelligence','collaboration'];
+const SURVEY_ALL_KEYS   = [...SURVEY_PAGE1_KEYS, ...SURVEY_PAGE2_KEYS];
+let _surveyPage = 1;
+let _surveyAnswers = {};
+let _surveyCondition = '';
+let _surveyTaskType = '';
+let _surveyCallback = null;   // called after survey is submitted
+let _finalChoiceSelected = null;  // 'silent_abrupt' | 'talking_rich_cue'
+let _finalChoicePreviewMode = false;
+const FINAL_EXP_MIN_LEN = 15;
+
+/** Shown for next/past action probes so participants skip screenshots / scrolling. */
+const TRIVIAL_ACTIONS_HINT = ' (Exclude trivial actions such as screenshots or scrolling the page.)';
+
+function formatQuizQuestion(q) {
+  const raw = (q && q.question) ? String(q.question) : '';
+  const t = q && q.type;
+  if (t !== 'next_action_prediction' && t !== 'past_action_recall') return raw;
+  const compact = raw.replace(/\s+/g, ' ').toLowerCase();
+  if (compact.includes('trivial') && (compact.includes('screenshot') || compact.includes('scroll'))) return raw;
+  return raw + TRIVIAL_ACTIONS_HINT;
 }
 
-async function loadTaskOptions() {
+// ── Init ────────────────────────────────────────────────────────
+function init() {
+  startAutosave();
+  initSurveyRows();
+  // Show splash — wait for participant ID
+  pidInputEl.focus();
+}
+
+// ── Participant ID / group resolution ───────────────────────────
+pidSubmitEl.addEventListener('click', submitParticipantId);
+pidInputEl.addEventListener('keydown', e => { if (e.key === 'Enter') submitParticipantId(); });
+
+async function submitParticipantId() {
+  const pid = pidInputEl.value.trim();
+  pidErrorEl.textContent = '';
+  if (!pid) { pidErrorEl.textContent = 'Please enter your participant ID.'; return; }
+
+  // Superuser shortcut
+  if (pid.toLowerCase() === 'superuser') {
+    S.participantId = 'superuser';
+    S.isSuperuser = true;
+    splashEl.classList.add('hidden');
+    await activateSuperuserMode();
+    return;
+  }
+
+  const pidUpper = pid.toUpperCase();
+  if (!/^[A-D]/i.test(pidUpper)) {
+    pidErrorEl.textContent = 'ID must start with A, B, C, or D (e.g. A1, B3, C12).';
+    return;
+  }
+  pidSubmitEl.disabled = true;
+  pidSubmitEl.textContent = 'Loading…';
+  try {
+    const res = await fetch(`/api/participant_group/${encodeURIComponent(pidUpper)}`);
+    const data = await res.json();
+    if (data.error) { pidErrorEl.textContent = data.error; return; }
+    S.participantId = pidUpper;
+    S.group = data.group;
+    S.studyTasks = data.tasks;
+    S.currentSessionIdx = 0;
+    splashEl.classList.add('hidden');
+    showInstructions();
+  } catch(err) {
+    pidErrorEl.textContent = `Error: ${err.message}`;
+  } finally {
+    pidSubmitEl.disabled = false;
+    pidSubmitEl.textContent = 'Start Study';
+  }
+}
+
+// ── Superuser mode ──────────────────────────────────────────────
+async function activateSuperuserMode() {
+  superuserBar.classList.add('visible');
+  participantBadge.textContent = '👤 superuser';
+  sessionBadge.textContent = 'Admin mode';
   const res = await fetch('/api/tasks');
   const tasks = res.ok ? await res.json() : [];
-  const options = tasks.length
-    ? tasks
-    : QUIZ_TASK_IDS.map(task_id => ({ task_id, task_name: `Task ${task_id}` }));
-  taskSelectEl.innerHTML = options.map(
+  taskSelectEl.innerHTML = tasks.map(
     t => `<option value="${t.task_id}">${t.task_id.toUpperCase()} — ${t.task_name}</option>`
   ).join('');
+  taskSelectEl.addEventListener('change', async () => {
+    await loadTask(taskSelectEl.value);
+  });
+  document.getElementById('btn-preview-final')?.addEventListener('click', () => {
+    showFinalChoice({ preview: true });
+  });
+  if (tasks.length) await loadTask(tasks[0].task_id);
+}
+
+// ── Instruction slides ──────────────────────────────────────────
+const INSTRUCTIONS = [
+  {
+    title: '👋 Welcome & Thank You',
+    body: `<p>Thank you so much for your participation in our study! Our research aims to understand how <strong>legible</strong> existing computer-use agents are to human observers, and to implement solutions to make them easier to follow and predict.</p>
+           <p>This study will take approximately <strong>15–20 minutes</strong> in total.</p>`,
+  },
+  {
+    title: '💻 Requirements',
+    body: `<p>To participate, please make sure:</p>
+           <p>• You are using a <strong>computer</strong> (not a mobile device)<br/>
+              • You have a <strong>stable Wi-Fi connection</strong><br/>
+              • You can <strong>hear computer sound</strong> — please unmute 🔊</p>`,
+  },
+  {
+    title: '📋 What You Will Do',
+    body: `<p>You will watch <strong>2 agent task sessions</strong> where agents behave differently.</p>
+           <p>In each task you will answer quiz questions about <strong>what the agent did</strong> or <strong>what it will do next</strong>. For each question you will:</p>
+           <p>1. Write your answer and rate your <strong>confidence</strong><br/>
+              2. See the reference answer and rate whether it was a <strong>good action</strong></p>
+           <p>At the end of each task, you will share your experience.</p>`,
+  },
+  {
+    title: '⚠️ Important Note',
+    body: `<p>Please <strong>do NOT re-watch</strong> parts of the video to better answer questions.</p>
+           <div class="instr-highlight">It's completely okay to be incorrect — we want natural, first-impression responses. Watch the video once, and answer when it pauses and the quiz appears.</div>`,
+  },
+];
+let _instrIdx = 0;
+
+function showInstructions() {
+  _instrIdx = 0;
+  instrEl.classList.remove('hidden');
+  renderInstrSlide();
+}
+
+function renderInstrSlide() {
+  const slide = INSTRUCTIONS[_instrIdx];
+  const total = INSTRUCTIONS.length;
+  instrStepLabelEl.textContent = `Step ${_instrIdx + 1} of ${total}`;
+  instrContentEl.innerHTML = `<h2>${slide.title}</h2>${slide.body}`;
+  instrDotsEl.innerHTML = INSTRUCTIONS.map((_, i) =>
+    `<div class="instr-dot ${i === _instrIdx ? 'active' : ''}"></div>`
+  ).join('');
+  instrBackBtn.disabled = _instrIdx === 0;
+  instrBackBtn.style.visibility = _instrIdx === 0 ? 'hidden' : 'visible';
+  const isLast = _instrIdx === total - 1;
+  instrNextBtn.className = `instr-btn ${isLast ? 'start' : 'next'}`;
+  instrNextBtn.textContent = isLast ? '▶ Start Study' : 'Next →';
+}
+
+instrBackBtn.addEventListener('click', () => {
+  if (_instrIdx > 0) { _instrIdx--; renderInstrSlide(); }
+});
+instrNextBtn.addEventListener('click', async () => {
+  if (_instrIdx < INSTRUCTIONS.length - 1) {
+    _instrIdx++;
+    renderInstrSlide();
+  } else {
+    instrEl.classList.add('hidden');
+    updateHeaderBadges();
+    startFirstSession();
+  }
+});
+
+function updateHeaderBadges() {
+  if (S.isSuperuser) return;
+  const t = S.studyTasks[S.currentSessionIdx];
+  participantBadge.textContent = S.participantId;
+  sessionBadge.textContent = t ? `Session ${t.session} of ${S.studyTasks.length}` : '';
+}
+
+async function loadSessionTask(sessionIdx) {
+  S.currentSessionIdx = sessionIdx;
+  const t = S.studyTasks[sessionIdx];
+  S.condition = t.condition;
+  updateHeaderBadges();
+  await loadTask(t.task_id);
+}
+
+async function startFirstSession() {
+  // Called after instructions are dismissed — show task intro then load
+  showTaskIntro(0);
 }
 
 function resetTaskState(taskId) {
@@ -955,6 +1662,8 @@ function resetTaskState(taskId) {
   });
   vid.pause();
   vid.currentTime = 0;
+  sessionCompleteEl.classList.add('hidden');
+  surveyOverlayEl.classList.add('hidden');
 }
 
 async function loadTask(taskId) {
@@ -981,7 +1690,8 @@ async function loadTask(taskId) {
   S.quizItems = quiz.slice().sort((a, b) => a.pause_time_sec - b.pause_time_sec);
   S.logEvents = (log.events || []).filter(e => e.video_time !== null && e.video_time !== undefined);
 
-  taskNameEl.textContent = `Task ${taskId}: ${info.task_name}`;
+  const condLabel = S.condition ? ` (${S.condition.replace(/_/g,' ')})` : '';
+  taskNameEl.textContent = `${info.task_name}${condLabel}`;
   vid.src = `/recordings/${taskId}/video.mp4`;
 
   renderQuizList();
@@ -1019,7 +1729,7 @@ vid.addEventListener('pause', () => { btnPlay.textContent = '▶'; });
 btnPlay.addEventListener('click', togglePlay);
 
 progressWrap.addEventListener('click', e => {
-  if (!S.duration) return;
+  if (!S.duration || !S.isSuperuser) return;
   const rect = progressWrap.getBoundingClientRect();
   vid.currentTime = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)) * S.duration;
 });
@@ -1039,31 +1749,274 @@ document.addEventListener('keydown', e => {
 });
 
 document.getElementById('btn-reset').addEventListener('click', resetAll);
-taskSelectEl.addEventListener('change', async () => {
-  await loadTask(taskSelectEl.value);
-  queueAutosave();
+
+// Session complete — advance to next or finish
+btnNextSession.addEventListener('click', async () => {
+  sessionCompleteEl.classList.add('hidden');
+  const nextIdx = S.currentSessionIdx + 1;
+  if (nextIdx < S.studyTasks.length) {
+    showTaskIntro(nextIdx);
+  }
 });
-participantEl.addEventListener('change', queueAutosave);
+btnFinish.addEventListener('click', () => {
+  sessionCompleteEl.classList.add('hidden');
+  showFinalChoice({});
+});
+
+// ── Task intro modal ─────────────────────────────────────────
+function showTaskIntro(sessionIdx) {
+  const t = S.studyTasks[sessionIdx];
+  if (!t) return;
+  taskIntroLabelEl.textContent = `Session ${t.session} of ${S.studyTasks.length}`;
+  const desc = TASK_DESCRIPTIONS[t.condition] || `In this task, the agent will complete a web-based task.`;
+  taskIntroContentEl.innerHTML =
+    `<h2 style="margin-bottom:12px">🗂 Task Description</h2>` +
+    `<p style="font-size:14px;line-height:1.7">${desc}</p>` +
+    `<p style="font-size:12px;margin-top:16px;color:var(--muted)">Watch the video carefully — quiz questions will appear automatically at key moments.</p>`;
+  taskIntroEl.classList.remove('hidden');
+  // Store idx so the begin button knows which session to load
+  taskIntroEl.dataset.sessionIdx = sessionIdx;
+}
+
+taskIntroBeginBtn.addEventListener('click', async () => {
+  const idx = parseInt(taskIntroEl.dataset.sessionIdx || '0', 10);
+  taskIntroEl.classList.add('hidden');
+  await loadSessionTask(idx);
+});
+
+// ── Post-task survey ──────────────────────────────────────────
+function buildLikertRow(key, isAgentItem) {
+  const anchors = isAgentItem
+    ? ['Low', 'High']
+    : ['Low', 'High'];
+  let html = `<div class="likert-row" id="likert-${key}">`;
+  for (let v = 1; v <= 7; v++) {
+    html += `<label id="lbl-${key}-${v}">
+      <input type="radio" name="${key}" value="${v}" />
+      ${v}
+    </label>`;
+  }
+  html += `</div>`;
+  html += `<div class="likert-anchor"><span>${anchors[0]}</span><span>${anchors[1]}</span></div>`;
+  return html;
+}
+
+function initSurveyRows() {
+  // Inject likert rows into placeholders
+  const agentKeys = new Set(['agent_intelligence','collaboration']);
+  [...SURVEY_PAGE1_KEYS, ...SURVEY_PAGE2_KEYS].forEach(key => {
+    const el = surveyOverlayEl.querySelector(`.likert-row[data-key="${key}"]`);
+    if (el) el.outerHTML = buildLikertRow(key, agentKeys.has(key));
+  });
+  // Attach change listeners
+  SURVEY_ALL_KEYS.forEach(key => {
+    surveyOverlayEl.querySelectorAll(`input[name="${key}"]`).forEach(inp => {
+      inp.addEventListener('change', () => {
+        _surveyAnswers[key] = parseInt(inp.value, 10);
+        // Highlight selected label
+        surveyOverlayEl.querySelectorAll(`#likert-${key} label`).forEach(l => l.classList.remove('selected'));
+        inp.closest('label')?.classList.add('selected');
+        document.getElementById('survey-error')?.classList.add('hidden');
+      });
+    });
+  });
+}
+
+function renderSurveyDots() {
+  const dotsEl = document.getElementById('survey-dots');
+  if (!dotsEl) return;
+  dotsEl.innerHTML = [1, 2].map(p =>
+    `<div class="instr-dot ${p === _surveyPage ? 'active' : ''}"></div>`
+  ).join('');
+}
+
+function showSurvey(condition, taskType, callback) {
+  _surveyAnswers = {};
+  _surveyPage = 1;
+  _surveyCondition = condition;
+  _surveyTaskType = taskType;
+  _surveyCallback = callback;
+  // Reset all radios
+  surveyOverlayEl.querySelectorAll('input[type="radio"]').forEach(r => { r.checked = false; });
+  surveyOverlayEl.querySelectorAll('label').forEach(l => l.classList.remove('selected'));
+  document.getElementById('survey-error')?.classList.add('hidden');
+  // Show page 1, hide page 2
+  document.getElementById('survey-page-1')?.classList.remove('hidden');
+  document.getElementById('survey-page-2')?.classList.add('hidden');
+  document.getElementById('survey-back')?.classList.add('hidden');
+  const nextBtn = document.getElementById('survey-next');
+  if (nextBtn) nextBtn.textContent = 'Next →';
+  document.getElementById('survey-page-label').textContent = 'Survey – Page 1 of 2';
+  renderSurveyDots();
+  surveyOverlayEl.classList.remove('hidden');
+}
+
+document.getElementById('survey-back')?.addEventListener('click', () => {
+  if (_surveyPage === 2) {
+    _surveyPage = 1;
+    document.getElementById('survey-page-1')?.classList.remove('hidden');
+    document.getElementById('survey-page-2')?.classList.add('hidden');
+    document.getElementById('survey-back')?.classList.add('hidden');
+    const nextBtn = document.getElementById('survey-next');
+    if (nextBtn) nextBtn.textContent = 'Next →';
+    document.getElementById('survey-page-label').textContent = 'Survey – Page 1 of 2';
+    document.getElementById('survey-error')?.classList.add('hidden');
+    renderSurveyDots();
+  }
+});
+
+document.getElementById('survey-next')?.addEventListener('click', async () => {
+  const errEl = document.getElementById('survey-error');
+  if (_surveyPage === 1) {
+    const missing = SURVEY_PAGE1_KEYS.filter(k => !(_surveyAnswers[k] > 0));
+    if (missing.length) { errEl?.classList.remove('hidden'); return; }
+    _surveyPage = 2;
+    document.getElementById('survey-page-1')?.classList.add('hidden');
+    document.getElementById('survey-page-2')?.classList.remove('hidden');
+    document.getElementById('survey-back')?.classList.remove('hidden');
+    const nextBtn = document.getElementById('survey-next');
+    if (nextBtn) nextBtn.textContent = 'Submit →';
+    document.getElementById('survey-page-label').textContent = 'Survey – Page 2 of 2';
+    errEl?.classList.add('hidden');
+    renderSurveyDots();
+  } else {
+    // Submit
+    const missing = SURVEY_PAGE2_KEYS.filter(k => !(_surveyAnswers[k] > 0));
+    if (missing.length) { errEl?.classList.remove('hidden'); return; }
+    surveyOverlayEl.classList.add('hidden');
+    // Save survey to backend
+    try {
+      await fetch('/api/save_survey', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+          participant: S.participantId || 'anonymous',
+          survey_type: 'post_task',
+          task_type: _surveyTaskType,
+          group: S.group,
+          condition: _surveyCondition,
+          submitted_at: new Date().toISOString(),
+          responses: _surveyAnswers,
+        }),
+      });
+    } catch(_) {}
+    if (_surveyCallback) _surveyCallback();
+  }
+});
+
+// ── Final agent preference ────────────────────────────────────
+function buildSessionConditionMapping() {
+  const out = {};
+  if (!S.studyTasks || !S.studyTasks.length) return out;
+  for (const t of S.studyTasks) {
+    const agentStyle = (t.condition || '').startsWith('legible') ? 'talking_rich_cue' : 'silent_abrupt';
+    out[agentStyle] = {
+      condition: t.condition,
+      session_number: t.session,
+      task_id: t.task_id,
+      task_name: t.task_name || '',
+    };
+  }
+  return out;
+}
+
+/** options.preview = superuser dry-run (no save). */
+function showFinalChoice(options) {
+  const opts = options || {};
+  const preview = !!opts.preview;
+  const hasStudy = S.studyTasks && S.studyTasks.length > 0;
+  _finalChoicePreviewMode = preview || !hasStudy;
+  _finalChoiceSelected = null;
+
+  finalChoiceOptionsEl.querySelectorAll('.choice-opt').forEach(c => c.classList.remove('selected'));
+  const silentTa = document.getElementById('final-exp-silent');
+  const talkingTa = document.getElementById('final-exp-talking');
+  if (silentTa) silentTa.value = '';
+  if (talkingTa) talkingTa.value = '';
+
+  document.getElementById('final-choice-error')?.classList.add('hidden');
+  document.getElementById('final-choice-field-error')?.classList.add('hidden');
+  finalChoiceEl.classList.remove('hidden');
+}
+
+window.selectFinalChoice = function(el) {
+  finalChoiceOptionsEl.querySelectorAll('.choice-opt').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  _finalChoiceSelected = el.dataset.agentStyle || null;
+  document.getElementById('final-choice-error')?.classList.add('hidden');
+};
+
+finalChoiceSubmitBtn?.addEventListener('click', async () => {
+  const silentTxt = (document.getElementById('final-exp-silent')?.value || '').trim();
+  const talkingTxt = (document.getElementById('final-exp-talking')?.value || '').trim();
+
+  if (_finalChoicePreviewMode) {
+    finalChoiceEl.classList.add('hidden');
+    _finalChoicePreviewMode = false;
+    showToast('Preview closed.', 2200);
+    return;
+  }
+
+  if (!_finalChoiceSelected) {
+    document.getElementById('final-choice-error')?.classList.remove('hidden');
+    return;
+  }
+  if (silentTxt.length < FINAL_EXP_MIN_LEN || talkingTxt.length < FINAL_EXP_MIN_LEN) {
+    document.getElementById('final-choice-field-error')?.classList.remove('hidden');
+    return;
+  }
+  document.getElementById('final-choice-field-error')?.classList.add('hidden');
+
+  const legacy = _finalChoiceSelected === 'talking_rich_cue' ? 'legible' : 'baseline';
+  const responses = {
+    preferred_agent_style: _finalChoiceSelected,
+    preferred_agent_legacy: legacy,
+    experience_silent_abrupt: silentTxt,
+    experience_talking_rich_cue: talkingTxt,
+    session_condition_mapping: buildSessionConditionMapping(),
+  };
+
+  try {
+    await fetch('/api/save_survey', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        participant: S.participantId || 'anonymous',
+        survey_type: 'final_preference',
+        task_type: 'final',
+        group: S.group || '',
+        condition: _finalChoiceSelected,
+        submitted_at: new Date().toISOString(),
+        responses,
+      }),
+    });
+  } catch(_) {}
+  finalChoiceEl.classList.add('hidden');
+  showToast('Thank you for completing the study! 🎉', 6000);
+});
 
 function queueAutosave() { _autosaveDirty = true; }
 
 function syncActiveDraft() {
   if (!S.activeId) return;
-  const ta = document.getElementById('answer-textarea');
-  if (!ta) return;
-  const txt = (ta.value || '').trim();
   if (!S.answers[S.activeId]) S.answers[S.activeId] = {};
-  if (txt) {
-    S.answers[S.activeId].userAnswer = txt;
-    S.answers[S.activeId].answeredAt = S.answers[S.activeId].answeredAt || new Date().toISOString();
+  const ta = document.getElementById('answer-textarea');
+  if (ta) {
+    const txt = (ta.value || '').trim();
+    if (txt) {
+      S.answers[S.activeId].userAnswer = txt;
+      S.answers[S.activeId].answeredAt = S.answers[S.activeId].answeredAt || new Date().toISOString();
+    }
   }
+  const noteEl = document.getElementById('action-eval-note');
+  if (noteEl) S.answers[S.activeId].actionNote = noteEl.value;
 }
 
 async function saveProgress(reason = 'autosave') {
   syncActiveDraft();
   if (!_autosaveDirty && reason === 'autosave') return;
   const payload = buildExportPayload();
-  payload.participant = participantEl.value.trim() || 'anonymous';
+  payload.participant = S.participantId || 'anonymous';
   payload.save_reason = reason;
   try {
     await fetch('/api/save_progress', {
@@ -1206,11 +2159,13 @@ function jumpToNextUnanswered() {
 }
 
 function resetAll() {
-  if (!confirm('Clear all answers and reset seen status?')) return;
+  if (!confirm('Clear all answers and reset seen status for this session?')) return;
   Object.assign(S, {
     answers: {}, seenIds: new Set(), revealedIds: new Set(),
     refShownIds: new Set(), activeId: null, evaluating: new Set(),
   });
+  sessionCompleteEl.classList.add('hidden');
+  vid.currentTime = 0;
   renderActiveQuiz();
   renderQuizList();
   queueAutosave();
@@ -1220,7 +2175,8 @@ window.addEventListener('beforeunload', () => { saveProgress('beforeunload'); })
 
 function buildExportPayload() {
   syncActiveDraft();
-  const participant = participantEl.value.trim() || 'anonymous';
+  const participant = S.participantId || 'anonymous';
+  const sessionInfo = S.studyTasks[S.currentSessionIdx] || {};
   const rows = [];
   for (const q of S.quizItems) {
     const a = S.answers[q.id] || {};
@@ -1242,14 +2198,18 @@ function buildExportPayload() {
 
     rows.push({
       participant: participant,
+      group: S.group || null,
+      condition: S.condition || null,
+      session: sessionInfo.session || null,
       task_type: S.taskId,
       question_id: q.id,
-      question_index: Number(String(q.id).replace(/^P/i, "")) || null,
+      question_index: Number(String(q.id).replace(/^[PR]/i, "")) || null,
       user_response: a.userAnswer || null,
       confidence: a.confidence ?? null,
       score: a.score ?? null,
       score_label: a.score_label || null,
       action_evaluation: a.actionEvaluation || null,
+      action_note: a.actionNote || null,
       answer_started_at: startIso,
       answered_at: endIso,
       answer_time_sec: elapsed,
@@ -1257,6 +2217,9 @@ function buildExportPayload() {
   }
   return {
     participant,
+    group: S.group || null,
+    condition: S.condition || null,
+    session: sessionInfo.session || null,
     task_type:    S.taskId,
     task_name:    S.taskName,
     submitted_at: new Date().toISOString(),
@@ -1273,18 +2236,51 @@ function showToast(msg, ms = 3000) {
   _toastTimer = setTimeout(() => toast.classList.remove('show'), ms);
 }
 
+// ── Session complete helper ─────────────────────────────────────
+function _showSessionComplete() {
+  const n = S.studyTasks.length;
+  const idx = S.currentSessionIdx;
+  const isLastSession = n === 0 ? true : idx >= n - 1;
+  const sessNum = (S.studyTasks[idx] || {}).session || (idx + 1);
+  completeMsgEl.textContent = isLastSession
+    ? (n > 0
+      ? `You've completed all ${n} sessions. Click Finish Study to answer the final question about which agent you preferred.`
+      : `Task complete. Click Finish Study to see the final question (or use Preview final question in the admin bar).`)
+    : `Session ${sessNum} complete! Your responses have been saved. Ready for session ${sessNum + 1}?`;
+  if (isLastSession) {
+    btnNextSession.classList.add('hidden');
+    btnFinish.classList.remove('hidden');
+  } else {
+    btnNextSession.classList.remove('hidden');
+    btnFinish.classList.add('hidden');
+  }
+  sessionCompleteEl.classList.remove('hidden');
+}
+
 // ── Render: active quiz card ────────────────────────────────────
-function renderActiveQuiz() {
+async function renderActiveQuiz() {
   activeZone.innerHTML = '';
   if (!S.activeId) {
     const done = Object.values(S.answers).filter(a => a.userAnswer).length;
     const scored = Object.values(S.answers).filter(a => a.score != null).length;
     const evald = Object.values(S.answers).filter(a => a.actionEvaluation).length;
+    const allDone = evald === S.quizItems.length && S.quizItems.length > 0;
+    if (allDone && sessionCompleteEl.classList.contains('hidden') &&
+        surveyOverlayEl.classList.contains('hidden') &&
+        finalChoiceEl.classList.contains('hidden')) {
+      // Auto-save, then show post-task survey (superusers skip survey)
+      await saveProgress('session_complete');
+      if (S.isSuperuser) {
+        _showSessionComplete();
+      } else {
+        showSurvey(S.condition, S.taskId, _showSessionComplete);
+      }
+    }
     const scoredNote = scored > 0 ? ` · ${scored} scored` : '';
     activeZone.innerHTML = `<div id="no-quiz-msg">
-      <span class="icon">${evald === S.quizItems.length && S.quizItems.length > 0 ? '✅' : '🎬'}</span>
-      ${evald === S.quizItems.length && S.quizItems.length > 0
-        ? `All probes completed${scoredNote} — click <strong>Save Results</strong>.`
+      <span class="icon">${allDone ? '✅' : '🎬'}</span>
+      ${allDone
+        ? `All probes completed${scoredNote}.`
         : 'Play the video — quiz probes appear automatically.'}
     </div>`;
     return;
@@ -1317,7 +2313,7 @@ function renderActiveQuiz() {
     const num = scoreData.score;
     scoreHTML = `
       <div class="score-badge ${lbl}">
-        ${scoreIcon(lbl)} ${capitalize(lbl)} — ${num}/3
+        ${scoreIcon(lbl)} ${capitalize(lbl)} — ${num}/2
       </div>
       <div class="score-explanation">${esc(scoreData.score_explanation || '')}</div>`;
   }
@@ -1332,7 +2328,7 @@ function renderActiveQuiz() {
     </div>
     <div class="quiz-card-body">
       <p class="quiz-instruction">${instruction}</p>
-      <p class="quiz-question">${esc(q.question)}</p>
+      <p class="quiz-question">${esc(formatQuizQuestion(q))}</p>
       <textarea id="answer-textarea" placeholder="Type your answer here…" rows="3" ${locked ? 'disabled' : ''}>${esc(existing)}</textarea>
       <div class="conf-wrap">
         <div class="conf-label">How confident are you in your prediction? (1 = low, 7 = high)</div>
@@ -1350,8 +2346,8 @@ function renderActiveQuiz() {
           ${isEvaluating ? '…' : (locked ? '✅ Scored' : '🤖 Score')}
         </button>
       </div>
-      <div id="reference-panel" style="display:${locked ? 'block' : 'none'}">
-        ${locked ? buildRefHTML(q) : ''}
+      <div id="reference-panel" style="display:${(locked || S.isSuperuser) ? 'block' : 'none'}">
+        ${(locked || S.isSuperuser) ? buildRefHTML(q) : ''}
       </div>
       <div id="action-eval-section" class="action-eval-wrap ${!locked ? 'pending' : (!actionEval ? 'required' : '')}">
         <div class="action-eval-label">${locked ? '⭐ Required — ' : ''}Was this a good action toward the task goal?${!locked ? '<span style="font-size:10px;font-weight:400;color:var(--muted);margin-left:6px">(available after scoring)</span>' : ''}</div>
@@ -1360,6 +2356,9 @@ function renderActiveQuiz() {
           <label><input type="radio" name="action-eval" value="bad" ${actionEval === 'bad' ? 'checked' : ''} ${!locked ? 'disabled' : ''}/> Bad action</label>
           <label><input type="radio" name="action-eval" value="not_sure" ${actionEval === 'not_sure' ? 'checked' : ''} ${!locked ? 'disabled' : ''}/> Not sure</label>
         </div>
+        ${locked ? `<textarea id="action-eval-note" placeholder="(Optional) Why did you think so? Briefly explain." maxlength="300"
+          style="margin-top:8px;width:100%;box-sizing:border-box;font-family:inherit;font-size:11.5px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;resize:vertical;min-height:52px;color:var(--text);background:var(--bg)"
+          >${(scoreData?.actionNote || '')}</textarea>` : ''}
       </div>
       <div class="quiz-actions" style="margin-top:10px">
         <button class="q-btn cont" id="btn-continue" ${canContinue ? '' : 'disabled'}>▶ Continue video</button>
@@ -1389,6 +2388,11 @@ function renderActiveQuiz() {
       renderQuizList();
       renderActiveQuiz();
     });
+  });
+  document.getElementById('action-eval-note')?.addEventListener('input', e => {
+    if (!S.answers[S.activeId]) S.answers[S.activeId] = {};
+    S.answers[S.activeId].actionNote = e.target.value;
+    queueAutosave();
   });
 
   if (!existing) document.getElementById('answer-textarea')?.focus();
@@ -1479,27 +2483,78 @@ function renderQuizList() {
     let scorePill = '';
     if (scoreData?.score != null) {
       const lbl = scoreData.score_label || 'incorrect';
-      scorePill = `<span class="row-score-pill ${lbl}">${scoreIcon(lbl)} ${scoreData.score}/3</span>`;
+      scorePill = `<span class="row-score-pill ${lbl}">${scoreIcon(lbl)} ${scoreData.score}/2</span>`;
     }
 
     const isPastRow = q.type === 'past_action_recall';
+    const timingBtns = S.isSuperuser ? `
+      <span class="row-timing">
+        <button type="button" class="row-time-delta" data-id="${esc(q.id)}" data-delta="-1" title="Shift probe 1s earlier in quiz.json">−1s</button>
+        <button type="button" class="row-time-delta" data-id="${esc(q.id)}" data-delta="1" title="Shift probe 1s later in quiz.json">+1s</button>
+      </span>` : '';
+    const superBtns = S.isSuperuser ? `
+      <button class="row-jump" data-id="${esc(q.id)}">Jump</button>
+      <button class="row-delete" data-id="${esc(q.id)}" title="Remove this probe from quiz.json">✕</button>` : '';
     row.innerHTML = `
       <span class="row-id">${esc(q.id)}</span>
       <span class="type-badge ${isGoal ? 'goal' : isPastRow ? 'past' : 'pred'}" style="font-size:9px;padding:2px 7px">${isGoal ? 'Goal' : isPastRow ? 'Past' : 'Pred'}</span>
-      <span class="row-ts">${esc(q.timestamp_label)}</span>
-      <span class="row-q" title="${esc(q.question)}">${esc(q.question)}</span>
+      ${timingBtns}<span class="row-ts">${esc(q.timestamp_label)}</span>
+      <span class="row-q" title="${esc(formatQuizQuestion(q))}">${esc(formatQuizQuestion(q))}</span>
       ${scorePill}
       <span class="status-dot ${status}" title="${status}"></span>
-      <button class="row-jump" data-id="${esc(q.id)}">Jump</button>`;
+      ${superBtns}`;
     quizListEl.appendChild(row);
   }
 
-  quizListEl.querySelectorAll('.row-jump').forEach(btn => {
-    btn.addEventListener('click', e => { e.stopPropagation(); jumpToQuiz(btn.dataset.id); });
-  });
-  quizListEl.querySelectorAll('.quiz-row').forEach(row => {
-    row.addEventListener('click', () => jumpToQuiz(row.dataset.quizId));
-  });
+  if (S.isSuperuser) {
+    quizListEl.querySelectorAll('.row-time-delta').forEach(btn => {
+      btn.addEventListener('click', async e => {
+        e.stopPropagation();
+        const id = btn.dataset.id;
+        const delta = parseInt(btn.dataset.delta, 10);
+        const res = await fetch(`/api/quiz/${S.taskId}/timing/${encodeURIComponent(id)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ delta }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) { showToast(`Timing update failed: ${data.error || res.status}`, 3000); return; }
+        const q = S.quizItems.find(x => x.id === id);
+        if (q) {
+          q.pause_time_sec = data.pause_time_sec;
+          q.timestamp_label = data.timestamp_label;
+        }
+        renderQuizList();
+        renderQuizMarkers();
+        if (S.activeId === id) renderActiveQuiz();
+        showToast(`${id} → ${data.timestamp_label} (${data.pause_time_sec}s)`, 1800);
+      });
+    });
+    quizListEl.querySelectorAll('.row-jump').forEach(btn => {
+      btn.addEventListener('click', e => { e.stopPropagation(); jumpToQuiz(btn.dataset.id); });
+    });
+    quizListEl.querySelectorAll('.row-delete').forEach(btn => {
+      btn.addEventListener('click', async e => {
+        e.stopPropagation();
+        const id = btn.dataset.id;
+        if (!confirm(`Remove probe ${id} from quiz.json?`)) return;
+        const res = await fetch(`/api/quiz/${S.taskId}/delete/${encodeURIComponent(id)}`, { method: 'POST' });
+        if (!res.ok) { showToast(`Delete failed: ${(await res.json()).error}`, 3000); return; }
+        // Remove from in-memory state
+        S.quizItems = S.quizItems.filter(q => q.id !== id);
+        delete S.answers[id];
+        S.seenIds.delete(id);
+        S.revealedIds.delete(id);
+        if (S.activeId === id) { S.activeId = null; renderActiveQuiz(); }
+        renderQuizList();
+        renderQuizMarkers();
+        showToast(`Probe ${id} removed from quiz.json`, 2500);
+      });
+    });
+    quizListEl.querySelectorAll('.quiz-row').forEach(row => {
+      row.addEventListener('click', () => jumpToQuiz(row.dataset.quizId));
+    });
+  }
 }
 
 function getStatus(id) {
