@@ -6,3 +6,4 @@ recordings/*/frames/
 recordings/*/scores/
 recordings/*/report.md
 survey_logs/
+.env

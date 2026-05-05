@@ -1,110 +1,120 @@
 [
   {
-    "id": "P1",
-    "type": "next_action_prediction",
-    "pause_time_sec": 29,
-    "timestamp_label": "0:29",
-    "anchor": "Foundation search results are displayed showing multiple products including ILIA True Skin Medium Coverage Serum Foundation with Niacinamide.",
-    "question": "What is the next meaningful action the agent will likely take in the interface?",
-    "reference_answer": "Click on the ILIA True Skin Medium Coverage Serum Foundation product",
-    "accepted_answers": ["Click on the ILIA True Skin Medium Coverage Serum Foundation", "Click on the ILIA foundation product", "Select the ILIA True Skin foundation to view its details"],
-    "partial_answers": ["Click on a foundation product", "Click on one of the search results"],
-    "reject_examples": {"too_broad": ["Browse the search results", "Look for a product"], "too_low_level": ["Click at a specific coordinate"], "wrong": ["Apply a filter", "Search for a different product", "Scroll down"]}
-  },
-  {
     "id": "P2",
     "type": "next_action_prediction",
-    "pause_time_sec": 51,
-    "timestamp_label": "0:51",
-    "anchor": "The ILIA True Skin Medium Coverage Serum Foundation product page is open showing product details, badges, and collapsible sections.",
+    "pause_time_sec": 106,
+    "timestamp_label": "1:46",
+    "anchor": "The agent has filtered the foundation search results by 'Clean at Sephora'.",
     "question": "What is the next meaningful action the agent will likely take in the interface?",
-    "reference_answer": "Click on the 'Ingredients' section to expand and check the ingredient list",
-    "accepted_answers": ["Click on the 'Ingredients' section to expand it", "Open the Ingredients accordion to verify fragrance-free status", "Check the ingredients list"],
-    "partial_answers": ["Scroll down to check product details", "Look for ingredient information"],
-    "reject_examples": {"too_broad": ["Investigate the product", "Check if the product is suitable"], "too_low_level": ["Click at a specific coordinate"], "wrong": ["Add to basket", "Go back to search results", "Select a shade"]}
+    "reference_answer": "The agent will click on 'Ingredient Preferences' to further filter by 'Fragrance-Free'.",
+    "accepted_answers": [
+      "The agent will click on 'Ingredient Preferences'.",
+      "The agent will filter by 'Fragrance-Free'."
+    ],
+    "partial_answers": [
+      "The agent will apply another filter.",
+      "The agent will look for fragrance-free options."
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "The agent will interact with the filters."
+      ],
+      "too_low_level": [
+        "The agent will move the mouse to the left panel."
+      ],
+      "wrong": [
+        "The agent will select a foundation product."
+      ]
+    }
   },
   {
     "id": "P3",
     "type": "next_action_prediction",
-    "pause_time_sec": 106,
-    "timestamp_label": "1:46",
-    "anchor": "Back on the foundation search results page showing 189 results, with filter options visible on the left sidebar.",
+    "pause_time_sec": 164,
+    "timestamp_label": "2:44",
+    "anchor": "The agent has successfully added the foundation to the cart and closed the confirmation popup.",
     "question": "What is the next meaningful action the agent will likely take in the interface?",
-    "reference_answer": "Click on 'Ingredient Preferences' to expand the filter section",
-    "accepted_answers": ["Expand the 'Ingredient Preferences' filter", "Click on 'Ingredient Preferences' to see filter options", "Open the ingredient preference filter section"],
-    "partial_answers": ["Apply a filter to narrow results", "Click on a filter category"],
-    "reject_examples": {"too_broad": ["Filter the results", "Narrow down the search"], "too_low_level": ["Click on the left sidebar"], "wrong": ["Search for a new product", "Click on a product", "Scroll down"]}
+    "reference_answer": "The agent will click the search bar to search for 'mascara'.",
+    "accepted_answers": [
+      "The agent will search for 'mascara'.",
+      "The agent will click the search bar."
+    ],
+    "partial_answers": [
+      "The agent will start a new search.",
+      "The agent will look for mascara."
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "The agent will use the search function."
+      ],
+      "too_low_level": [
+        "The agent will move the cursor to the search bar."
+      ],
+      "wrong": [
+        "The agent will proceed to checkout."
+      ]
+    }
   },
   {
-    "id": "P4",
-    "type": "next_action_prediction",
-    "pause_time_sec": 112,
-    "timestamp_label": "1:52",
-    "anchor": "The Ingredient Preferences filter is expanded showing options: Clean at Sephora (36), Paraben-free (32), Vegan (31), Cruelty-Free (30), Fragrance Free (19), and others.",
-    "question": "What is the next meaningful action the agent will likely take in the interface?",
-    "reference_answer": "Check the 'Fragrance Free (19)' filter checkbox",
-    "accepted_answers": ["Click the 'Fragrance Free' filter option", "Select 'Fragrance Free (19)' to filter foundations", "Apply the Fragrance Free filter"],
-    "partial_answers": ["Select one of the ingredient preference filters", "Click on a filter option"],
-    "reject_examples": {"too_broad": ["Filter by ingredient", "Narrow the results"], "too_low_level": ["Click on a checkbox"], "wrong": ["Select 'Vegan'", "Select 'Paraben-free'", "Close the filter panel"]}
+    "id": "R1",
+    "type": "past_action_recall",
+    "pause_time_sec": 86,
+    "timestamp_label": "1:26",
+    "anchor": "The search results page for foundation is visible with a 'Clean at Sephora' filter applied.",
+    "question": "What meaningful action did the agent just take?",
+    "reference_answer": "The agent clicked on the 'Clean at Sephora' filter to narrow down the foundation options.",
+    "accepted_answers": [
+      "The agent applied the 'Clean at Sephora' filter.",
+      "The agent filtered the results by 'Clean at Sephora'."
+    ],
+    "partial_answers": [
+      "The agent applied a filter.",
+      "The agent clicked on a filter."
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "The agent interacted with the page.",
+        "The agent did something with filters."
+      ],
+      "too_low_level": [
+        "The agent clicked on the page.",
+        "The agent used the mouse."
+      ],
+      "wrong": [
+        "The agent added a product to the cart.",
+        "The agent searched for a product."
+      ]
+    }
   },
   {
-    "id": "P5",
-    "type": "next_action_prediction",
-    "pause_time_sec": 127,
-    "timestamp_label": "2:07",
-    "anchor": "The Fragrance Free filter is applied showing 19 foundation results including ILIA True Skin and bareMinerals BAREPRO 24HR Talc-Free Matte Powder Foundation.",
-    "question": "What is the next meaningful action the agent will likely take in the interface?",
-    "reference_answer": "Click on the bareMinerals BAREPRO 24HR Skin Perfecting Talc-Free Matte Powder Foundation",
-    "accepted_answers": ["Click on the bareMinerals BAREPRO foundation", "Select the bareMinerals BAREPRO 24HR Talc-Free foundation", "Click on the bareMinerals product to view details"],
-    "partial_answers": ["Click on one of the fragrance-free foundations", "Select a product from the filtered results"],
-    "reject_examples": {"too_broad": ["Choose a foundation", "Pick a product"], "too_low_level": ["Click at a specific coordinate"], "wrong": ["Apply another filter", "Go back", "Click on ILIA foundation"]}
-  },
-  {
-    "id": "P6",
-    "type": "next_action_prediction",
-    "pause_time_sec": 144,
-    "timestamp_label": "2:24",
-    "anchor": "The bareMinerals BAREPRO 24HR Skin Perfecting Talc-Free Matte Powder Foundation product page is displayed with a shade selected and the 'Add to Basket' button visible.",
-    "question": "What is the next meaningful action the agent will likely take in the interface?",
-    "reference_answer": "Click the 'Add to Basket' button to add the bareMinerals foundation to cart",
-    "accepted_answers": ["Click 'Add to Basket'", "Add the bareMinerals BAREPRO foundation to the cart", "Click the Add to Basket button"],
-    "partial_answers": ["Add the product to cart", "Purchase the foundation"],
-    "reject_examples": {"too_broad": ["Complete the purchase", "Proceed with the product"], "too_low_level": ["Click at a specific coordinate"], "wrong": ["Scroll down to read more", "Go back to results", "Check ingredients"]}
-  },
-  {
-    "id": "P7",
-    "type": "next_action_prediction",
-    "pause_time_sec": 196,
-    "timestamp_label": "3:16",
-    "anchor": "Mascara search results page is displayed showing 170 results with filter options on the left sidebar.",
-    "question": "What is the next meaningful action the agent will likely take in the interface?",
-    "reference_answer": "Click the 'Fragrance Free' filter to narrow mascara results",
-    "accepted_answers": ["Select the 'Fragrance Free' filter for mascaras", "Apply the Fragrance Free filter to mascara results", "Click on Fragrance Free under Ingredient Preferences"],
-    "partial_answers": ["Apply a filter to narrow mascara results", "Filter mascaras by ingredient preference"],
-    "reject_examples": {"too_broad": ["Filter the mascara results", "Narrow down options"], "too_low_level": ["Click on the left sidebar"], "wrong": ["Click on a mascara product", "Search for a different term", "Scroll down"]}
-  },
-  {
-    "id": "P8",
-    "type": "next_action_prediction",
-    "pause_time_sec": 213,
-    "timestamp_label": "3:33",
-    "anchor": "Fragrance-free mascara results are displayed showing 31 options including MERIT Clean Lash Lengthening Tubing Mascara (Allure Best of Beauty winner).",
-    "question": "What is the next meaningful action the agent will likely take in the interface?",
-    "reference_answer": "Click on the MERIT Clean Lash Lengthening Tubing Mascara product",
-    "accepted_answers": ["Click on the MERIT Clean Lash mascara", "Select the MERIT Clean Lash Lengthening Tubing Mascara", "Click on the MERIT mascara to view product details"],
-    "partial_answers": ["Click on one of the fragrance-free mascaras", "Select a mascara product"],
-    "reject_examples": {"too_broad": ["Choose a mascara", "Pick a product"], "too_low_level": ["Click at a specific coordinate"], "wrong": ["Click on tarte mascara", "Apply another filter", "Go back"]}
-  },
-  {
-    "id": "P9",
-    "type": "next_action_prediction",
-    "pause_time_sec": 235,
-    "timestamp_label": "3:55",
-    "anchor": "The MERIT Clean Lash Lengthening Tubing Mascara product page is displayed showing Clean at Sephora badge and the 'Add to Basket' button.",
-    "question": "What is the next meaningful action the agent will likely take in the interface?",
-    "reference_answer": "Click the 'Add to Basket' button to add the MERIT mascara to cart",
-    "accepted_answers": ["Click 'Add to Basket'", "Add the MERIT Clean Lash mascara to the cart", "Click the Add to Basket button"],
-    "partial_answers": ["Add the mascara to cart", "Complete the mascara selection"],
-    "reject_examples": {"too_broad": ["Finish the task", "Complete the purchase"], "too_low_level": ["Click at a specific coordinate"], "wrong": ["Go back to results", "Scroll down", "Check ingredients again"]}
+    "id": "R2",
+    "type": "past_action_recall",
+    "pause_time_sec": 117,
+    "timestamp_label": "1:57",
+    "anchor": "The search results are now filtered to show only fragrance-free foundations.",
+    "question": "What meaningful action did the agent just take?",
+    "reference_answer": "The agent applied the 'Fragrance Free' filter to the search results.",
+    "accepted_answers": [
+      "The agent filtered the results by 'Fragrance Free'.",
+      "The agent applied the 'Fragrance Free' filter."
+    ],
+    "partial_answers": [
+      "The agent applied a filter.",
+      "The agent clicked on a filter."
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "The agent interacted with the page.",
+        "The agent did something with filters."
+      ],
+      "too_low_level": [
+        "The agent clicked on the page.",
+        "The agent used the mouse."
+      ],
+      "wrong": [
+        "The agent added a product to the cart.",
+        "The agent searched for a product."
+      ]
+    }
   }
 ]

@@ -1,19 +1,21 @@
 [
   {
-    "id": "P1",
+    "id": "P8",
+    "moment_index": 1,
     "type": "next_action_prediction",
-    "pause_time_sec": 16,
-    "timestamp_label": "0:16",
-    "anchor": "The NYU Graduate Aid Application page has loaded, showing a navigation menu on the left.",
+    "pause_time_sec": 12,
+    "timestamp_label": "0:12",
+    "anchor": "The NYU Graduate Aid Application page has loaded.",
     "question": "What is the next meaningful action the agent will likely take in the interface?",
-    "reference_answer": "The agent will click on 'Types of Aid' in the left navigation menu.",
+    "reference_answer": "The agent will click on 'Types of Aid' in the left navigation to explore aid options.",
     "accepted_answers": [
-      "The agent will click on 'Types of Aid'.",
-      "The agent will explore the 'Types of Aid' section."
+      "The agent will click on 'Types of Aid' in the left navigation.",
+      "The agent will select 'Types of Aid' from the menu.",
+      "The agent will choose 'Types of Aid' to view more details."
     ],
     "partial_answers": [
-      "The agent will click a link in the navigation menu.",
-      "The agent will explore aid options."
+      "The agent will click on something in the navigation.",
+      "The agent will choose an option from the menu."
     ],
     "reject_examples": {
       "too_broad": [
@@ -21,159 +23,111 @@
         "The agent will explore the page."
       ],
       "too_low_level": [
-        "The agent will move the mouse.",
-        "The agent will scroll the page."
+        "The agent will move the mouse to the left navigation.",
+        "The agent will hover over the menu."
       ],
       "wrong": [
         "The agent will close the page.",
-        "The agent will search for something else."
+        "The agent will refresh the page."
       ]
     }
   },
   {
-    "id": "P2",
-    "type": "next_action_prediction",
-    "pause_time_sec": 52,
-    "timestamp_label": "0:52",
-    "anchor": "The page shows Steps 4 and 5, and the 'Explore Your Options' section.",
-    "question": "What is the next meaningful action the agent will likely take in the interface?",
-    "reference_answer": "The agent will click on the 'Types of Aid' link in the navigation menu.",
+    "id": "R7",
+    "moment_index": 10,
+    "type": "past_action_recall",
+    "pause_time_sec": 96,
+    "timestamp_label": "1:36",
+    "anchor": "The Columbia Engineering 'Financial Aid for Graduate Study' page is visible with detailed sections.",
+    "question": "What meaningful action did the agent just take?",
+    "reference_answer": "The agent clicked on the top result 'Financial Aid for Graduate Study' from bulletin.columbia.edu.",
     "accepted_answers": [
-      "The agent will click on 'Types of Aid'.",
-      "The agent will navigate to the 'Types of Aid' page."
+      "The agent clicked on the 'Financial Aid for Graduate Study' result.",
+      "The agent selected the top result for Columbia financial aid.",
+      "The agent opened the Columbia financial aid page."
     ],
     "partial_answers": [
-      "The agent will click a link in the navigation menu.",
-      "The agent will explore aid options."
+      "The agent clicked on a search result.",
+      "The agent selected a link for financial aid."
     ],
     "reject_examples": {
       "too_broad": [
-        "The agent will click something.",
-        "The agent will explore the page."
+        "The agent searched for financial aid information.",
+        "The agent explored Columbia's website."
+      ],
+      "too_low_level": [
+        "The agent moved the mouse and clicked.",
+        "The agent used the mouse to select a result."
+      ],
+      "wrong": [
+        "The agent filled out a form.",
+        "The agent downloaded a document."
+      ]
+    }
+  },
+  {
+    "id": "R9",
+    "moment_index": 19,
+    "type": "past_action_recall",
+    "pause_time_sec": 170,
+    "timestamp_label": "2:50",
+    "anchor": "The address bar is highlighted, ready for a new input.",
+    "question": "What meaningful action did the agent just take?",
+    "reference_answer": "The agent used command+l to highlight the address bar.",
+    "accepted_answers": [
+      "The agent used command+l to highlight the address bar.",
+      "The agent highlighted the address bar using a shortcut.",
+      "The agent prepared the address bar for new input."
+    ],
+    "partial_answers": [
+      "The agent highlighted the address bar.",
+      "The agent used a shortcut to select the address bar."
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "The agent did something with the address bar.",
+        "The agent used a keyboard shortcut."
+      ],
+      "too_low_level": [
+        "The agent pressed a key.",
+        "The agent used the keyboard."
+      ],
+      "wrong": [
+        "The agent typed a URL.",
+        "The agent navigated to a new page."
+      ]
+    }
+  },
+  {
+    "id": "P6",
+    "moment_index": 25,
+    "type": "next_action_prediction",
+    "pause_time_sec": 197,
+    "timestamp_label": "3:17",
+    "anchor": "The agent is viewing search results for Cornell Tech graduate financial aid.",
+    "question": "What is the next meaningful action the agent will likely take in the interface?",
+    "reference_answer": "The agent will click on the 'Tuition & Fees – Cornell Tech' result from tech.cornell.edu.",
+    "accepted_answers": [
+      "The agent will click on the 'Tuition & Fees – Cornell Tech' link.",
+      "The agent will select the 'Tuition & Fees – Cornell Tech' result.",
+      "The agent will choose the Cornell Tech tuition and fees link."
+    ],
+    "partial_answers": [
+      "The agent will click a link.",
+      "The agent will select a result."
+    ],
+    "reject_examples": {
+      "too_broad": [
+        "The agent will interact with the search results.",
+        "The agent will choose a link."
       ],
       "too_low_level": [
         "The agent will move the mouse.",
-        "The agent will scroll the page."
+        "The agent will look at the screen."
       ],
       "wrong": [
-        "The agent will close the page.",
-        "The agent will search for something else."
-      ]
-    }
-  },
-  {
-    "id": "P3",
-    "type": "next_action_prediction",
-    "pause_time_sec": 119,
-    "timestamp_label": "1:59",
-    "anchor": "The page is showing the bottom section with contact information.",
-    "question": "What is the next meaningful action the agent will likely take in the interface?",
-    "reference_answer": "The agent will use a keyboard shortcut to scroll to the top of the page.",
-    "accepted_answers": [
-      "The agent will use a keyboard shortcut to go to the top.",
-      "The agent will scroll to the top of the page."
-    ],
-    "partial_answers": [
-      "The agent will scroll up.",
-      "The agent will navigate to the top section."
-    ],
-    "reject_examples": {
-      "too_broad": [
-        "The agent will scroll.",
-        "The agent will navigate the page."
-      ],
-      "too_low_level": [
-        "The agent will press a key.",
-        "The agent will use the keyboard."
-      ],
-      "wrong": [
-        "The agent will click a link.",
-        "The agent will search for something else."
-      ]
-    }
-  },
-  {
-    "id": "P4",
-    "type": "next_action_prediction",
-    "pause_time_sec": 183,
-    "timestamp_label": "3:03",
-    "anchor": "The Google search box is active, ready for a new query.",
-    "question": "What is the next meaningful action the agent will likely take in the interface?",
-    "reference_answer": "The agent will type 'Cornell Tech graduate financial aid' into the search box.",
-    "accepted_answers": [
-      "The agent will type 'Cornell Tech graduate financial aid'.",
-      "The agent will enter a query about Cornell Tech financial aid."
-    ],
-    "partial_answers": [
-      "The agent will type a query.",
-      "The agent will search for Cornell Tech financial aid."
-    ],
-    "reject_examples": {
-      "too_broad": [
-        "The agent will type something.",
-        "The agent will search for something."
-      ],
-      "too_low_level": [
-        "The agent will press keys.",
-        "The agent will use the keyboard."
-      ],
-      "wrong": [
-        "The agent will navigate to a different website.",
-        "The agent will close the browser."
-      ]
-    }
-  },
-  {
-    "id": "R1",
-    "type": "past_action_recall",
-    "pause_time_sec": 77,
-    "timestamp_label": "1:17",
-    "anchor": "The Types of Aid page has loaded, showing sections for Scholarships and Grants, Student Employment, Federal Loans, and Private Loans.",
-    "question": "What meaningful action did the agent just take?",
-    "reference_answer": "The agent navigated back to the Types of Aid page.",
-    "accepted_answers": [
-      "The agent returned to the Types of Aid page.",
-      "The agent went back to view the Types of Aid page."
-    ],
-    "partial_answers": [
-      "The agent is looking at aid options again."
-    ],
-    "reject_examples": {
-      "too_broad": [
-        "The agent is looking for aid information."
-      ],
-      "too_low_level": [
-        "The agent is scrolling through the page."
-      ],
-      "wrong": [
-        "The agent is on the Graduate Aid Application page."
-      ]
-    }
-  },
-  {
-    "id": "R2",
-    "type": "past_action_recall",
-    "pause_time_sec": 202,
-    "timestamp_label": "3:22",
-    "anchor": "The Cornell Tech Tuition & Fees page is loading.",
-    "question": "What meaningful action did the agent just take?",
-    "reference_answer": "The agent clicked on the Cornell Tech Tuition & Fees result.",
-    "accepted_answers": [
-      "The agent selected the Cornell Tech Tuition & Fees link.",
-      "The agent opened the Cornell Tech Tuition & Fees page."
-    ],
-    "partial_answers": [
-      "The agent is trying to view Cornell Tech financial aid information."
-    ],
-    "reject_examples": {
-      "too_broad": [
-        "The agent is looking for financial aid information."
-      ],
-      "too_low_level": [
-        "The agent clicked a link."
-      ],
-      "wrong": [
-        "The agent is reading the Columbia financial aid page."
+        "The agent will close the browser.",
+        "The agent will navigate to a different website."
       ]
     }
   }

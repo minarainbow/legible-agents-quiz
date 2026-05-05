@@ -1,44 +1,9 @@
 [
   {
-    "id": "P1",
-    "type": "next_action_prediction",
-    "pause_time_sec": 14,
-    "timestamp_label": "0:14",
-    "anchor": "The Sephora homepage or makeup category page is displayed with various product categories visible, and the agent needs to navigate to foundation products.",
-    "question": "What is the next meaningful action the agent will likely take in the interface?",
-    "reference_answer": "Click on the Foundation category or navigate to the Foundation section to browse foundation products",
-    "accepted_answers": [
-      "Click on Foundation category",
-      "Navigate to Foundation section",
-      "Select Foundation from the makeup menu",
-      "Browse to the Foundation product page"
-    ],
-    "partial_answers": [
-      "Click on a makeup category",
-      "Navigate to face products"
-    ],
-    "reject_examples": {
-      "too_broad": [
-        "Browse products",
-        "Look at the website",
-        "Shop for makeup"
-      ],
-      "too_low_level": [
-        "Move mouse cursor",
-        "Scroll the page slightly"
-      ],
-      "wrong": [
-        "Click on mascara",
-        "Add item to cart",
-        "Search for skincare"
-      ]
-    }
-  },
-  {
     "id": "P2",
     "type": "next_action_prediction",
-    "pause_time_sec": 46,
-    "timestamp_label": "0:46",
+    "pause_time_sec": 21,
+    "timestamp_label": "0:21",
     "anchor": "The foundation product listing page is displayed with multiple foundation options visible, and filter options are available on the side.",
     "question": "What is the next meaningful action the agent will likely take in the interface?",
     "reference_answer": "Apply a filter for hypoallergenic, fragrance-free, or sensitive skin formulas to narrow down foundation options",
@@ -70,292 +35,100 @@
     }
   },
   {
-    "id": "P3",
-    "type": "next_action_prediction",
-    "pause_time_sec": 92,
-    "timestamp_label": "1:32",
-    "anchor": "A specific foundation product page is displayed showing product details, ingredients, and an Add to Cart button.",
-    "question": "What is the next meaningful action the agent will likely take in the interface?",
-    "reference_answer": "Click the Add to Cart button to add the selected foundation to the shopping cart",
-    "accepted_answers": [
-      "Click Add to Cart for the foundation",
-      "Add the foundation to cart",
-      "Select Add to Basket/Cart button",
-      "Add this foundation product to the shopping bag"
-    ],
-    "partial_answers": [
-      "Click a button on the product page",
-      "Interact with the cart functionality"
-    ],
-    "reject_examples": {
-      "too_broad": [
-        "Continue shopping",
-        "Complete the task",
-        "Select a product"
-      ],
-      "too_low_level": [
-        "Position cursor over button",
-        "Wait for page to load"
-      ],
-      "wrong": [
-        "Navigate back to search results",
-        "Add mascara to cart",
-        "Check out"
-      ]
-    }
-  },
-  {
-    "id": "P4",
-    "type": "next_action_prediction",
-    "pause_time_sec": 148,
-    "timestamp_label": "2:28",
-    "anchor": "The foundation has been added to cart and a confirmation or cart panel is visible; the agent needs to continue to find mascara.",
-    "question": "What is the next meaningful action the agent will likely take in the interface?",
-    "reference_answer": "Navigate to the Mascara category or search for mascara products",
-    "accepted_answers": [
-      "Navigate to Mascara section",
-      "Click on Mascara category",
-      "Search for mascara",
-      "Browse to eye makeup/mascara products"
-    ],
-    "partial_answers": [
-      "Navigate to another product category",
-      "Continue shopping for the second item"
-    ],
-    "reject_examples": {
-      "too_broad": [
-        "Keep shopping",
-        "Look for more products",
-        "Use the website"
-      ],
-      "too_low_level": [
-        "Close cart popup",
-        "Move to navigation menu"
-      ],
-      "wrong": [
-        "Proceed to checkout",
-        "Add another foundation",
-        "Exit the site"
-      ]
-    }
-  },
-  {
     "id": "P5",
+    "moment_index": 10,
     "type": "next_action_prediction",
-    "pause_time_sec": 202,
-    "timestamp_label": "3:22",
-    "anchor": "The mascara product listing page shows multiple mascara options, with filter options available for narrowing down choices based on preferences.",
+    "pause_time_sec": 110,
+    "timestamp_label": "1:50",
+    "anchor": "The agent is viewing a list of foundation products with filters applied for hypoallergenic and fragrance-free options.",
     "question": "What is the next meaningful action the agent will likely take in the interface?",
-    "reference_answer": "Select a hypoallergenic or sensitive-formula mascara and click on it to view details or add to cart",
+    "reference_answer": "The agent clicks on a specific foundation product to view more details.",
     "accepted_answers": [
-      "Click on a mascara product suitable for sensitive eyes",
-      "Select a hypoallergenic mascara option",
-      "Filter for or select a fragrance-free mascara",
-      "Choose a mascara that meets the sensitive skin criteria"
+      "The agent clicks on a foundation product to view its details.",
+      "The agent selects a foundation product to learn more about it."
     ],
     "partial_answers": [
-      "Click on a mascara product",
-      "Apply filters to mascara results"
+      "The agent interacts with a product.",
+      "The agent makes a selection."
     ],
     "reject_examples": {
       "too_broad": [
-        "Browse mascara",
-        "Continue the task",
-        "Shop for products"
+        "The agent looks at the screen.",
+        "The agent considers options."
       ],
       "too_low_level": [
-        "Scroll through mascara list",
-        "Hover over product image"
+        "The agent moves the mouse.",
+        "The agent scrolls down."
       ],
       "wrong": [
-        "Go back to foundation",
-        "Proceed to checkout",
-        "Search for lipstick"
+        "The agent adds a product to the cart.",
+        "The agent navigates away from the page."
       ]
     }
   },
   {
-    "id": "R1",
+    "id": "R7",
+    "moment_index": 16,
     "type": "past_action_recall",
-    "pause_time_sec": 26,
-    "timestamp_label": "0:26",
-    "anchor": "The Sephora website now displays a filtered list of foundation products with sensitive skin or hypoallergenic options visible.",
+    "pause_time_sec": 129,
+    "timestamp_label": "2:09",
+    "anchor": "The cart now contains a foundation product, with a summary of the cart contents displayed.",
     "question": "What meaningful action did the agent just take?",
-    "reference_answer": "Applied a filter for sensitive skin or hypoallergenic foundations",
+    "reference_answer": "The agent added the selected foundation product to the cart.",
     "accepted_answers": [
-      "Filtered foundations by sensitive skin",
-      "Applied hypoallergenic filter",
-      "Selected sensitive skin filter option",
-      "Narrowed foundation results using skin concern filter"
+      "The agent added a foundation to the cart.",
+      "The agent placed a foundation product in the cart.",
+      "The agent included a foundation in the shopping cart."
     ],
     "partial_answers": [
-      "Used a filter",
-      "Filtered the products",
-      "Changed search settings"
+      "The agent added something to the cart.",
+      "The agent put a product in the cart."
     ],
     "reject_examples": {
       "too_broad": [
-        "Browsed Sephora",
-        "Looked at makeup",
-        "Searched for products"
+        "The agent interacted with the cart.",
+        "The agent did something with a product."
       ],
       "too_low_level": [
-        "Clicked a checkbox",
-        "Moved the mouse",
-        "Scrolled the page"
+        "The agent clicked the add to cart button.",
+        "The agent pressed a button to add."
       ],
       "wrong": [
-        "Added foundation to cart",
-        "Selected a mascara",
-        "Searched for mascara"
-      ]
-    }
-  },
-  {
-    "id": "R2",
-    "type": "past_action_recall",
-    "pause_time_sec": 68,
-    "timestamp_label": "1:08",
-    "anchor": "A foundation product detail page is now displayed showing product information, ingredients, and an Add to Basket button.",
-    "question": "What meaningful action did the agent just take?",
-    "reference_answer": "Clicked on a foundation product to view its details",
-    "accepted_answers": [
-      "Selected a foundation to view details",
-      "Opened the foundation product page",
-      "Clicked on a specific foundation product",
-      "Navigated to foundation product details"
-    ],
-    "partial_answers": [
-      "Clicked on a product",
-      "Opened a product page",
-      "Selected an item"
-    ],
-    "reject_examples": {
-      "too_broad": [
-        "Browsed foundations",
-        "Looked at Sephora",
-        "Shopped for makeup"
-      ],
-      "too_low_level": [
-        "Clicked with mouse",
-        "Pressed left click",
-        "Moved cursor"
-      ],
-      "wrong": [
-        "Added to cart",
-        "Applied a filter",
-        "Searched for mascara"
-      ]
-    }
-  },
-  {
-    "id": "R3",
-    "type": "past_action_recall",
-    "pause_time_sec": 108,
-    "timestamp_label": "1:48",
-    "anchor": "A confirmation message or cart indicator shows that a foundation has been successfully added to the shopping cart.",
-    "question": "What meaningful action did the agent just take?",
-    "reference_answer": "Added the selected foundation to the cart",
-    "accepted_answers": [
-      "Added foundation to cart",
-      "Clicked Add to Basket for the foundation",
-      "Put the foundation in the shopping cart",
-      "Added the foundation product to bag"
-    ],
-    "partial_answers": [
-      "Added item to cart",
-      "Clicked add to cart",
-      "Added a product"
-    ],
-    "reject_examples": {
-      "too_broad": [
-        "Completed a task",
-        "Made progress on shopping",
-        "Did something with foundation"
-      ],
-      "too_low_level": [
-        "Clicked a button",
-        "Pressed Add to Basket",
-        "Made a click action"
-      ],
-      "wrong": [
-        "Added mascara to cart",
-        "Applied a filter",
-        "Proceeded to checkout"
-      ]
-    }
-  },
-  {
-    "id": "R4",
-    "type": "past_action_recall",
-    "pause_time_sec": 162,
-    "timestamp_label": "2:42",
-    "anchor": "The Sephora website now shows a list of mascara products with filters for sensitive or hypoallergenic options applied.",
-    "question": "What meaningful action did the agent just take?",
-    "reference_answer": "Navigated to mascara category and applied sensitive skin filters",
-    "accepted_answers": [
-      "Filtered mascara products for sensitive skin",
-      "Applied hypoallergenic filter to mascara results",
-      "Searched for sensitive skin mascara options",
-      "Narrowed mascara results using skin concern filters"
-    ],
-    "partial_answers": [
-      "Filtered mascara products",
-      "Browsed mascara section",
-      "Applied filters to mascara"
-    ],
-    "reject_examples": {
-      "too_broad": [
-        "Looked at products",
-        "Continued shopping",
-        "Browsed Sephora"
-      ],
-      "too_low_level": [
-        "Clicked filter checkbox",
-        "Scrolled down",
-        "Moved to new page"
-      ],
-      "wrong": [
-        "Added mascara to cart",
-        "Selected foundation",
-        "Completed the task"
+        "The agent added a mascara to the cart.",
+        "The agent removed a product from the cart."
       ]
     }
   },
   {
     "id": "R5",
+    "moment_index": 47,
     "type": "past_action_recall",
     "pause_time_sec": 222,
     "timestamp_label": "3:42",
-    "anchor": "The shopping cart now displays two items: a foundation and a mascara, both meeting sensitive skin preferences.",
+    "anchor": "The mascara product is now in the shopping cart.",
     "question": "What meaningful action did the agent just take?",
-    "reference_answer": "Added the selected mascara to the cart",
+    "reference_answer": "The agent added the mascara product to the cart.",
     "accepted_answers": [
-      "Added mascara to cart",
-      "Clicked Add to Basket for the mascara",
-      "Put the mascara in the shopping cart",
-      "Added the mascara product to bag"
+      "The agent added the mascara to the cart.",
+      "The agent placed the mascara in the shopping cart.",
+      "The agent put the mascara product into the cart."
     ],
     "partial_answers": [
-      "Added second item to cart",
-      "Added another product",
-      "Completed adding items"
+      "The agent added a product to the cart.",
+      "The agent placed an item in the cart."
     ],
     "reject_examples": {
       "too_broad": [
-        "Finished shopping",
-        "Completed the task",
-        "Added products"
+        "The agent interacted with the cart.",
+        "The agent changed the cart contents."
       ],
       "too_low_level": [
-        "Clicked add button",
-        "Pressed a button",
-        "Made a click"
+        "The agent clicked the add to cart button.",
+        "The agent pressed the cart icon."
       ],
       "wrong": [
-        "Added foundation to cart",
-        "Proceeded to checkout",
-        "Applied a discount code"
+        "The agent removed a product from the cart.",
+        "The agent viewed the cart."
       ]
     }
   }
